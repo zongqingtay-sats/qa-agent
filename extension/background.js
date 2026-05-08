@@ -70,13 +70,14 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
 
   // Get or create tab for test execution
   try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    executingTabId = tabs[0]?.id;
+    // Always create a fresh tab for test execution
+    const startNode = executionOrder.find(n => n.data?.blockType === 'start');
+    const initialUrl = startNode?.data?.baseUrl || baseUrl || 'about:blank';
+    const tab = await chrome.tabs.create({ url: initialUrl, active: true });
+    executingTabId = tab.id;
 
-    if (!executingTabId) {
-      const tab = await chrome.tabs.create({ url: baseUrl || 'about:blank' });
-      executingTabId = tab.id;
-    }
+    // Wait for the tab to finish loading
+    await waitForTabLoad(executingTabId);
 
     // Execute steps sequentially
     for (let i = 0; i < executionOrder.length; i++) {
@@ -100,6 +101,40 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
       const stepStart = Date.now();
 
       try {
+        // Handle navigation at the background level (tab navigation, not content script)
+        if (data.blockType === 'navigate' && data.url) {
+          let navUrl = data.url;
+          // If it's a relative URL, resolve against baseUrl
+          if (navUrl.startsWith('/')) {
+            const base = currentBaseUrl.replace(/\/$/, '');
+            navUrl = base + navUrl;
+          }
+          await chrome.tabs.update(executingTabId, { url: navUrl });
+          await waitForTabLoad(executingTabId);
+
+          const stepResult = {
+            stepId,
+            blockId: node.id,
+            blockType: data.blockType,
+            status: 'passed',
+            durationMs: Date.now() - stepStart,
+            actualResult: `Navigated to ${navUrl}`,
+            description: data.label || data.description || 'Navigate',
+            target: data.url,
+          };
+
+          // Capture screenshot after navigation
+          try {
+            stepResult.screenshot = await captureScreenshot(executingTabId);
+          } catch (e) {
+            console.warn('[QA Agent] Screenshot failed:', e);
+          }
+
+          stepResults.push(stepResult);
+          port.postMessage({ type: 'STEP_COMPLETE', ...stepResult });
+          continue;
+        }
+
         // Execute the action via content script
         const result = await executeStepInTab(executingTabId, data);
 
@@ -234,7 +269,37 @@ function getExecutionOrder(testFlow) {
   return order;
 }
 
+async function waitForTabLoad(tabId) {
+  return new Promise((resolve) => {
+    function listener(id, changeInfo) {
+      if (id === tabId && changeInfo.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        // Short delay for content scripts to initialize
+        setTimeout(resolve, 500);
+      }
+    }
+    // Check if already loaded
+    chrome.tabs.get(tabId, (tab) => {
+      if (tab.status === 'complete') {
+        setTimeout(resolve, 500);
+      } else {
+        chrome.tabs.onUpdated.addListener(listener);
+      }
+    });
+  });
+}
+
 async function executeStepInTab(tabId, blockData) {
+  // Ensure the content script is injected
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content-script.js'],
+    });
+  } catch (e) {
+    console.warn('[QA Agent] Content script injection skipped:', e.message);
+  }
+
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tabId, {
       type: 'EXECUTE_ACTION',

@@ -8,6 +8,7 @@ import {
   Play,
   Upload,
   Sparkles,
+  Settings,
   FlaskConical,
 } from "lucide-react";
 import {
@@ -28,6 +29,7 @@ const navItems = [
   { title: "Test Runs", href: "/test-runs", icon: Play },
   { title: "Import", href: "/import", icon: Upload },
   { title: "Generate with AI", href: "/generate", icon: Sparkles },
+  { title: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
