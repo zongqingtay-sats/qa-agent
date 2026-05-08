@@ -120,6 +120,10 @@ export default class CopilotClient {
             try {
               jsonData = JSON.parse(line.slice(6));
             } catch (e) {
+              if (line.slice(6).trim() === "[DONE]") {
+                console.debug('Stream completed with [DONE] signal.');
+                break;
+              }
               console.debug(`Failed to parse line as JSON: ${line}`);
               continue;
             }
