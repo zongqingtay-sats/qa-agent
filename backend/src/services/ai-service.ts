@@ -1,9 +1,6 @@
 import { appConfig } from '../config';
-
-interface AIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+import CopilotClient from '../copilot/client';
+import { ChatMessage } from '../copilot/types';
 
 interface GeneratedTestCase {
   name: string;
@@ -17,6 +14,16 @@ interface GeneratedTestCase {
     value?: string;
     description: string;
   }[];
+}
+
+// Lazily initialized CopilotClient singleton
+let copilotClient: CopilotClient | null = null;
+
+function getClient(): CopilotClient | null {
+  if (copilotClient) return copilotClient;
+  if (!appConfig.copilotToken) return null;
+  copilotClient = new CopilotClient({ token: appConfig.copilotToken });
+  return copilotClient;
 }
 
 const SYSTEM_PROMPT = `You are a QA test case generation assistant. You generate structured test cases for web applications.
@@ -34,8 +41,8 @@ Always return valid JSON arrays of test cases. Each test case should have:
 
 Return ONLY a JSON array, no markdown code fences, no explanation text.`;
 
-function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', input: string): AIMessage[] {
-  const messages: AIMessage[] = [
+function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', input: string): ChatMessage[] {
+  const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
   ];
 
@@ -69,9 +76,9 @@ export async function generateTestCases(
 ): Promise<GeneratedTestCase[]> {
   const messages = buildPrompt(mode, input);
 
-  // If no API key configured, return mock data for PoC development
-  if (!appConfig.copilotApiKey || !appConfig.copilotApiUrl) {
-    console.log('No AI API configured, returning mock test cases');
+  const client = getClient();
+  if (!client) {
+    console.log('No Copilot API token configured, returning mock test cases');
     return getMockTestCases(mode, input);
   }
 
