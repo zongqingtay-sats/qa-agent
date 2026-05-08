@@ -1,0 +1,173 @@
+# Requirements Document — QA Agent
+
+## 1. Project Overview
+
+### 1.1 Purpose
+
+QA Agent is an automated web application QA testing tool that enables teams to import, generate, visually design, execute, and report on test cases. It combines AI-powered test case generation with a low-code visual test flow editor and browser-based test execution to streamline the QA process.
+
+### 1.2 Problem Statement
+
+Manual QA testing is time-consuming, error-prone, and difficult to document consistently. Existing automation tools require significant programming expertise, creating a barrier for non-technical QA staff. There is a need for a tool that:
+
+- Lowers the barrier to test automation through visual, low-code test design
+- Leverages AI to generate and refine test cases from business requirements
+- Executes tests on live web applications with full screenshot documentation
+- Produces structured, exportable result reports automatically
+
+### 1.3 Target Users
+
+- **QA Engineers** — primary users who create, edit, and execute test cases
+- **Test Managers** — oversee test projects, review results, manage team access
+- **Developers** — generate test cases from source code, review failed test results
+
+---
+
+## 2. Scope
+
+The project is delivered in two phases:
+
+| Phase | Scope | Key Deliverables |
+|-------|-------|-----------------|
+| **PoC** | Core testing workflow | Test import/generation, visual editor, browser execution, result reports |
+| **Production** | Enterprise readiness | Authentication, cloud DB, project management, collaboration |
+
+---
+
+## 3. PoC Functional Requirements
+
+### FR-1: Test Case Import & Generation
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-1.1 | Import test cases from Word (.docx) documents | Must |
+| FR-1.2 | Import test cases from PDF documents | Must |
+| FR-1.3 | Import test cases from plain text (.txt) files | Must |
+| FR-1.4 | Import test cases from JSON files (structured format) | Must |
+| FR-1.5 | Generate test cases from uploaded business requirements documents via AI | Must |
+| FR-1.6 | Generate test cases from natural language text input via AI | Must |
+| FR-1.7 | Generate test cases from application source code files via AI | Should |
+| FR-1.8 | AI-generated test cases must be editable before saving | Must |
+| FR-1.9 | Support batch import of multiple test cases from a single document | Should |
+
+### FR-2: Visual Test Flow Editor
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-2.1 | Provide a drag-and-drop canvas for designing test flows | Must |
+| FR-2.2 | Support the following block types: Start, End, Navigate, Click, Type/Input, Assert, Wait, If-Else, Screenshot, Scroll, Hover, Select (dropdown) | Must |
+| FR-2.3 | Each block must have a configurable properties panel (e.g., CSS selector, URL, expected value, timeout) | Must |
+| FR-2.4 | Blocks must be connectable via edges to define execution order | Must |
+| FR-2.5 | Support zoom, pan, and minimap on the canvas | Should |
+| FR-2.6 | Support undo/redo operations | Should |
+| FR-2.7 | Validate flow integrity (e.g., must start with Start block, end with End block, no disconnected blocks) | Must |
+| FR-2.8 | Export test flows to JSON format | Must |
+| FR-2.9 | Export test flows to Word (.docx) format | Must |
+| FR-2.10 | Export test flows to PDF format | Must |
+
+### FR-3: Test Execution
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-3.1 | Provide a test case management page where users can select test cases to run | Must |
+| FR-3.2 | Execute test cases on live web applications via browser automation | Must |
+| FR-3.3 | Use a browser extension (Chrome/Edge) to perform test actions on the target application | Must |
+| FR-3.4 | Capture a screenshot at each test step during execution | Must |
+| FR-3.5 | Display real-time execution progress (current step, status) | Must |
+| FR-3.6 | On error, highlight the offending block in the flow view | Must |
+| FR-3.7 | On error, halt the entire test flow and report the failure | Must |
+| FR-3.8 | Support running multiple selected test cases sequentially | Should |
+| FR-3.9 | Record step execution time for each step | Should |
+
+### FR-4: Result Document Generation
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-4.1 | Generate a result document for each completed test run | Must |
+| FR-4.2 | Result document must include: test case description, test steps, passing criteria, per-step screenshots, and pass/fail status | Must |
+| FR-4.3 | Export results to JSON format | Must |
+| FR-4.4 | Export results to Word (.docx) format | Must |
+| FR-4.5 | Export results to PDF format | Must |
+| FR-4.6 | Include timestamp, duration, and environment info in results | Should |
+| FR-4.7 | Include error messages and stack traces for failed steps | Must |
+
+---
+
+## 4. Production Functional Requirements
+
+### FR-5: Authentication & Authorization
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-5.1 | Authenticate users via Azure Entra ID (SSO) | Must |
+| FR-5.2 | Support role-based access control (RBAC) | Must |
+| FR-5.3 | Define roles: Admin, Manager, Tester, Viewer | Must |
+| FR-5.4 | Grant permissions per project: create test cases, edit test cases, run tests, view results | Must |
+| FR-5.5 | Admin can manage user roles and project access | Must |
+
+### FR-6: Data Storage
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-6.1 | Store all test data in Azure SQL Server | Must |
+| FR-6.2 | Store screenshots in Azure Blob Storage with references in SQL | Must |
+| FR-6.3 | Support data backup and recovery | Should |
+
+### FR-7: Project Management
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-7.1 | Provide a project management interface similar to Jira/ClickUp | Must |
+| FR-7.2 | Group test cases by Project → Feature → Phase hierarchy | Must |
+| FR-7.3 | Support list and board (Kanban) views | Should |
+| FR-7.4 | Provide filtering and search across test cases | Must |
+| FR-7.5 | Support comment and reply threads on each test case | Must |
+| FR-7.6 | Support bulk operations (move, delete, assign) | Should |
+
+---
+
+## 5. Non-Functional Requirements
+
+| ID | Requirement | Category |
+|----|-------------|----------|
+| NFR-1 | Page load time must be under 3 seconds | Performance |
+| NFR-2 | Test execution latency per step must be under 5 seconds (excluding waits) | Performance |
+| NFR-3 | Support at least 50 concurrent users (Production) | Scalability |
+| NFR-4 | All API endpoints must validate and sanitize input (OWASP Top 10) | Security |
+| NFR-5 | All data in transit must use TLS 1.2+ | Security |
+| NFR-6 | UI must be responsive (desktop-first, minimum 1280px) | Usability |
+| NFR-7 | Support Chrome and Edge browsers (latest 2 versions) | Compatibility |
+| NFR-8 | Uploaded files must be validated for type and size (max 20MB) | Security |
+| NFR-9 | Application must provide meaningful error messages | Usability |
+| NFR-10 | All actions must be audit-logged (Production) | Security |
+
+---
+
+## 6. Technical Constraints
+
+| Constraint | Value |
+|-----------|-------|
+| Language | TypeScript |
+| Frontend Framework | Next.js (App Router) |
+| UI Library | shadcn/ui + Tailwind CSS |
+| Backend Framework | Express.js |
+| AI Provider | GitHub Copilot Chat API |
+| Database | Azure SQL Server |
+| Hosting | Azure App Service |
+| Browser Extension | Chrome/Edge (Manifest V3) |
+| Test Execution | Browser extension with DOM automation |
+
+---
+
+## 7. Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Test Case** | A set of steps and expected outcomes that verify a specific feature or behavior |
+| **Test Flow** | A visual representation of a test case as connected blocks on a canvas |
+| **Block** | A single action or control node in a test flow (e.g., Click, Navigate, Assert) |
+| **Test Run** | A single execution instance of one or more test cases |
+| **Test Step** | An individual action within a test case |
+| **Passing Criteria** | The expected outcome that determines whether a test step passes or fails |
+| **PoC** | Proof of Concept — initial phase demonstrating core functionality |
+| **RBAC** | Role-Based Access Control — permission model based on user roles |
