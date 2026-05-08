@@ -39,7 +39,10 @@ Always return valid JSON arrays of test cases. Each test case should have:
   - value: input value or expected value (when applicable)
   - description: human-readable description of the step
 
-Return ONLY a JSON array, no markdown code fences, no explanation text.`;
+Return ONLY a JSON array, no markdown code fences, no explanation text.
+All string values must be plain literal strings. NEVER use JavaScript expressions like .repeat(), + concatenation, or template literals inside JSON values.
+For example, write "aaaaaaaaaa" instead of "a".repeat(10).
+The JSON array must be absolutely parseable by JSON.parse() without errors.`;
 
 function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', input: string): ChatMessage[] {
   const messages: ChatMessage[] = [
@@ -82,26 +85,7 @@ export async function generateTestCases(
     return getMockTestCases(mode, input);
   }
 
-  const response = await fetch(appConfig.copilotApiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${appConfig.copilotApiKey}`,
-    },
-    body: JSON.stringify({
-      messages,
-      max_tokens: 4096,
-      temperature: 0.3,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`AI API error: ${response.status} ${errorText}`);
-  }
-
-  const data: any = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const content = await client.chat(messages, { temperature: 0.3, maxTokens: 4096 });
 
   if (!content) {
     throw new Error('No content in AI response');
@@ -113,8 +97,60 @@ export async function generateTestCases(
     jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
   }
 
+  // Sanitize JS expressions that the model may inject into JSON string values
+  jsonStr = sanitizeJsExpressions(jsonStr);
+
   const testCases: GeneratedTestCase[] = JSON.parse(jsonStr);
   return testCases;
+}
+
+/**
+ * Replace common JavaScript string expressions in JSON with their evaluated literal values.
+ * The LLM sometimes outputs JS expressions instead of plain JSON strings.
+ */
+function sanitizeJsExpressions(json: string): string {
+  // "str".repeat(n) → repeated string
+  json = json.replace(/"([^"]*)"\.repeat\((\d+)\)/g, (_, str, n) => {
+    const count = Math.min(Number(n), 1000);
+    return JSON.stringify(str.repeat(count));
+  });
+
+  // "str".padStart(n, "ch") / .padEnd(n, "ch")
+  json = json.replace(/"([^"]*)"\.pad(Start|End)\((\d+),\s*"([^"]*)"\)/g, (_, str, dir, n, ch) => {
+    const len = Math.min(Number(n), 1000);
+    return JSON.stringify(dir === 'Start' ? str.padStart(len, ch) : str.padEnd(len, ch));
+  });
+
+  // "str".toUpperCase() / .toLowerCase()
+  json = json.replace(/"([^"]*)"\.toUpperCase\(\)/g, (_, str) => JSON.stringify(str.toUpperCase()));
+  json = json.replace(/"([^"]*)"\.toLowerCase\(\)/g, (_, str) => JSON.stringify(str.toLowerCase()));
+
+  // "str".trim()
+  json = json.replace(/"([^"]*)"\.trim\(\)/g, (_, str) => JSON.stringify(str.trim()));
+
+  // "str".slice(start, end) / .substring(start, end)
+  json = json.replace(/"([^"]*)"\.(slice|substring)\((\d+),\s*(\d+)\)/g, (_, str, _method, s, e) =>
+    JSON.stringify(str.slice(Number(s), Number(e)))
+  );
+
+  // "str".replace("old", "new")
+  json = json.replace(/"([^"]*)"\.replace\("([^"]*)",\s*"([^"]*)"\)/g, (_, str, old, rep) =>
+    JSON.stringify(str.replace(old, rep))
+  );
+
+  // "str".concat("other")
+  json = json.replace(/"([^"]*)"\.concat\("([^"]*)"\)/g, (_, a, b) => JSON.stringify(a + b));
+
+  // Array(n).join("ch")
+  json = json.replace(/Array\((\d+)\)\.join\("([^"]*)"\)/g, (_, n, ch) => {
+    const count = Math.min(Number(n), 1000);
+    return JSON.stringify(Array(count).join(ch));
+  });
+
+  // "foo" + "bar" (string concatenation, run last to avoid interfering with above)
+  json = json.replace(/"([^"]*)"\s*\+\s*"([^"]*)"/g, (_, a, b) => JSON.stringify(a + b));
+
+  return json;
 }
 
 function getMockTestCases(_mode: string, input: string): GeneratedTestCase[] {
