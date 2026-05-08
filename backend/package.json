@@ -1,0 +1,34 @@
+{
+  "name": "qa-agent-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "docx": "^9.5.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "mammoth": "^1.9.0",
+    "multer": "^2.0.1",
+    "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.16.0",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.15.3",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/pdfkit": "^0.13.9",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.3"
+  }
+}

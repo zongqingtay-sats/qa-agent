@@ -1,0 +1,112 @@
+import { Router, Request, Response } from 'express';
+import { store } from '../db/store';
+import { AppError } from '../middleware/error-handler';
+
+const router = Router();
+
+// GET /api/test-runs
+router.get('/', (req: Request, res: Response) => {
+  const { testCaseId, status } = req.query;
+  const testRuns = store.getAllTestRuns({
+    testCaseId: testCaseId as string | undefined,
+    status: status as string | undefined,
+  });
+
+  // Include test case name for each run
+  const enriched = testRuns.map(run => {
+    const tc = store.getTestCase(run.testCaseId);
+    return { ...run, testCaseName: tc?.name || 'Unknown' };
+  });
+
+  res.json({ data: enriched, total: enriched.length });
+});
+
+// GET /api/test-runs/:id
+router.get('/:id', (req: Request, res: Response) => {
+  const testRun = store.getTestRun(req.params.id as string);
+  if (!testRun) {
+    throw new AppError('Test run not found', 404);
+  }
+
+  const stepResults = store.getStepResultsForRun(testRun.id);
+  const tc = store.getTestCase(testRun.testCaseId);
+
+  res.json({
+    data: {
+      ...testRun,
+      testCaseName: tc?.name || 'Unknown',
+      testCaseDescription: tc?.description,
+      testCasePreconditions: tc?.preconditions,
+      testCasePassingCriteria: tc?.passingCriteria,
+      stepResults,
+    },
+  });
+});
+
+// POST /api/test-runs
+router.post('/', (req: Request, res: Response) => {
+  const { testCaseId } = req.body;
+
+  if (!testCaseId) {
+    throw new AppError('testCaseId is required');
+  }
+
+  const testCase = store.getTestCase(testCaseId);
+  if (!testCase) {
+    throw new AppError('Test case not found', 404);
+  }
+
+  const testRun = store.createTestRun({
+    testCaseId,
+    status: 'running',
+    totalSteps: 0,
+    passedSteps: 0,
+    failedSteps: 0,
+  });
+
+  res.status(201).json({ data: testRun });
+});
+
+// PUT /api/test-runs/:id
+router.put('/:id', (req: Request, res: Response) => {
+  const existing = store.getTestRun(req.params.id as string);
+  if (!existing) {
+    throw new AppError('Test run not found', 404);
+  }
+
+  const { status, stepResults, completedAt, durationMs, totalSteps, passedSteps, failedSteps, environment } = req.body;
+
+  // Save step results if provided
+  if (stepResults && Array.isArray(stepResults)) {
+    for (const sr of stepResults) {
+      store.createStepResult({
+        testRunId: existing.id,
+        stepOrder: sr.stepOrder,
+        blockId: sr.blockId,
+        blockType: sr.blockType,
+        description: sr.description,
+        target: sr.target,
+        expectedResult: sr.expectedResult,
+        actualResult: sr.actualResult,
+        status: sr.status,
+        screenshotDataUrl: sr.screenshotDataUrl,
+        errorMessage: sr.errorMessage,
+        durationMs: sr.durationMs,
+      });
+    }
+  }
+
+  const updates: Record<string, any> = {};
+  if (status !== undefined) updates.status = status;
+  if (completedAt !== undefined) updates.completedAt = completedAt;
+  if (durationMs !== undefined) updates.durationMs = durationMs;
+  if (totalSteps !== undefined) updates.totalSteps = totalSteps;
+  if (passedSteps !== undefined) updates.passedSteps = passedSteps;
+  if (failedSteps !== undefined) updates.failedSteps = failedSteps;
+  if (environment !== undefined) updates.environment = typeof environment === 'string' ? environment : JSON.stringify(environment);
+
+  const updated = store.updateTestRun(req.params.id as string, updates);
+  res.json({ data: updated });
+});
+
+export default router;
