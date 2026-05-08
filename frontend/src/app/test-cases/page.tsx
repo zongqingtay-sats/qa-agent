@@ -23,7 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Plus, Search, Play, Trash2, Download, MoreHorizontal } from "lucide-react";
-import { testCasesApi, exportApi } from "@/lib/api";
+import { testCasesApi, testRunsApi, exportApi } from "@/lib/api";
+import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";
 import { toast } from "sonner";
 
 export default function TestCasesPage() {
@@ -94,6 +95,128 @@ export default function TestCasesPage() {
     }
   }
 
+  async function handleRunSelected() {
+    if (selected.size === 0) return;
+
+    const extensionId = getExtensionId();
+    if (!extensionId) {
+      toast.error("No extension ID configured. Go to Settings to set it up.");
+      return;
+    }
+
+    try {
+      for (const testCaseId of selected) {
+        // 1. Fetch the test case flow data
+        const tcRes = await testCasesApi.get(testCaseId);
+        const testCase = tcRes.data;
+        let flowData: any;
+        try {
+          flowData = typeof testCase.flowData === 'string' ? JSON.parse(testCase.flowData) : testCase.flowData;
+        } catch {
+          toast.error(`Invalid flow data for "${testCase.name}"`);
+          continue;
+        }
+
+        // 2. Create a test run record
+        const runRes = await testRunsApi.create(testCaseId);
+        const testRun = runRes.data;
+
+        // 3. Find the base URL from the start node
+        const startNode = (flowData.nodes || []).find((n: any) => n.data?.blockType === 'start');
+        const baseUrl = startNode?.data?.baseUrl || 'http://localhost:3000';
+
+        // 4. Connect to the extension and execute
+        const stepResults: any[] = [];
+        const startTime = Date.now();
+
+        const connection = connectToExtension(extensionId, {
+          onConnected: () => {
+            toast.info(`Running "${testCase.name}"...`);
+            executeTestViaExtension(connection!.port, flowData, testCaseId, baseUrl);
+          },
+          onStepComplete: (data) => {
+            stepResults.push(data);
+          },
+          onStepError: (data) => {
+            stepResults.push({ ...data, status: 'failed' });
+          },
+          onTestComplete: async (data) => {
+            const durationMs = Date.now() - startTime;
+            const passedSteps = stepResults.filter(s => s.status === 'passed').length;
+            const failedSteps = stepResults.filter(s => s.status === 'failed').length;
+            const status = failedSteps > 0 ? 'failed' : 'passed';
+
+            try {
+              await testRunsApi.update(testRun.id, {
+                status,
+                completedAt: new Date().toISOString(),
+                durationMs,
+                totalSteps: stepResults.length,
+                passedSteps,
+                failedSteps,
+                stepResults: stepResults.map((sr, i) => ({
+                  stepOrder: i + 1,
+                  blockId: sr.blockId || '',
+                  blockType: sr.blockType || '',
+                  description: sr.description || '',
+                  target: sr.target || '',
+                  expectedResult: sr.expectedResult || '',
+                  actualResult: sr.actualResult || '',
+                  status: sr.status || 'passed',
+                  screenshotDataUrl: sr.screenshot || sr.screenshotDataUrl || '',
+                  errorMessage: sr.error || sr.errorMessage || '',
+                  durationMs: sr.durationMs || 0,
+                })),
+              });
+              toast.success(`"${testCase.name}" ${status}`);
+            } catch {
+              toast.error(`Failed to save results for "${testCase.name}"`);
+            }
+            connection?.disconnect();
+          },
+          onDisconnect: () => {
+            // If disconnected before completion, mark as failed
+            if (stepResults.length === 0) {
+              testRunsApi.update(testRun.id, {
+                status: 'failed',
+                completedAt: new Date().toISOString(),
+                durationMs: Date.now() - startTime,
+              }).catch(() => {});
+            }
+          },
+        });
+
+        if (!connection) {
+          toast.error("Could not connect to extension. Is it installed and enabled?");
+          await testRunsApi.update(testRun.id, {
+            status: 'failed',
+            completedAt: new Date().toISOString(),
+          });
+          continue;
+        }
+      }
+
+      setSelected(new Set());
+      router.push("/test-runs");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to run test cases");
+    }
+  }
+
+  async function handleDeleteSelected() {
+    if (selected.size === 0) return;
+    try {
+      for (const id of selected) {
+        await testCasesApi.delete(id);
+      }
+      toast.success(`Deleted ${selected.size} test case(s)`);
+      setSelected(new Set());
+      loadTestCases();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
+    }
+  }
+
   async function handleCreateNew() {
     try {
       const res = await testCasesApi.create({
@@ -140,11 +263,11 @@ export default function TestCasesPage() {
           {selected.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleRunSelected}>
                 <Play className="h-4 w-4 mr-1" />
                 Run Selected
               </Button>
-              <Button variant="outline" size="sm" className="text-destructive">
+              <Button variant="outline" size="sm" className="text-destructive" onClick={handleDeleteSelected}>
                 <Trash2 className="h-4 w-4 mr-1" />
                 Delete
               </Button>

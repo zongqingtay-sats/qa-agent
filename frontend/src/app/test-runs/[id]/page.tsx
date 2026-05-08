@@ -26,6 +26,13 @@ export default function TestRunDetailPage() {
     loadRun();
   }, [runId]);
 
+  // Poll for updates while the run is in progress
+  useEffect(() => {
+    if (!run || run.status !== 'running') return;
+    const interval = setInterval(loadRun, 2000);
+    return () => clearInterval(interval);
+  }, [run?.status]);
+
   async function loadRun() {
     try {
       const res = await testRunsApi.get(runId);

@@ -319,6 +319,17 @@ async function executeStepInTab(tabId, blockData) {
 }
 
 async function captureScreenshot(tabId) {
+  // Focus the tab's window first to ensure captureVisibleTab works
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    await chrome.windows.update(tab.windowId, { focused: true });
+    await chrome.tabs.update(tabId, { active: true });
+    // Small delay for UI to settle
+    await new Promise(r => setTimeout(r, 200));
+  } catch (e) {
+    console.warn('[QA Agent] Could not focus tab:', e);
+  }
+
   return new Promise((resolve, reject) => {
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
