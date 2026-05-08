@@ -9,6 +9,14 @@ let stepResults = [];
 let currentStepIndex = 0;
 let testStartTime = 0;
 let connectedPorts = new Map();
+let isPaused = false;
+let pauseResolve = null;
+let currentExecutionOrder = null;
+let currentPort = null;
+let currentTestName = '';
+let currentStatus = 'idle';
+let currentStepDescription = '';
+let currentError = '';
 
 // Listen for connections from the web app
 chrome.runtime.onConnectExternal.addListener((port) => {
@@ -21,6 +29,7 @@ chrome.runtime.onConnectExternal.addListener((port) => {
     switch (message.type) {
       case 'CONNECT':
         port.postMessage({ type: 'CONNECTED', extensionId: chrome.runtime.id });
+        broadcastStatus('connected');
         break;
 
       case 'EXECUTE_TEST':
@@ -36,6 +45,9 @@ chrome.runtime.onConnectExternal.addListener((port) => {
   port.onDisconnect.addListener(() => {
     connectedPorts.delete(port.sender?.origin);
     console.log('[QA Agent] Port disconnected');
+    if (connectedPorts.size === 0) {
+      broadcastStatus('disconnected');
+    }
   });
 });
 
@@ -47,16 +59,101 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
   }
 });
 
+// Listen for messages from popup (pause/resume/retry/get-status)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'GET_STATUS') {
+    sendResponse(getStatusPayload());
+    return true;
+  } else if (message.type === 'PAUSE_TEST') {
+    isPaused = true;
+    broadcastStatus('paused', { testName: currentTestName, currentStep: currentStepIndex + 1, totalSteps: currentExecutionOrder?.length || 0 });
+  } else if (message.type === 'RESUME_TEST') {
+    isPaused = false;
+    broadcastStatus('running', { testName: currentTestName, currentStep: currentStepIndex + 1, totalSteps: currentExecutionOrder?.length || 0 });
+    if (pauseResolve) {
+      pauseResolve('resume');
+      pauseResolve = null;
+    }
+  } else if (message.type === 'RETRY_STEP') {
+    isPaused = false;
+    broadcastStatus('running', { testName: currentTestName, currentStep: currentStepIndex + 1, totalSteps: currentExecutionOrder?.length || 0 });
+    if (pauseResolve) {
+      pauseResolve('retry');
+      pauseResolve = null;
+    }
+  }
+});
+
+function broadcastStatus(status, extra = {}) {
+  currentStatus = status;
+  if (extra.stepDescription) currentStepDescription = extra.stepDescription;
+  currentError = extra.error || '';
+
+  // Update badge based on status
+  switch (status) {
+    case 'running':
+      chrome.action.setBadgeText({ text: 'RUN' });
+      chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
+      break;
+    case 'paused':
+      chrome.action.setBadgeText({ text: 'II' });
+      chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' });
+      break;
+    case 'failed':
+      chrome.action.setBadgeText({ text: 'ERR' });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      break;
+    case 'connected':
+    case 'completed':
+    case 'disconnected':
+    case 'idle':
+      chrome.action.setBadgeText({ text: '' });
+      break;
+  }
+
+  chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', status, ...extra }).catch(() => {});
+}
+
+function getStatusPayload() {
+  const payload = {
+    status: currentStatus,
+    testName: currentTestName,
+    stepDescription: currentStepDescription,
+    error: currentError,
+  };
+  if (currentExecutionOrder) {
+    payload.currentStep = currentStepIndex + 1;
+    payload.totalSteps = currentExecutionOrder.length;
+  }
+  return payload;
+}
+
+function waitIfPaused() {
+  if (!isPaused) return Promise.resolve('resume');
+  return new Promise((resolve) => { pauseResolve = resolve; });
+}
+
 async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
   currentTestFlow = testFlow;
   currentTestCaseId = testCaseId;
   currentBaseUrl = baseUrl;
+  currentPort = port;
   stepResults = [];
   currentStepIndex = 0;
   testStartTime = Date.now();
+  isPaused = false;
+
+  // Set badge to indicate running
+  chrome.action.setBadgeText({ text: 'RUN' });
+  chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
 
   // Determine execution order by traversing edges from start node
   const executionOrder = getExecutionOrder(testFlow);
+  currentExecutionOrder = executionOrder;
+
+  // Derive test name from the start node label or fallback
+  const startNode = executionOrder.find(n => n.data?.blockType === 'start');
+  currentTestName = startNode?.data?.label || testCaseId || 'Test';
 
   if (executionOrder.length === 0) {
     port.postMessage({
@@ -91,6 +188,22 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
       }
 
       const stepId = `step-${i}`;
+      const stepDescription = data.label || data.description || data.blockType;
+
+      // Check pause before step
+      const action = await waitIfPaused();
+      if (action === 'retry' && i > 0) {
+        i--; // Will be incremented by the loop
+        continue;
+      }
+
+      broadcastStatus('running', {
+        testName: currentTestName,
+        currentStep: i + 1,
+        totalSteps: executionOrder.length,
+        stepDescription,
+      });
+
       port.postMessage({
         type: 'STEP_START',
         stepId,
@@ -187,13 +300,43 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
         stepResults.push(stepResult);
         port.postMessage({ type: 'STEP_ERROR', ...stepResult });
 
-        // Halt entire flow on error
-        port.postMessage({
-          type: 'TEST_COMPLETE',
-          testCaseId,
-          status: 'failed',
-          stepResults,
-          durationMs: Date.now() - testStartTime,
+        // Send TEST_COMPLETE immediately so the frontend can save results
+        try {
+          port.postMessage({
+            type: 'TEST_COMPLETE',
+            testCaseId,
+            status: 'failed',
+            stepResults,
+            durationMs: Date.now() - testStartTime,
+          });
+        } catch (e) {
+          console.warn('[QA Agent] Could not send TEST_COMPLETE:', e);
+        }
+
+        // Show failure in popup and wait for retry
+        isPaused = true;
+        currentStepDescription = stepDescription;
+        broadcastStatus('failed', {
+          testName: currentTestName,
+          currentStep: i + 1,
+          totalSteps: executionOrder.length,
+          stepDescription,
+          error: error.message || String(error),
+        });
+
+        const errorAction = await waitIfPaused();
+        if (errorAction === 'retry') {
+          // Remove the failed result and retry this step
+          stepResults.pop();
+          i--;
+          continue;
+        }
+
+        // If not retried, we're done — results already sent
+        broadcastStatus('completed', {
+          testName: currentTestName,
+          result: 'failed',
+          error: error.message || String(error),
         });
         return;
       }

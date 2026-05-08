@@ -175,14 +175,33 @@ export default function TestCasesPage() {
             connection?.disconnect();
           },
           onDisconnect: () => {
-            // If disconnected before completion, mark as failed
-            if (stepResults.length === 0) {
-              testRunsApi.update(testRun.id, {
-                status: 'failed',
-                completedAt: new Date().toISOString(),
-                durationMs: Date.now() - startTime,
-              }).catch(() => {});
-            }
+            // If disconnected before completion, save whatever results we have
+            const durationMs = Date.now() - startTime;
+            const passedSteps = stepResults.filter(s => s.status === 'passed').length;
+            const failedSteps = stepResults.filter(s => s.status === 'failed').length;
+            const status = failedSteps > 0 ? 'failed' : (stepResults.length === 0 ? 'failed' : 'passed');
+
+            testRunsApi.update(testRun.id, {
+              status,
+              completedAt: new Date().toISOString(),
+              durationMs,
+              totalSteps: stepResults.length || undefined,
+              passedSteps: stepResults.length ? passedSteps : undefined,
+              failedSteps: stepResults.length ? failedSteps : undefined,
+              stepResults: stepResults.length ? stepResults.map((sr, i) => ({
+                stepOrder: i + 1,
+                blockId: sr.blockId || '',
+                blockType: sr.blockType || '',
+                description: sr.description || '',
+                target: sr.target || '',
+                expectedResult: sr.expectedResult || '',
+                actualResult: sr.actualResult || '',
+                status: sr.status || 'passed',
+                screenshotDataUrl: sr.screenshot || sr.screenshotDataUrl || '',
+                errorMessage: sr.error || sr.errorMessage || '',
+                durationMs: sr.durationMs || 0,
+              })) : undefined,
+            }).catch(() => {});
           },
         });
 
