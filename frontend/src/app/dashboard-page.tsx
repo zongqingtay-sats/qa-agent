@@ -117,7 +117,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Recent Test Cases</CardTitle>
-              <Button variant="ghost" size="sm" render={<Link href="/test-cases" />}>
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/test-cases" />}>
                 View all <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </CardHeader>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Recent Test Runs</CardTitle>
-              <Button variant="ghost" size="sm" render={<Link href="/test-runs" />}>
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/test-runs" />}>
                 View all <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </CardHeader>
