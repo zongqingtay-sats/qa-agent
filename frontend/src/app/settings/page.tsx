@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Save, Plug, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Save, Plug, CheckCircle, XCircle, Loader2, Sun, Moon, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { getExtensionId, setExtensionId, pingExtension } from "@/lib/extension";
+import { getTheme, setTheme, type Theme } from "@/lib/theme";
 
 export default function SettingsPage() {
   const [extensionId, setExtensionIdState] = useState("");
   const [extensionStatus, setExtensionStatus] = useState<"unknown" | "checking" | "connected" | "disconnected">("unknown");
+  const [theme, setThemeState] = useState<Theme>("system");
 
   useEffect(() => {
     const id = getExtensionId();
@@ -21,6 +24,7 @@ export default function SettingsPage() {
     if (id) {
       checkExtension(id);
     }
+    setThemeState(getTheme());
   }, []);
 
   async function checkExtension(id?: string) {
@@ -45,7 +49,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" description="Configure the QA Agent application" />
-      <div className="flex-1 p-6 space-y-6 max-w-2xl">
+      <div className="flex-1 p-4 space-y-4 max-w-2xl">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -105,6 +109,31 @@ export default function SettingsPage() {
                 <li>Paste it in the field above and click Save</li>
               </ol>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sun className="h-5 w-5" />
+              Appearance
+            </CardTitle>
+            <CardDescription>
+              Choose your preferred color theme
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={theme} onValueChange={(value) => {
+              const t = value as Theme;
+              setThemeState(t);
+              setTheme(t);
+            }}>
+              <TabsList>
+                <TabsTrigger value="light"><Sun className="h-4 w-4 mr-1" /> Light</TabsTrigger>
+                <TabsTrigger value="dark"><Moon className="h-4 w-4 mr-1" /> Dark</TabsTrigger>
+                <TabsTrigger value="system"><Monitor className="h-4 w-4 mr-1" /> System</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

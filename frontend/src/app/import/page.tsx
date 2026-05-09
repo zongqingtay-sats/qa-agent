@@ -136,7 +136,7 @@ export default function ImportPage() {
   return (
     <>
       <PageHeader title="Import Test Cases" description="Upload documents to import or generate test cases" />
-      <div className="flex-1 p-6 space-y-6 max-w-4xl">
+      <div className="flex-1 p-4 space-y-4 max-w-4xl">
         {/* Dropzone */}
         <Card>
           <CardContent className="pt-6">

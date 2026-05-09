@@ -40,7 +40,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard" description="Overview of your QA testing workspace" />
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -113,7 +113,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Activity */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Recent Test Cases</CardTitle>

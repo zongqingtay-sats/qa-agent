@@ -21,6 +21,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 const navItems = [
@@ -36,16 +37,20 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-          <FlaskConical className="h-6 w-6 text-primary" />
-          <span>QA Agent</span>
-        </Link>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b px-2 py-3 overflow-hidden">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-lg min-w-0 overflow-hidden">
+            <FlaskConical className="h-6 w-6 text-primary shrink-0" />
+            <span className="truncate transition-[opacity,width] duration-200 ease-linear group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+              QA Agent
+            </span>
+          </Link>
+          <SidebarTrigger className="shrink-0 transition-opacity duration-200" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
@@ -54,7 +59,7 @@ export function AppSidebar() {
                   : pathname.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton render={<Link href={item.href} />} isActive={isActive}>
+                    <SidebarMenuButton render={<Link href={item.href} title={item.title} />} isActive={isActive}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                     </SidebarMenuButton>

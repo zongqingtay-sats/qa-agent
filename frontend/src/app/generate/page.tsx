@@ -223,7 +223,7 @@ export default function GeneratePage() {
   return (
     <>
       <PageHeader title="Generate Test Cases with AI" description="Use AI to create test cases from requirements, descriptions, or source code" />
-      <div className="flex-1 p-6 space-y-6 max-w-4xl">
+      <div className="flex-1 p-4 space-y-6 max-w-4xl">
         <Tabs defaultValue="text">
           <TabsList>
             <TabsTrigger value="text"><Sparkles className="h-4 w-4 mr-1" /> Natural Language</TabsTrigger>
@@ -231,7 +231,7 @@ export default function GeneratePage() {
             <TabsTrigger value="source"><Code className="h-4 w-4 mr-1" /> Source Code</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="text" className="mt-4">
+          <TabsContent value="text">
             <Card>
               <CardHeader>
                 <CardTitle>Describe What to Test</CardTitle>
@@ -292,9 +292,9 @@ export default function GeneratePage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="requirements" className="mt-4">
+          <TabsContent value="requirements">
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div
                   {...reqDropzone.getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${reqDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
@@ -318,9 +318,9 @@ export default function GeneratePage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="source" className="mt-4">
+          <TabsContent value="source">
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div
                   {...srcDropzone.getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${srcDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"

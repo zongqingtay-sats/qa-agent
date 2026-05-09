@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { toast } from "sonner";
@@ -63,7 +64,7 @@ export default function TestRunsPage() {
   return (
     <>
       <PageHeader title="Test Runs" description="View execution history and results" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4">
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
@@ -108,17 +109,21 @@ export default function TestRunsPage() {
                       {run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : '—'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(run.startedAt).toLocaleDateString()}
+                      {new Date(run.startedAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleExport(run.id, 'json')} title="Export JSON">
-                          <Download className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleExport(run.id, 'pdf')} title="Export PDF">
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Export">
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        } />
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleExport(run.id, 'json')}>Export as JSON</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport(run.id, 'docx')}>Export as DOCX</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport(run.id, 'pdf')}>Export as PDF</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

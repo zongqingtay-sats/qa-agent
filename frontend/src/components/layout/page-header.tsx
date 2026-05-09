@@ -1,8 +1,5 @@
 "use client";
 
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-
 interface PageHeaderProps {
   title: React.ReactNode;
   description?: string;
@@ -11,12 +8,10 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <header className="flex items-center gap-4 border-b px-6 py-4">
-      <SidebarTrigger className="-ml-2" />
-      <Separator orientation="vertical" className="h-6" />
+    <header className="flex items-center gap-4 border-b px-4 py-3">
       <div className="flex-1">
         <h1 className="text-lg font-semibold">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>

@@ -26,7 +26,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              var t = localStorage.getItem('qa-agent-theme');
+              if (t === 'dark') document.documentElement.classList.add('dark');
+              else if (t === 'light') document.documentElement.classList.add('light');
+            } catch(e) {}
+          })();
+        `}} />
+      </head>
       <body className="min-h-full flex flex-col">
         <SidebarProvider>
           <AppSidebar />

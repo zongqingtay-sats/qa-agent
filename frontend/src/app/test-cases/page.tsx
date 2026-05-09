@@ -267,7 +267,7 @@ export default function TestCasesPage() {
           </Button>
         }
       />
-      <div className="flex-1 p-6 space-y-4">
+      <div className="flex-1 p-4 space-y-2">
         {/* Search & Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
@@ -348,7 +348,7 @@ export default function TestCasesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(tc.updatedAt).toLocaleDateString()}
+                      {new Date(tc.updatedAt).toLocaleString()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>

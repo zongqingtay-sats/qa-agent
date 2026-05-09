@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, CheckCircle2, XCircle, Clock, Image as ImageIcon } from "lucide-react";
@@ -87,17 +88,18 @@ export default function TestRunDetailPage() {
       <PageHeader
         title={run.testCaseName || "Test Run"}
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
-              <Download className="h-4 w-4 mr-1" /> JSON
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('docx')}>
-              <Download className="h-4 w-4 mr-1" /> DOCX
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}>
-              <Download className="h-4 w-4 mr-1" /> PDF
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
+            } />
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('docx')}>Export as DOCX</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
       <ScrollArea className="flex-1">
