@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   TestTube2,
   Play,
-  Upload,
   Sparkles,
   Settings,
   FlaskConical,
@@ -28,7 +27,6 @@ const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Test Cases", href: "/test-cases", icon: TestTube2 },
   { title: "Test Runs", href: "/test-runs", icon: Play },
-  { title: "Import", href: "/import", icon: Upload },
   { title: "Generate with AI", href: "/generate", icon: Sparkles },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

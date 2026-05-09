@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sparkles, Upload, FileText, Code, Loader2, Check, Globe, Wand2 } from "lucide-react";
-import { generateApi, testCasesApi } from "@/lib/api";
+import { generateApi, importApi, testCasesApi } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
@@ -98,17 +98,29 @@ export default function GeneratePage() {
     }
   }
 
-  // Generate from requirements file
-  const onRequirementsDrop = useCallback(async (files: File[]) => {
+  // Generate from requirements file or import test case document (auto-detected)
+  const onDocumentDrop = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
     setGenerating(true);
     setGeneratedCases([]);
     try {
-      const res = await generateApi.fromRequirements(files[0]);
-      const cases = res.data.testCases || [];
+      const file = files[0];
+      const isJson = file.name.toLowerCase().endsWith(".json");
+      let cases: any[];
+
+      if (isJson) {
+        // JSON files are treated as test case imports
+        const res = await importApi.parse(file);
+        cases = res.data.testCases || [];
+        toast.success(`Imported ${cases.length} test case(s) from ${file.name}`);
+      } else {
+        // All other files — let AI decide if it's requirements or existing test cases
+        const res = await generateApi.fromRequirements(file);
+        cases = res.data.testCases || [];
+        toast.success(`Generated ${cases.length} test case(s) from ${file.name}`);
+      }
       setGeneratedCases(cases);
       setSelected(new Set(cases.map((_: any, i: number) => i)));
-      toast.success(`Generated ${cases.length} test case(s) from ${files[0].name}`);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -135,11 +147,12 @@ export default function GeneratePage() {
   }, []);
 
   const reqDropzone = useDropzone({
-    onDrop: onRequirementsDrop,
+    onDrop: onDocumentDrop,
     accept: {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/pdf': ['.pdf'],
       'text/plain': ['.txt'],
+      'application/json': ['.json'],
     },
     maxFiles: 1,
     maxSize: 20 * 1024 * 1024,
@@ -227,7 +240,7 @@ export default function GeneratePage() {
         <Tabs defaultValue="text">
           <TabsList>
             <TabsTrigger value="text"><Sparkles className="h-4 w-4 mr-1" /> Natural Language</TabsTrigger>
-            <TabsTrigger value="requirements"><FileText className="h-4 w-4 mr-1" /> Requirements Doc</TabsTrigger>
+            <TabsTrigger value="requirements"><FileText className="h-4 w-4 mr-1" /> Documents</TabsTrigger>
             <TabsTrigger value="source"><Code className="h-4 w-4 mr-1" /> Source Code</TabsTrigger>
           </TabsList>
 
@@ -238,6 +251,16 @@ export default function GeneratePage() {
                 <CardDescription>Write a description of the features or scenarios you want to test</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="text-input">Description</Label>
+                  <Textarea
+                    id="text-input"
+                    value={textInput}
+                    onChange={(e) => handleTextChange(e.target.value)}
+                    placeholder="e.g., Test the login page at https://myapp.com/login. Users should be able to log in with email and password. Invalid credentials should show an error message..."
+                    rows={6}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="target-url" className="flex items-center gap-1.5">
                     <Globe className="h-3.5 w-3.5" /> Test Target URL
@@ -272,16 +295,6 @@ export default function GeneratePage() {
                     The entry point URL of the application to test. The extension will scrape this page to generate more accurate selectors and interactions.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="text-input">Description</Label>
-                  <Textarea
-                    id="text-input"
-                    value={textInput}
-                    onChange={(e) => handleTextChange(e.target.value)}
-                    placeholder="e.g., Test the login page at https://myapp.com/login. Users should be able to log in with email and password. Invalid credentials should show an error message..."
-                    rows={6}
-                  />
-                </div>
                 <div className="flex justify-end">
                   <Button onClick={handleGenerateFromText} disabled={generating || scraping}>
                     {generating || scraping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
@@ -294,7 +307,11 @@ export default function GeneratePage() {
 
           <TabsContent value="requirements">
             <Card>
-              <CardContent>
+              <CardHeader>
+                <CardTitle>Upload a Document</CardTitle>
+                <CardDescription>Upload requirements docs, test case documents, or JSON files — AI will automatically detect the type and generate or import test cases</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div
                   {...reqDropzone.getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${reqDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
@@ -304,15 +321,29 @@ export default function GeneratePage() {
                   {generating ? (
                     <div className="flex flex-col items-center gap-2">
                       <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                      <p className="text-sm text-muted-foreground">Generating test cases from requirements...</p>
+                      <p className="text-sm text-muted-foreground">Processing document...</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="h-10 w-10 text-muted-foreground" />
-                      <p className="text-sm font-medium">Upload a requirements document</p>
-                      <p className="text-xs text-muted-foreground">Word, PDF, or Text files</p>
+                      <p className="text-sm font-medium">Drop a file here or click to browse</p>
+                      <p className="text-xs text-muted-foreground">Word, PDF, Text, or JSON files</p>
                     </div>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="target-url-req" className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5" /> Test Target URL
+                  </Label>
+                  <Input
+                    id="target-url-req"
+                    value={targetUrl}
+                    onChange={(e) => setTargetUrl(e.target.value)}
+                    placeholder="e.g., https://example.com/login"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The entry point URL of the application to test.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -320,7 +351,11 @@ export default function GeneratePage() {
 
           <TabsContent value="source">
             <Card>
-              <CardContent>
+              <CardHeader>
+                <CardTitle>Upload Source Code</CardTitle>
+                <CardDescription>Upload source code files and AI will analyze them to generate relevant test cases</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div
                   {...srcDropzone.getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${srcDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
@@ -339,6 +374,20 @@ export default function GeneratePage() {
                       <p className="text-xs text-muted-foreground">TypeScript, JavaScript, React, Vue, Python, etc.</p>
                     </div>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="target-url-src" className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5" /> Test Target URL
+                  </Label>
+                  <Input
+                    id="target-url-src"
+                    value={targetUrl}
+                    onChange={(e) => setTargetUrl(e.target.value)}
+                    placeholder="e.g., https://example.com/login"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The entry point URL of the application to test.
+                  </p>
                 </div>
               </CardContent>
             </Card>
