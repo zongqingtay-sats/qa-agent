@@ -146,7 +146,7 @@ export default function TestRunDetailPage() {
           {/* Description & Criteria */}
           {(run.testCaseDescription || run.testCasePassingCriteria) && (
             <Card>
-              <CardContent className="pt-6 space-y-4">
+              <CardContent className="space-y-4">
                 {run.testCaseDescription && (
                   <div>
                     <h3 className="text-sm font-semibold mb-1">Description</h3>

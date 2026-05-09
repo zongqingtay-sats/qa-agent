@@ -11,8 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, Upload, FileText, Code, Loader2, Check } from "lucide-react";
+import { Sparkles, Upload, FileText, Code, Loader2, Check, Globe, Wand2 } from "lucide-react";
 import { generateApi, testCasesApi } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
 import { toast } from "sonner";
 
 export default function GeneratePage() {
@@ -22,6 +25,28 @@ export default function GeneratePage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [textInput, setTextInput] = useState("");
+  const [targetUrl, setTargetUrl] = useState("");
+  const [scraping, setScraping] = useState(false);
+
+  // Try to infer a URL from the natural language input
+  function inferUrlFromText(text: string): string {
+    const urlMatch = text.match(/https?:\/\/[^\s,)]+/i);
+    if (urlMatch) return urlMatch[0];
+    const domainMatch = text.match(/(?:^|\s)((?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s,)]*)?)/i);
+    if (domainMatch) return `https://${domainMatch[1]}`;
+    const localhostMatch = text.match(/localhost(?::(\d+))?(?:\/[^\s,)]*)?/i);
+    if (localhostMatch) return `http://${localhostMatch[0]}`;
+    return "";
+  }
+
+  // Auto-infer URL when text changes
+  function handleTextChange(value: string) {
+    setTextInput(value);
+    if (!targetUrl) {
+      const inferred = inferUrlFromText(value);
+      if (inferred) setTargetUrl(inferred);
+    }
+  }
 
   // Generate from natural language
   async function handleGenerateFromText() {
@@ -31,8 +56,37 @@ export default function GeneratePage() {
     }
     setGenerating(true);
     setGeneratedCases([]);
+
+    let pageHtml: string | undefined;
+
+    // If a target URL is provided, try to scrape the page via extension
+    if (targetUrl.trim()) {
+      const extensionId = getExtensionId();
+      if (extensionId) {
+        setScraping(true);
+        toast.info("Scraping target page for context...");
+        try {
+          const scrapeResult = await scrapePageViaExtension(extensionId, targetUrl.trim());
+          if (scrapeResult.html) {
+            pageHtml = scrapeResult.html;
+            toast.success("Page scraped — using page structure for better accuracy");
+          } else if (scrapeResult.error) {
+            toast.warning(`Could not scrape page: ${scrapeResult.error}. Generating without page context.`);
+          }
+        } catch {
+          toast.warning("Page scraping failed. Generating without page context.");
+        }
+        setScraping(false);
+      } else {
+        toast.info("No extension configured — generating without page context. Set extension ID in Settings for better accuracy.");
+      }
+    }
+
     try {
-      const res = await generateApi.fromText(textInput);
+      const res = await generateApi.fromText(textInput, {
+        targetUrl: targetUrl.trim() || undefined,
+        pageHtml,
+      });
       const cases = res.data.testCases || [];
       setGeneratedCases(cases);
       setSelected(new Set(cases.map((_: any, i: number) => i)));
@@ -102,7 +156,7 @@ export default function GeneratePage() {
       const toSave = generatedCases.filter((_, i) => selected.has(i));
       for (const tc of toSave) {
         const nodes: any[] = [
-          { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start" } },
+          { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start", baseUrl: targetUrl.trim() || undefined } },
         ];
         const edges: any[] = [];
 
@@ -184,16 +238,56 @@ export default function GeneratePage() {
                 <CardDescription>Write a description of the features or scenarios you want to test</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Textarea
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="e.g., Test the login page. Users should be able to log in with email and password. Invalid credentials should show an error message. Forgot password should redirect to password reset..."
-                  rows={6}
-                />
-                <Button onClick={handleGenerateFromText} disabled={generating}>
-                  {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  Generate Test Cases
-                </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="target-url" className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5" /> Test Target URL
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="target-url"
+                      value={targetUrl}
+                      onChange={(e) => setTargetUrl(e.target.value)}
+                      placeholder="e.g., https://example.com/login"
+                      className="flex-1"
+                    />
+                    {textInput && !targetUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const inferred = inferUrlFromText(textInput);
+                          if (inferred) {
+                            setTargetUrl(inferred);
+                            toast.info(`Inferred URL: ${inferred}`);
+                          } else {
+                            toast.warning("Could not infer a URL from the description");
+                          }
+                        }}
+                      >
+                        <Wand2 className="h-3.5 w-3.5 mr-1" /> Infer
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The entry point URL of the application to test. The extension will scrape this page to generate more accurate selectors and interactions.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="text-input">Description</Label>
+                  <Textarea
+                    id="text-input"
+                    value={textInput}
+                    onChange={(e) => handleTextChange(e.target.value)}
+                    placeholder="e.g., Test the login page at https://myapp.com/login. Users should be able to log in with email and password. Invalid credentials should show an error message..."
+                    rows={6}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleGenerateFromText} disabled={generating || scraping}>
+                    {generating || scraping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                    {scraping ? "Scraping Page..." : "Generate Test Cases"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -203,9 +297,8 @@ export default function GeneratePage() {
               <CardContent className="pt-6">
                 <div
                   {...reqDropzone.getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
-                    reqDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
-                  }`}
+                  className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${reqDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                    }`}
                 >
                   <input {...reqDropzone.getInputProps()} />
                   {generating ? (
@@ -230,9 +323,8 @@ export default function GeneratePage() {
               <CardContent className="pt-6">
                 <div
                   {...srcDropzone.getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
-                    srcDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
-                  }`}
+                  className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${srcDropzone.isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                    }`}
                 >
                   <input {...srcDropzone.getInputProps()} />
                   {generating ? (

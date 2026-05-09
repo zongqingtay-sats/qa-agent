@@ -2,6 +2,23 @@
 // Executes DOM actions on the target web page
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'SCRAPE_PAGE') {
+    try {
+      const html = document.documentElement.outerHTML;
+      // Trim to a reasonable size — keep structure, strip large inline data
+      const trimmed = html
+        .replace(/data:[^"')\s]{200,}/g, 'data:...')  // strip large data URIs
+        .replace(/<script[\s\S]*?<\/script>/gi, '')     // strip scripts
+        .replace(/<style[\s\S]*?<\/style>/gi, '');      // strip style blocks
+      const pageTitle = document.title;
+      const pageUrl = window.location.href;
+      sendResponse({ html: trimmed.substring(0, 200000), title: pageTitle, url: pageUrl });
+    } catch (error) {
+      sendResponse({ error: error.message });
+    }
+    return true;
+  }
+
   if (message.type !== 'EXECUTE_ACTION') return;
 
   executeAction(message.data)

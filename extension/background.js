@@ -39,6 +39,10 @@ chrome.runtime.onConnectExternal.addListener((port) => {
       case 'STOP_TEST':
         stopTestExecution(port);
         break;
+
+      case 'SCRAPE_PAGE':
+        await handleScrapePage(port, message.url);
+        break;
     }
   });
 
@@ -131,6 +135,46 @@ function getStatusPayload() {
 function waitIfPaused() {
   if (!isPaused) return Promise.resolve('resume');
   return new Promise((resolve) => { pauseResolve = resolve; });
+}
+
+async function handleScrapePage(port, url) {
+  try {
+    // Create a tab, navigate to the URL, scrape, then close
+    const tab = await chrome.tabs.create({ url, active: false });
+    await waitForTabLoad(tab.id);
+
+    // Inject content script early so we can use it to detect page readiness
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content-script.js'],
+      });
+    } catch (e) {
+      console.warn('[QA Agent] Content script injection skipped:', e.message);
+    }
+
+    // Wait for the page to be fully settled (DOM stable, network idle)
+    await waitForPageReady(tab.id);
+
+    const result = await new Promise((resolve, reject) => {
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_PAGE' }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (response?.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+
+    // Close the tab
+    await chrome.tabs.remove(tab.id);
+
+    port.postMessage({ type: 'SCRAPE_RESULT', ...result });
+  } catch (error) {
+    port.postMessage({ type: 'SCRAPE_RESULT', error: error.message || String(error) });
+  }
 }
 
 async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
@@ -430,6 +474,49 @@ async function waitForTabLoad(tabId) {
       }
     });
   });
+}
+
+// Wait for the page DOM to stabilize (no more mutations) — used for scraping
+async function waitForPageReady(tabId, timeout = 10000) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (timeoutMs) => {
+        return new Promise((resolve) => {
+          // If document is still loading, wait for it
+          if (document.readyState !== 'complete') {
+            window.addEventListener('load', () => setTimeout(resolve, 500), { once: true });
+            setTimeout(resolve, timeoutMs);
+            return;
+          }
+          // Watch for DOM mutations to settle
+          let timer = null;
+          const observer = new MutationObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+              observer.disconnect();
+              resolve();
+            }, 800);
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+          // Start the settle timer — if no mutations happen, resolve quickly
+          timer = setTimeout(() => {
+            observer.disconnect();
+            resolve();
+          }, 1500);
+          // Hard timeout
+          setTimeout(() => {
+            observer.disconnect();
+            resolve();
+          }, timeoutMs);
+        });
+      },
+      args: [timeout],
+    });
+  } catch (e) {
+    console.warn('[QA Agent] waitForPageReady failed, using fallback delay:', e.message);
+    await new Promise(r => setTimeout(r, 2000));
+  }
 }
 
 async function executeStepInTab(tabId, blockData) {

@@ -39,12 +39,18 @@ Always return valid JSON arrays of test cases. Each test case should have:
   - value: input value or expected value (when applicable)
   - description: human-readable description of the step
 
+When page HTML is provided, use it to:
+1. Determine the correct CSS selectors for elements (prefer id, name, data-testid, or unique class selectors)
+2. Identify input types accurately (text input, dropdown/select, date picker, radio buttons, checkboxes, etc.)
+3. Use the actual button text and labels from the page
+4. Generate selectors that match the real DOM structure
+
 Return ONLY a JSON array, no markdown code fences, no explanation text.
 All string values must be plain literal strings. NEVER use JavaScript expressions like .repeat(), + concatenation, or template literals inside JSON values.
 For example, write "aaaaaaaaaa" instead of "a".repeat(10).
 The JSON array must be absolutely parseable by JSON.parse() without errors.`;
 
-function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', input: string): ChatMessage[] {
+function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', input: string, options?: { targetUrl?: string; pageHtml?: string }): ChatMessage[] {
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
   ];
@@ -56,12 +62,19 @@ function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', 
         content: `Analyze the following business requirements document and generate comprehensive test cases that cover each requirement. Include both positive and negative test scenarios.\n\nRequirements:\n${input}`,
       });
       break;
-    case 'natural-language':
-      messages.push({
-        role: 'user',
-        content: `Based on the following description, generate detailed test cases for a web application. Include positive, negative, and edge case scenarios.\n\nDescription:\n${input}`,
-      });
+    case 'natural-language': {
+      let content = `Based on the following description, generate detailed test cases for a web application. Include positive, negative, and edge case scenarios.\n\nDescription:\n${input}`;
+      if (options?.targetUrl) {
+        content += `\n\nTarget URL: ${options.targetUrl}\nUse this URL as the base URL in the start/navigate steps.`;
+      }
+      if (options?.pageHtml) {
+        // Trim HTML to avoid exceeding token limits
+        const trimmedHtml = options.pageHtml.substring(0, 80000);
+        content += `\n\nBelow is the actual HTML of the target web page. Use this to determine the correct CSS selectors, input types (text, dropdown, date picker, etc.), button labels, and form structure. Generate test steps that use accurate selectors matching the real page elements.\n\n<page-html>\n${trimmedHtml}\n</page-html>`;
+      }
+      messages.push({ role: 'user', content });
       break;
+    }
     case 'source-code':
       messages.push({
         role: 'user',
@@ -75,9 +88,10 @@ function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', 
 
 export async function generateTestCases(
   mode: 'requirements' | 'natural-language' | 'source-code',
-  input: string
+  input: string,
+  options?: { targetUrl?: string; pageHtml?: string }
 ): Promise<GeneratedTestCase[]> {
-  const messages = buildPrompt(mode, input);
+  const messages = buildPrompt(mode, input, options);
 
   const client = getClient();
   if (!client) {
@@ -85,7 +99,7 @@ export async function generateTestCases(
     return getMockTestCases(mode, input);
   }
 
-  const content = await client.chat(messages, { temperature: 0.3, maxTokens: 4096 });
+  const content = await client.chat(messages, { temperature: 0.3, maxTokens: options?.pageHtml ? 8192 : 4096 });
 
   if (!content) {
     throw new Error('No content in AI response');

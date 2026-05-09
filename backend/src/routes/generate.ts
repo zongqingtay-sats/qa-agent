@@ -19,12 +19,12 @@ router.post('/from-requirements', upload.single('file'), async (req: Request, re
 
 // POST /api/generate/from-text
 router.post('/from-text', async (req: Request, res: Response) => {
-  const { text } = req.body;
+  const { text, targetUrl, pageHtml } = req.body;
   if (!text || typeof text !== 'string') {
     throw new AppError('Text input is required');
   }
 
-  const testCases = await generateTestCases('natural-language', text);
+  const testCases = await generateTestCases('natural-language', text, { targetUrl, pageHtml });
   res.json({ data: { testCases } });
 });
 

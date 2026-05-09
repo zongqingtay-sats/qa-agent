@@ -66,8 +66,8 @@ export const generateApi = {
     if (!res.ok) throw new Error('Failed to generate from requirements');
     return res.json();
   },
-  fromText: (text: string) =>
-    request<{ data: { testCases: any[] } }>('/generate/from-text', { method: 'POST', body: JSON.stringify({ text }) }),
+  fromText: (text: string, options?: { targetUrl?: string; pageHtml?: string }) =>
+    request<{ data: { testCases: any[] } }>('/generate/from-text', { method: 'POST', body: JSON.stringify({ text, ...options }) }),
   fromSource: async (files: File[]) => {
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));

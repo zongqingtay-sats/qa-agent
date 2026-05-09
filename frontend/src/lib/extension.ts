@@ -112,3 +112,42 @@ export function executeTestViaExtension(
 export function stopTestViaExtension(port: any) {
   port.postMessage({ type: 'STOP_TEST' });
 }
+
+export function scrapePageViaExtension(
+  extensionId: string,
+  url: string
+): Promise<{ html?: string; title?: string; url?: string; error?: string }> {
+  return new Promise((resolve) => {
+    const connection = connectToExtension(extensionId, {
+      onConnected: () => {
+        connection?.port.postMessage({ type: 'SCRAPE_PAGE', url });
+      },
+      onDisconnect: () => {
+        resolve({ error: 'Disconnected before scrape completed' });
+      },
+    });
+
+    if (!connection) {
+      resolve({ error: 'Could not connect to extension' });
+      return;
+    }
+
+    // Listen for the scrape result
+    connection.port.onMessage.addListener((message: any) => {
+      if (message.type === 'SCRAPE_RESULT') {
+        connection.disconnect();
+        if (message.error) {
+          resolve({ error: message.error });
+        } else {
+          resolve({ html: message.html, title: message.title, url: message.url });
+        }
+      }
+    });
+
+    // Timeout after 30 seconds
+    setTimeout(() => {
+      connection.disconnect();
+      resolve({ error: 'Scrape timed out' });
+    }, 30000);
+  });
+}
