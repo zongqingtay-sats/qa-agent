@@ -22,7 +22,10 @@ let copilotClient: CopilotClient | null = null;
 function getClient(): CopilotClient | null {
   if (copilotClient) return copilotClient;
   if (!appConfig.copilotToken) return null;
-  copilotClient = new CopilotClient({ token: appConfig.copilotToken });
+  copilotClient = new CopilotClient({
+    token: appConfig.copilotToken,
+    model: appConfig.copilotModel,
+  });
   return copilotClient;
 }
 
