@@ -116,9 +116,33 @@ function FlowBlockNode({ data, selected }: { data: any; selected: boolean }) {
         <p className="text-xs mt-1 font-mono opacity-60 truncate">{data.selector}</p>
       )}
 
-      {/* Source handle (bottom) - all blocks except End */}
-      {!isEnd && (
+      {/* Source handle (bottom) - all blocks except End and If-Else */}
+      {!isEnd && data.blockType !== 'if-else' && (
         <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-slate-500 !border-2 !border-white" />
+      )}
+
+      {/* If-Else: two labeled source handles */}
+      {data.blockType === 'if-else' && (
+        <>
+          <div className="flex justify-between mt-2 text-[10px] font-semibold">
+            <span className="text-green-700">Then</span>
+            <span className="text-red-700">Else</span>
+          </div>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="then"
+            className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
+            style={{ left: '30%' }}
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="else"
+            className="!w-3 !h-3 !bg-red-500 !border-2 !border-white"
+            style={{ left: '70%' }}
+          />
+        </>
       )}
     </div>
   );
@@ -432,7 +456,16 @@ function validateFlow(nodes: Node[], edges: Edge[]): { valid: boolean; errors: s
 
   if (startNodes.length === 0) errors.push("Flow must have a Start block");
   if (startNodes.length > 1) errors.push("Flow must have exactly one Start block");
+  if (startNodes.length === 1 && !(startNodes[0].data as any).baseUrl) {
+    errors.push("Start block must have a Target URL defined");
+  }
   if (endNodes.length === 0) errors.push("Flow must have at least one End block");
+
+  // Must have at least one assert block
+  const assertNodes = nodes.filter(n => (n.data as any).blockType === "assert");
+  if (assertNodes.length === 0) {
+    errors.push("Flow must have at least one Assert block");
+  }
 
   // Check connectivity
   if (startNodes.length === 1) {
@@ -459,6 +492,15 @@ function validateFlow(nodes: Node[], edges: Edge[]): { valid: boolean; errors: s
     }
     if (d.blockType === 'navigate' && !d.url) {
       errors.push(`${d.label || 'Navigate'} block is missing a URL`);
+    }
+    if (d.blockType === 'if-else') {
+      if (!d.selector) {
+        errors.push(`${d.label || 'If-Else'} block is missing a condition selector`);
+      }
+      const outgoing = edges.filter(e => e.source === n.id);
+      if (outgoing.length < 2) {
+        errors.push(`${d.label || 'If-Else'} block must have at least 1 outgoing branches (then or else)`);
+      }
     }
   });
 
