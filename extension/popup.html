@@ -139,6 +139,26 @@
       max-height: 80px;
       overflow-y: auto;
     }
+    .clickable-id {
+      font-size: 11px;
+      color: #6366f1;
+      font-family: monospace;
+      margin-bottom: 2px;
+      word-break: break-all;
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      transition: text-decoration-color 0.15s;
+    }
+    .clickable-id:hover {
+      text-decoration-color: #6366f1;
+    }
+    .current-test {
+      cursor: pointer;
+    }
+    .current-test:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -153,7 +173,9 @@
   </div>
 
   <div id="execution-info" style="display:none">
-    <div class="current-test" id="test-name"></div>
+    <div class="current-test" id="test-name" title="Click to open test run"></div>
+    <div class="clickable-id" id="test-id" title="Click to open test case"></div>
+    <div class="clickable-id" id="run-id" title="Click to open test run"></div>
     <div class="step-count" id="step-info"></div>
     <div class="current-step" id="current-step-desc"></div>
     <div class="progress-bar">

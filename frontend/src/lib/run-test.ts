@@ -70,7 +70,7 @@ export async function runTestCase(testCaseId: string): Promise<void> {
     const connection = connectToExtension(extensionId, {
       onConnected: () => {
         toast.info(`Running "${testCase.name}"...`);
-        executeTestViaExtension(connection!.port, flowData, testCaseId, baseUrl);
+        executeTestViaExtension(connection!.port, flowData, testCaseId, baseUrl, testCase.name, testRun.id);
       },
       onStepComplete: (data) => {
         stepResults.push(data);

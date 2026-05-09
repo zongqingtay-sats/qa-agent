@@ -99,13 +99,17 @@ export function executeTestViaExtension(
   port: any,
   testFlow: any,
   testCaseId: string,
-  baseUrl: string
+  baseUrl: string,
+  testName?: string,
+  testRunId?: string
 ) {
   port.postMessage({
     type: 'EXECUTE_TEST',
     testFlow,
     testCaseId,
     baseUrl,
+    testName,
+    testRunId,
   });
 }
 

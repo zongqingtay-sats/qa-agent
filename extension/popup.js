@@ -1,6 +1,8 @@
 // QA Agent — Popup Script
 document.getElementById('ext-id').textContent = chrome.runtime.id;
 
+const APP_BASE = 'http://localhost:3000';
+
 const btnPause = document.getElementById('btn-pause');
 const btnResume = document.getElementById('btn-resume');
 const btnRetry = document.getElementById('btn-retry');
@@ -22,11 +24,36 @@ function applyStatus(message) {
   const stepInfo = document.getElementById('step-info');
   const progressEl = document.getElementById('progress');
   const testNameEl = document.getElementById('test-name');
+  const testIdEl = document.getElementById('test-id');
+  const runIdEl = document.getElementById('run-id');
   const currentStepDesc = document.getElementById('current-step-desc');
   const errorMessage = document.getElementById('error-message');
 
   // Hide error by default
   errorMessage.style.display = 'none';
+
+  // Update test ID and run ID if present
+  if (message.testCaseId) {
+    testIdEl.textContent = `Case: ${message.testCaseId}`;
+    testIdEl.onclick = () => chrome.tabs.create({ url: `${APP_BASE}/test-cases/${message.testCaseId}/editor` });
+  } else {
+    testIdEl.textContent = '';
+    testIdEl.onclick = null;
+  }
+  if (message.testRunId) {
+    runIdEl.textContent = `Run: ${message.testRunId}`;
+    runIdEl.onclick = () => chrome.tabs.create({ url: `${APP_BASE}/test-runs/${message.testRunId}` });
+  } else {
+    runIdEl.textContent = '';
+    runIdEl.onclick = null;
+  }
+
+  // Make test name clickable to open test run
+  if (message.testRunId) {
+    testNameEl.onclick = () => chrome.tabs.create({ url: `${APP_BASE}/test-runs/${message.testRunId}` });
+  } else {
+    testNameEl.onclick = null;
+  }
 
   switch (message.status) {
     case 'connected':
@@ -84,22 +111,40 @@ function applyStatus(message) {
       }
       break;
     case 'completed':
-      statusEl.className = message.result === 'failed' ? 'status failed' : 'status connected';
-      statusText.textContent = message.result === 'failed' ? 'Test Failed' : `Completed: ${message.result || 'Done'}`;
-      execInfo.style.display = 'none';
+      if (message.result === 'failed') {
+        statusEl.className = 'status failed';
+        statusText.textContent = 'Test Failed';
+      } else if (message.result === 'stopped') {
+        statusEl.className = 'status disconnected';
+        statusText.textContent = 'Test Stopped';
+      } else {
+        statusEl.className = 'status connected';
+        statusText.textContent = 'Test Passed';
+      }
+      testNameEl.textContent = message.testName || '';
+      execInfo.style.display = 'block';
+      btnPause.disabled = true;
+      btnResume.disabled = true;
+      btnRetry.disabled = true;
+      if (message.currentStep !== undefined && message.totalSteps !== undefined) {
+        stepInfo.textContent = `Step ${message.currentStep} of ${message.totalSteps} (${message.result || 'done'})`;
+        progressEl.style.width = `${(message.currentStep / message.totalSteps) * 100}%`;
+      }
+      currentStepDesc.textContent = '';
       if (message.error) {
-        execInfo.style.display = 'block';
         errorMessage.textContent = message.error;
         errorMessage.style.display = 'block';
-        btnPause.disabled = true;
-        btnResume.disabled = true;
-        btnRetry.disabled = true;
       }
       break;
     case 'idle':
     case 'disconnected':
-      statusEl.className = 'status disconnected';
-      statusText.textContent = 'Waiting for connection...';
+      if (message.hasConnectedBefore) {
+        statusEl.className = 'status connected';
+        statusText.textContent = 'Ready — no active test';
+      } else {
+        statusEl.className = 'status disconnected';
+        statusText.textContent = 'Waiting for connection...';
+      }
       execInfo.style.display = 'none';
       break;
   }

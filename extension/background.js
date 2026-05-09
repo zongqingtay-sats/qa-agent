@@ -3,6 +3,7 @@
 
 let currentTestFlow = null;
 let currentTestCaseId = null;
+let currentTestRunId = null;
 let currentBaseUrl = '';
 let executingTabId = null;
 let stepResults = [];
@@ -17,6 +18,9 @@ let currentTestName = '';
 let currentStatus = 'idle';
 let currentStepDescription = '';
 let currentError = '';
+let currentResult = '';
+let popupWindowId = null;
+let hasConnectedBefore = false;
 
 // Listen for connections from the web app
 chrome.runtime.onConnectExternal.addListener((port) => {
@@ -28,12 +32,13 @@ chrome.runtime.onConnectExternal.addListener((port) => {
 
     switch (message.type) {
       case 'CONNECT':
+        hasConnectedBefore = true;
         port.postMessage({ type: 'CONNECTED', extensionId: chrome.runtime.id });
         broadcastStatus('connected');
         break;
 
       case 'EXECUTE_TEST':
-        await startTestExecution(port, message.testFlow, message.testCaseId, message.baseUrl);
+        await startTestExecution(port, message.testFlow, message.testCaseId, message.baseUrl, message.testName, message.testRunId);
         break;
 
       case 'STOP_TEST':
@@ -49,7 +54,7 @@ chrome.runtime.onConnectExternal.addListener((port) => {
   port.onDisconnect.addListener(() => {
     connectedPorts.delete(port.sender?.origin);
     console.log('[QA Agent] Port disconnected');
-    if (connectedPorts.size === 0) {
+    if (connectedPorts.size === 0 && currentStatus !== 'completed' && currentStatus !== 'failed') {
       broadcastStatus('disconnected');
     }
   });
@@ -58,6 +63,7 @@ chrome.runtime.onConnectExternal.addListener((port) => {
 // Also listen for one-time messages from the web app
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
   if (message.type === 'PING') {
+    hasConnectedBefore = true;
     sendResponse({ type: 'PONG', extensionId: chrome.runtime.id });
     return true;
   }
@@ -92,6 +98,7 @@ function broadcastStatus(status, extra = {}) {
   currentStatus = status;
   if (extra.stepDescription) currentStepDescription = extra.stepDescription;
   currentError = extra.error || '';
+  if (extra.result !== undefined) currentResult = extra.result;
 
   // Update badge based on status
   switch (status) {
@@ -115,15 +122,19 @@ function broadcastStatus(status, extra = {}) {
       break;
   }
 
-  chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', status, ...extra }).catch(() => {});
+  chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', status, testCaseId: currentTestCaseId, testRunId: currentTestRunId, hasConnectedBefore, ...extra }).catch(() => {});
 }
 
 function getStatusPayload() {
   const payload = {
     status: currentStatus,
+    testCaseId: currentTestCaseId,
+    testRunId: currentTestRunId,
     testName: currentTestName,
     stepDescription: currentStepDescription,
     error: currentError,
+    result: currentResult,
+    hasConnectedBefore,
   };
   if (currentExecutionOrder) {
     payload.currentStep = currentStepIndex + 1;
@@ -135,6 +146,38 @@ function getStatusPayload() {
 function waitIfPaused() {
   if (!isPaused) return Promise.resolve('resume');
   return new Promise((resolve) => { pauseResolve = resolve; });
+}
+
+async function openPopupWindow() {
+  // If already open, focus it
+  if (popupWindowId !== null) {
+    try {
+      const win = await chrome.windows.get(popupWindowId);
+      if (win) {
+        await chrome.windows.update(popupWindowId, { focused: true });
+        return;
+      }
+    } catch {
+      popupWindowId = null;
+    }
+  }
+
+  const win = await chrome.windows.create({
+    url: chrome.runtime.getURL('popup.html'),
+    type: 'popup',
+    width: 360,
+    height: 420,
+    focused: true,
+  });
+  popupWindowId = win.id;
+
+  // Track when the window is closed
+  chrome.windows.onRemoved.addListener(function onRemoved(windowId) {
+    if (windowId === popupWindowId) {
+      popupWindowId = null;
+      chrome.windows.onRemoved.removeListener(onRemoved);
+    }
+  });
 }
 
 async function handleScrapePage(port, url) {
@@ -177,9 +220,10 @@ async function handleScrapePage(port, url) {
   }
 }
 
-async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
+async function startTestExecution(port, testFlow, testCaseId, baseUrl, testName, testRunId) {
   currentTestFlow = testFlow;
   currentTestCaseId = testCaseId;
+  currentTestRunId = testRunId || null;
   currentBaseUrl = baseUrl;
   currentPort = port;
   stepResults = [];
@@ -191,13 +235,16 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
   chrome.action.setBadgeText({ text: 'RUN' });
   chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
 
+  // Open popup window to show progress
+  await openPopupWindow();
+
   // Determine execution order by traversing edges from start node
   const executionOrder = getExecutionOrder(testFlow);
   currentExecutionOrder = executionOrder;
 
-  // Derive test name from the start node label or fallback
+  // Derive test name from message, or fallback
   const startNode = executionOrder.find(n => n.data?.blockType === 'start');
-  currentTestName = startNode?.data?.label || testCaseId || 'Test';
+  currentTestName = testName || startNode?.data?.label || testCaseId || 'Test';
 
   if (executionOrder.length === 0) {
     port.postMessage({
@@ -381,6 +428,8 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
           testName: currentTestName,
           result: 'failed',
           error: error.message || String(error),
+          currentStep: i + 1,
+          totalSteps: executionOrder.length,
         });
         return;
       }
@@ -395,6 +444,13 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
       durationMs: Date.now() - testStartTime,
     });
 
+    broadcastStatus('completed', {
+      testName: currentTestName,
+      result: 'passed',
+      currentStep: executionOrder.length,
+      totalSteps: executionOrder.length,
+    });
+
   } catch (error) {
     port.postMessage({
       type: 'TEST_COMPLETE',
@@ -403,6 +459,14 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl) {
       stepResults,
       error: error.message || String(error),
       durationMs: Date.now() - testStartTime,
+    });
+
+    broadcastStatus('completed', {
+      testName: currentTestName,
+      result: 'failed',
+      error: error.message || String(error),
+      currentStep: currentStepIndex + 1,
+      totalSteps: executionOrder.length,
     });
   }
 }
@@ -414,6 +478,10 @@ function stopTestExecution(port) {
     status: 'stopped',
     stepResults,
     durationMs: Date.now() - testStartTime,
+  });
+  broadcastStatus('completed', {
+    testName: currentTestName,
+    result: 'stopped',
   });
   currentTestFlow = null;
   executingTabId = null;
