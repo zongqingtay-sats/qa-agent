@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, RotateCcw } from "lucide-react";
-import { testRunsApi, testCasesApi, exportApi } from "@/lib/api";
-import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";
+import { testRunsApi, exportApi } from "@/lib/api";
+import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
 
@@ -92,6 +92,13 @@ export default function TestRunsPage() {
     }
   }
 
+  async function handleRetry(run: any) {
+    try {
+      await runTestCase(run.testCaseId);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to retry test run");
+    }
+  }
 
   return (
     <>

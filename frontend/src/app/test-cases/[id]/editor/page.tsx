@@ -31,11 +31,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
   Save,
   Play,
   Download,
+  Trash2,
   CheckCircle,
   AlertTriangle,
   MousePointerClick,
@@ -52,7 +54,8 @@ import {
   ArrowDownUp,
   ListChecks,
 } from "lucide-react";
-import { testCasesApi } from "@/lib/api";
+import { testCasesApi, exportApi } from "@/lib/api";
+import { runTestCase } from "@/lib/run-test";
 
 // ---- Block Type Configuration ----
 
@@ -600,6 +603,45 @@ function FlowEditorInner() {
     }
   }
 
+  const [running, setRunning] = useState(false);
+
+  async function handleRun() {
+    setRunning(true);
+    try {
+      // Save first to ensure latest flow is persisted
+      await handleSave();
+      await runTestCase(testCaseId);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to run test case");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function handleExport(format: 'json' | 'docx' | 'pdf') {
+    try {
+      const blob = await exportApi.testCase(testCaseId, format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `test-case.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export");
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await testCasesApi.delete(testCaseId);
+      toast.success("Test case deleted");
+      router.push("/test-cases");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
+    }
+  }
+
   if (!loaded) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -623,6 +665,24 @@ function FlowEditorInner() {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleValidate}>
               <ListChecks className="h-4 w-4 mr-1" /> Validate
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRun} disabled={running || saving}>
+              <Play className="h-4 w-4 mr-1" /> {running ? "Running..." : "Run"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-1" /> Export
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('docx')}>Export as DOCX</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" size="sm" className="text-destructive" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save"}

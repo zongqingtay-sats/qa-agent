@@ -23,9 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Play, Trash2, Download, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Play, Trash2, Download } from "lucide-react";
 import { testCasesApi, testRunsApi, exportApi } from "@/lib/api";
-import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";
+import { runTestCase } from "@/lib/run-test";
 import { toast } from "sonner";
 
 export default function TestCasesPage() {
@@ -106,113 +106,23 @@ export default function TestCasesPage() {
 
   async function handleRunSelected() {
     if (selected.size === 0) return;
-
-    const extensionId = getExtensionId();
-    if (!extensionId) {
-      toast.error("No extension ID configured. Go to Settings to set it up.");
-      return;
-    }
-
     try {
       for (const testCaseId of selected) {
-        // 1. Fetch the test case flow data
-        const tcRes = await testCasesApi.get(testCaseId);
-        const testCase = tcRes.data;
-        let flowData: any;
-        try {
-          flowData = typeof testCase.flowData === 'string' ? JSON.parse(testCase.flowData) : testCase.flowData;
-        } catch {
-          toast.error(`Invalid flow data for "${testCase.name}"`);
-          continue;
-        }
-
-        // 2. Create a test run record
-        const runRes = await testRunsApi.create(testCaseId);
-        const testRun = runRes.data;
-
-        // 3. Find the base URL from the start node
-        const startNode = (flowData.nodes || []).find((n: any) => n.data?.blockType === 'start');
-        const baseUrl = startNode?.data?.baseUrl || 'http://localhost:3000';
-
-        // 4. Connect to the extension and execute, wait for completion
-        await new Promise<void>((resolve) => {
-          const stepResults: any[] = [];
-          const startTime = Date.now();
-
-          const saveResults = async (status: string) => {
-            const durationMs = Date.now() - startTime;
-            const passedSteps = stepResults.filter(s => s.status === 'passed').length;
-            const failedSteps = stepResults.filter(s => s.status === 'failed').length;
-
-            try {
-              await testRunsApi.update(testRun.id, {
-                status,
-                completedAt: new Date().toISOString(),
-                durationMs,
-                totalSteps: stepResults.length || undefined,
-                passedSteps: stepResults.length ? passedSteps : undefined,
-                failedSteps: stepResults.length ? failedSteps : undefined,
-                stepResults: stepResults.length ? stepResults.map((sr, i) => ({
-                  stepOrder: i + 1,
-                  blockId: sr.blockId || '',
-                  blockType: sr.blockType || '',
-                  description: sr.description || '',
-                  target: sr.target || '',
-                  expectedResult: sr.expectedResult || '',
-                  actualResult: sr.actualResult || '',
-                  status: sr.status || 'passed',
-                  screenshotDataUrl: sr.screenshot || sr.screenshotDataUrl || '',
-                  errorMessage: sr.error || sr.errorMessage || '',
-                  durationMs: sr.durationMs || 0,
-                })) : undefined,
-              });
-            } catch {
-              toast.error(`Failed to save results for "${testCase.name}"`);
-            }
-          };
-
-          const connection = connectToExtension(extensionId, {
-            onConnected: () => {
-              toast.info(`Running "${testCase.name}"...`);
-              executeTestViaExtension(connection!.port, flowData, testCaseId, baseUrl);
-            },
-            onStepComplete: (data) => {
-              stepResults.push(data);
-            },
-            onStepError: (data) => {
-              stepResults.push({ ...data, status: 'failed' });
-            },
-            onTestComplete: async (data) => {
-              const failedSteps = stepResults.filter(s => s.status === 'failed').length;
-              const status = failedSteps > 0 ? 'failed' : 'passed';
-              await saveResults(status);
-              toast.success(`"${testCase.name}" ${status}`);
-              connection?.disconnect();
-              resolve();
-            },
-            onDisconnect: async () => {
-              const failedSteps = stepResults.filter(s => s.status === 'failed').length;
-              const status = failedSteps > 0 ? 'failed' : (stepResults.length === 0 ? 'failed' : 'passed');
-              await saveResults(status);
-              resolve();
-            },
-          });
-
-          if (!connection) {
-            toast.error("Could not connect to extension. Is it installed and enabled?");
-            testRunsApi.update(testRun.id, {
-              status: 'failed',
-              completedAt: new Date().toISOString(),
-            }).catch(() => {});
-            resolve();
-          }
-        });
+        await runTestCase(testCaseId);
       }
-
       setSelected(new Set());
       router.push("/test-runs");
     } catch (err: any) {
       toast.error(err.message || "Failed to run test cases");
+    }
+  }
+
+  async function handleRunSingle(id: string) {
+    try {
+      await runTestCase(id);
+      router.push("/test-runs");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to run test case");
     }
   }
 
@@ -317,7 +227,7 @@ export default function TestCasesPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Tags</TableHead>
                 <TableHead>Updated</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -357,28 +267,26 @@ export default function TestCasesPage() {
                       {new Date(tc.updatedAt).toLocaleString()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => router.push(`/test-cases/${tc.id}/editor`)}>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport(tc.id, 'json')}>
-                            <Download className="h-4 w-4 mr-2" /> Export JSON
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport(tc.id, 'docx')}>
-                            <Download className="h-4 w-4 mr-2" /> Export DOCX
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport(tc.id, 'pdf')}>
-                            <Download className="h-4 w-4 mr-2" /> Export PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(tc.id)} className="text-destructive">
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Run" onClick={() => handleRunSingle(tc.id)}>
+                          <Play className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Delete" onClick={() => handleDelete(tc.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger render={
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Export">
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          } />
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport(tc.id, 'json')}>Export as JSON</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport(tc.id, 'docx')}>Export as DOCX</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport(tc.id, 'pdf')}>Export as PDF</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
