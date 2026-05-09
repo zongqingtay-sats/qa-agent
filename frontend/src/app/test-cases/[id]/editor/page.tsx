@@ -574,10 +574,13 @@ function FlowEditorInner() {
   async function handleSave() {
     setSaving(true);
     try {
+      const validation = validateFlow(nodes, edges);
+      const status = validation.valid ? "active" : "draft";
       await testCasesApi.update(testCaseId, {
         name: testCaseName,
         description: testCaseDescription,
         flowData: { nodes, edges },
+        status,
       });
       toast.success("Test case saved");
     } catch (err: any) {
