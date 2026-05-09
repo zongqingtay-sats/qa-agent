@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -76,16 +76,6 @@ export default function TestRunsPage() {
     }
   }
 
-  function statusBadge(status: string) {
-    switch (status) {
-      case 'passed': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Passed</Badge>;
-      case 'failed': return <Badge variant="destructive">Failed</Badge>;
-      case 'running': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Running</Badge>;
-      case 'stopped': return <Badge variant="secondary">Stopped</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
-    }
-  }
-
   return (
     <>
       <PageHeader title="Test Runs" description="View execution history and results" />
@@ -151,7 +141,7 @@ export default function TestRunsPage() {
                         {run.testCaseName}
                       </Link>
                     </TableCell>
-                    <TableCell>{statusBadge(run.status)}</TableCell>
+                    <TableCell><StatusBadge status={run.status} /></TableCell>
                     <TableCell className="text-sm">
                       <span className="text-green-600">{run.passedSteps}</span>
                       {" / "}

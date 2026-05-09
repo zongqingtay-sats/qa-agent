@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { TestTube2, Play, Upload, Sparkles, ArrowRight, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
 
@@ -132,7 +132,7 @@ export default function DashboardPage() {
                         <p className="text-sm font-medium">{tc.name}</p>
                         <p className="text-xs text-muted-foreground">{new Date(tc.updatedAt).toLocaleDateString()}</p>
                       </div>
-                      <Badge variant={tc.status === 'active' ? 'default' : 'secondary'}>{tc.status}</Badge>
+                      <StatusBadge status={tc.status} />
                     </Link>
                   ))}
                 </div>
@@ -158,9 +158,7 @@ export default function DashboardPage() {
                         <p className="text-sm font-medium">{run.testCaseName}</p>
                         <p className="text-xs text-muted-foreground">{new Date(run.startedAt).toLocaleDateString()}</p>
                       </div>
-                      <Badge variant={run.status === 'passed' ? 'default' : run.status === 'failed' ? 'destructive' : 'secondary'}>
-                        {run.status}
-                      </Badge>
+                      <StatusBadge status={run.status} />
                     </Link>
                   ))}
                 </div>

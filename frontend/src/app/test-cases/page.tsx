@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -358,9 +359,7 @@ export default function TestCasesPage() {
                     </TableCell>
                     <TableCell className="font-medium">{tc.name}</TableCell>
                     <TableCell>
-                      <Badge variant={tc.status === 'active' ? 'default' : 'secondary'}>
-                        {tc.status}
-                      </Badge>
+                      <StatusBadge status={tc.status} />
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">

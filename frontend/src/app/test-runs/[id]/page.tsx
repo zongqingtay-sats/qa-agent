@@ -6,6 +6,7 @@ import Image from "next/image";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, CheckCircle2, XCircle, Clock, Image as ImageIcon } from "lucide-react";
+import { Download, Image as ImageIcon } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -200,17 +201,7 @@ export default function TestRunDetailPage() {
                       <TableCell className="text-xs max-w-[120px] truncate">{step.expectedResult || '—'}</TableCell>
                       <TableCell className="text-xs max-w-[120px] truncate">{step.actualResult || '—'}</TableCell>
                       <TableCell>
-                        {step.status === 'passed' ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                            <CheckCircle2 className="h-3 w-3 mr-1" /> Pass
-                          </Badge>
-                        ) : step.status === 'failed' ? (
-                          <Badge variant="destructive">
-                            <XCircle className="h-3 w-3 mr-1" /> Fail
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">{step.status}</Badge>
-                        )}
+                        <StatusBadge status={step.status} />
                         {step.errorMessage && (
                           <p className="text-xs text-red-600 mt-1">{step.errorMessage}</p>
                         )}
