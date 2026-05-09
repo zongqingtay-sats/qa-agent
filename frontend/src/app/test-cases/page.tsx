@@ -95,6 +95,14 @@ export default function TestCasesPage() {
     }
   }
 
+  async function handleExportSelected(format: 'json' | 'docx' | 'pdf') {
+    if (selected.size === 0) return;
+    for (const id of selected) {
+      await handleExport(id, format);
+    }
+    toast.success(`Exported ${selected.size} test case(s) as ${format.toUpperCase()}`);
+  }
+
   async function handleRunSelected() {
     if (selected.size === 0) return;
 
@@ -279,20 +287,34 @@ export default function TestCasesPage() {
               className="pl-9"
             />
           </div>
-          {selected.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-              <Button variant="outline" size="sm" onClick={handleRunSelected}>
-                <Play className="h-4 w-4 mr-1" />
-                Run Selected
-              </Button>
-              <Button variant="outline" size="sm" className="text-destructive" onClick={handleDeleteSelected}>
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-            </div>
-          )}
         </div>
+
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <Button variant="outline" size="sm" onClick={handleRunSelected}>
+              <Play className="h-4 w-4 mr-1" />
+              Run Selected
+            </Button>
+            <Button variant="outline" size="sm" className="text-destructive" onClick={handleDeleteSelected}>
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExportSelected('json')}>Export as JSON</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportSelected('docx')}>Export as DOCX</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportSelected('pdf')}>Export as PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
 
         {/* Table */}
         <div className="border rounded-lg">
