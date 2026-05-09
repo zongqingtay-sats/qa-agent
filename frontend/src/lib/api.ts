@@ -1,13 +1,19 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+
   const res = await fetch(`${API_BASE}${url}`, {
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
     },
+    signal: controller.signal,
     ...options,
   });
+
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: { message: res.statusText } }));
