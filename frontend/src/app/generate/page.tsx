@@ -48,6 +48,62 @@ export default function GeneratePage() {
     }
   }
 
+  // After initial generation, find navigation targets and refine with scraped HTML
+  async function refineWithNavigationPages(cases: any[], baseUrl?: string) {
+    const extensionId = getExtensionId();
+    if (!extensionId) return cases;
+
+    // Collect unique URLs from navigate actions and url-matches assertions
+    const navUrls = new Set<string>();
+    for (const tc of cases) {
+      for (const step of tc.steps || []) {
+        if (step.action === "navigate" && step.target) {
+          try {
+            const url = new URL(step.target, baseUrl || undefined).href;
+            navUrls.add(url);
+          } catch { /* relative path without base, skip */ }
+        }
+        // Also look for click steps whose description hints at navigation
+        if (step.action === "click" && step.description && /navigate|redirect|go to|open|link/i.test(step.description) && step.target) {
+          // We can't know the destination URL from a click, but we'll catch it via navigate steps
+        }
+      }
+    }
+
+    // Remove the initial URL (already scraped)
+    if (baseUrl) navUrls.delete(baseUrl);
+
+    if (navUrls.size === 0) return cases;
+
+    toast.info(`Scraping ${navUrls.size} additional page(s) for refinement...`);
+    setScraping(true);
+
+    const pageContexts: { url: string; html: string }[] = [];
+    for (const url of navUrls) {
+      try {
+        const result = await scrapePageViaExtension(extensionId, url);
+        if (result.html) {
+          pageContexts.push({ url, html: result.html });
+        }
+      } catch { /* skip failed scrapes */ }
+    }
+
+    setScraping(false);
+
+    if (pageContexts.length === 0) return cases;
+
+    toast.info(`Refining test cases with ${pageContexts.length} additional page(s)...`);
+    try {
+      const res = await generateApi.refine(cases, pageContexts, baseUrl);
+      const refined = res.data.testCases || cases;
+      toast.success(`Refined test cases with ${pageContexts.length} additional page context(s)`);
+      return refined;
+    } catch {
+      toast.warning("Refinement failed — using initial test cases");
+      return cases;
+    }
+  }
+
   // Generate from natural language
   async function handleGenerateFromText() {
     if (!textInput.trim()) {
@@ -87,10 +143,19 @@ export default function GeneratePage() {
         targetUrl: targetUrl.trim() || undefined,
         pageHtml,
       });
-      const cases = res.data.testCases || [];
+      let cases = res.data.testCases || [];
       setGeneratedCases(cases);
       setSelected(new Set(cases.map((_: any, i: number) => i)));
       toast.success(`Generated ${cases.length} test case(s)`);
+
+      // Refine with additional page scrapes if navigation steps are detected
+      if (targetUrl.trim()) {
+        const refined = await refineWithNavigationPages(cases, targetUrl.trim());
+        if (refined !== cases) {
+          setGeneratedCases(refined);
+          setSelected(new Set(refined.map((_: any, i: number) => i)));
+        }
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to generate");
     } finally {

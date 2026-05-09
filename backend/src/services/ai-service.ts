@@ -167,6 +167,65 @@ function sanitizeJsExpressions(json: string): string {
   return json;
 }
 
+/**
+ * Refine previously-generated test cases with additional page HTML.
+ * When test steps navigate to new pages/views, we scrape those pages and
+ * ask the AI to update selectors and add/adjust steps using the real DOM.
+ */
+export async function refineTestCases(
+  testCases: GeneratedTestCase[],
+  pageContexts: { url: string; html: string }[],
+  options?: { targetUrl?: string }
+): Promise<GeneratedTestCase[]> {
+  const client = getClient();
+  if (!client) {
+    // No AI available — return test cases unmodified
+    return testCases;
+  }
+
+  const pagesBlock = pageContexts.map((p, i) => {
+    const trimmedHtml = p.html.substring(0, 40000);
+    return `<page url="${p.url}" index="${i + 1}">\n${trimmedHtml}\n</page>`;
+  }).join('\n\n');
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    {
+      role: 'user',
+      content: `I have a set of previously-generated test cases for a web application${options?.targetUrl ? ` (target: ${options.targetUrl})` : ''}.
+Some test steps navigate to different pages or views. I have now scraped those additional pages. Please refine the test cases:
+1. Update CSS selectors for steps that interact with elements on the newly-scraped pages, using accurate selectors from the real DOM.
+2. Add any missing intermediate steps that become apparent from the actual page structure (e.g. modals, loading states, confirmation dialogs).
+3. Fix any target/value mismatches based on the real page elements.
+4. Keep the overall test intent and structure intact — only improve accuracy.
+
+Here are the current test cases:
+${JSON.stringify(testCases, null, 2)}
+
+Here is the HTML of the additional pages that were navigated to:
+${pagesBlock}
+
+Return the COMPLETE refined test cases as a JSON array (same format as input). Return ALL test cases, not just the modified ones.`,
+    },
+  ];
+
+  const content = await client.chat(messages, { temperature: 0.2, maxTokens: 8192 });
+  if (!content) return testCases;
+
+  let jsonStr = content.trim();
+  if (jsonStr.startsWith('```')) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
+  jsonStr = sanitizeJsExpressions(jsonStr);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    // If parsing fails, return original test cases
+    return testCases;
+  }
+}
+
 function getMockTestCases(_mode: string, input: string): GeneratedTestCase[] {
   const preview = input.substring(0, 50);
   return [

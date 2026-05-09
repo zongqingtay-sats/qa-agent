@@ -75,6 +75,8 @@ export const generateApi = {
     if (!res.ok) throw new Error('Failed to generate from source');
     return res.json();
   },
+  refine: (testCases: any[], pageContexts: { url: string; html: string }[], targetUrl?: string) =>
+    request<{ data: { testCases: any[] } }>('/generate/refine', { method: 'POST', body: JSON.stringify({ testCases, pageContexts, targetUrl }) }),
 };
 
 // Export

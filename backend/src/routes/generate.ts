@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { upload } from '../middleware/upload';
 import { parseDocument } from '../services/import-service';
-import { generateTestCases } from '../services/ai-service';
+import { generateTestCases, refineTestCases } from '../services/ai-service';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
@@ -43,6 +43,20 @@ router.post('/from-source', upload.array('files', 20), async (req: Request, res:
 
   const testCases = await generateTestCases('source-code', sourceCode);
   res.json({ data: { testCases } });
+});
+
+// POST /api/generate/refine — refine test cases with additional page HTML
+router.post('/refine', async (req: Request, res: Response) => {
+  const { testCases, pageContexts, targetUrl } = req.body;
+  if (!testCases || !Array.isArray(testCases)) {
+    throw new AppError('testCases array is required');
+  }
+  if (!pageContexts || !Array.isArray(pageContexts) || pageContexts.length === 0) {
+    throw new AppError('pageContexts array with at least one entry is required');
+  }
+
+  const refined = await refineTestCases(testCases, pageContexts, { targetUrl });
+  res.json({ data: { testCases: refined } });
 });
 
 export default router;

@@ -53,9 +53,12 @@ import {
   Hand,
   ArrowDownUp,
   ListChecks,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
-import { testCasesApi, exportApi } from "@/lib/api";
+import { testCasesApi, exportApi, generateApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
+import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
 
 // ---- Block Type Configuration ----
 
@@ -604,6 +607,129 @@ function FlowEditorInner() {
   }
 
   const [running, setRunning] = useState(false);
+  const [refining, setRefining] = useState(false);
+
+  async function handleRefine() {
+    setRefining(true);
+    try {
+      // Extract test case steps from flow nodes
+      const startNode = nodes.find(n => n.data?.blockType === "start");
+      const baseUrl = (startNode?.data as any)?.baseUrl || "";
+      const stepNodes = nodes.filter(n => n.data?.blockType && n.data.blockType !== "start" && n.data.blockType !== "end");
+
+      const steps = stepNodes.map((n, i) => ({
+        order: i + 1,
+        action: (n.data as any).blockType,
+        target: (n.data as any).selector || (n.data as any).url,
+        value: (n.data as any).value || (n.data as any).expectedValue,
+        description: (n.data as any).description || (n.data as any).label,
+      }));
+
+      const testCases = [{
+        name: testCaseName,
+        description: testCaseDescription,
+        steps,
+      }];
+
+      // Scrape pages for context
+      const extensionId = getExtensionId();
+      const pageContexts: { url: string; html: string }[] = [];
+
+      if (extensionId) {
+        // Collect URLs to scrape (base URL + any navigate targets)
+        const urls = new Set<string>();
+        if (baseUrl) urls.add(baseUrl);
+        for (const step of steps) {
+          if (step.action === "navigate" && step.target) {
+            try {
+              const url = new URL(step.target, baseUrl || undefined).href;
+              urls.add(url);
+            } catch { /* skip invalid */ }
+          }
+        }
+
+        if (urls.size > 0) {
+          toast.info(`Scraping ${urls.size} page(s) for context...`);
+          for (const url of urls) {
+            try {
+              const result = await scrapePageViaExtension(extensionId, url);
+              if (result.html) pageContexts.push({ url, html: result.html });
+            } catch { /* skip */ }
+          }
+        }
+      }
+
+      if (pageContexts.length === 0) {
+        // No page context — still call refine for AI-based auto-fix without HTML
+        toast.info("No page context available — AI will refine based on step logic only");
+      }
+
+      const res = await generateApi.refine(testCases, pageContexts.length > 0 ? pageContexts : [{ url: baseUrl || "unknown", html: "" }], baseUrl || undefined);
+      const refined = res.data.testCases?.[0];
+
+      if (!refined || !refined.steps?.length) {
+        toast.warning("AI returned no refinements");
+        return;
+      }
+
+      // Rebuild flow nodes from refined steps
+      const newNodes: Node[] = [
+        { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start", baseUrl } },
+      ];
+      const newEdges: Edge[] = [];
+
+      refined.steps.forEach((step: any, i: number) => {
+        const nodeId = `step-${i + 1}`;
+        const blockType = step.action || "click";
+        newNodes.push({
+          id: nodeId,
+          type: blockType === "assert" ? "assertNode" : blockType === "if-else" ? "conditionNode" : "actionNode",
+          position: { x: 250, y: (i + 1) * 120 },
+          data: {
+            label: step.description || step.action,
+            blockType,
+            selector: step.target,
+            url: blockType === "navigate" ? step.target : undefined,
+            value: step.value,
+            expectedValue: blockType === "assert" ? step.value : undefined,
+            description: step.description,
+          },
+        });
+        newEdges.push({
+          id: `e-${i === 0 ? "start-1" : `step-${i}`}-${nodeId}`,
+          source: i === 0 ? "start-1" : `step-${i}`,
+          target: nodeId,
+          animated: true,
+        });
+      });
+
+      const endId = "end-1";
+      newNodes.push({
+        id: endId,
+        type: "endNode",
+        position: { x: 250, y: newNodes.length * 120 },
+        data: { label: "End", blockType: "end" },
+      });
+      if (newNodes.length > 2) {
+        newEdges.push({
+          id: `e-step-${refined.steps.length}-${endId}`,
+          source: `step-${refined.steps.length}`,
+          target: endId,
+          animated: true,
+        });
+      }
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+      if (refined.name) setTestCaseName(refined.name);
+      if (refined.description) setTestCaseDescription(refined.description);
+      toast.success("Test case refined by AI");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to refine test case");
+    } finally {
+      setRefining(false);
+    }
+  }
 
   async function handleRun() {
     setRunning(true);
@@ -665,6 +791,10 @@ function FlowEditorInner() {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleValidate}>
               <ListChecks className="h-4 w-4 mr-1" /> Validate
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRefine} disabled={refining || saving}>
+              {refining ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+              {refining ? "Refining..." : "Refine"}
             </Button>
             <Button variant="outline" size="sm" onClick={handleRun} disabled={running || saving}>
               <Play className="h-4 w-4 mr-1" /> {running ? "Running..." : "Run"}
