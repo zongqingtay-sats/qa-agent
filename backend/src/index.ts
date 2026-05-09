@@ -8,6 +8,7 @@ import testRunsRouter from './routes/test-runs';
 import importRouter from './routes/import';
 import generateRouter from './routes/generate';
 import exportRouter from './routes/export';
+import sseRouter from './sse/router';
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/test-runs', testRunsRouter);
 app.use('/api/import', importRouter);
 app.use('/api/generate', generateRouter);
 app.use('/api/export', exportRouter);
+app.use('/api/events', sseRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

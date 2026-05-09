@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -15,8 +15,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Download } from "lucide-react";
-import { testRunsApi, exportApi } from "@/lib/api";
+import { Download, RotateCcw } from "lucide-react";
+import { testRunsApi, testCasesApi, exportApi } from "@/lib/api";
+import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";
+import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
 
 export default function TestRunsPage() {
@@ -38,6 +40,20 @@ export default function TestRunsPage() {
       setLoading(false);
     }
   }
+
+  // Real-time updates via SSE
+  useSSE({
+    channels: ["test-runs"],
+    onEvent: useCallback((event: any) => {
+      if (event.type === "test-run:created") {
+        setTestRuns((prev) => [event.data, ...prev]);
+      } else if (event.type === "test-run:updated") {
+        setTestRuns((prev) =>
+          prev.map((r) => (r.id === event.data.id ? { ...r, ...event.data } : r))
+        );
+      }
+    }, []),
+  });
 
   function toggleSelect(id: string) {
     setSelected(prev => {
@@ -76,6 +92,7 @@ export default function TestRunsPage() {
     }
   }
 
+
   return (
     <>
       <PageHeader title="Test Runs" description="View execution history and results" />
@@ -113,7 +130,7 @@ export default function TestRunsPage() {
                 <TableHead>Steps</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead className="w-24">Export</TableHead>
+                <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -157,18 +174,23 @@ export default function TestRunsPage() {
                       {new Date(run.startedAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Export">
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        } />
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleExport(run.id, 'json')}>Export as JSON</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport(run.id, 'docx')}>Export as DOCX</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport(run.id, 'pdf')}>Export as PDF</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Retry" onClick={() => handleRetry(run)}>
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger render={
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Export">
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          } />
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport(run.id, 'json')}>Export as JSON</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport(run.id, 'docx')}>Export as DOCX</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport(run.id, 'pdf')}>Export as PDF</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

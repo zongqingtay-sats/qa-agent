@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { PageHeader } from "@/components/layout/page-header";
@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, Image as ImageIcon } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
+import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
 
 export default function TestRunDetailPage() {
@@ -28,12 +29,15 @@ export default function TestRunDetailPage() {
     loadRun();
   }, [runId]);
 
-  // Poll for updates while the run is in progress
-  useEffect(() => {
-    if (!run || run.status !== 'running') return;
-    const interval = setInterval(loadRun, 2000);
-    return () => clearInterval(interval);
-  }, [run?.status]);
+  // Real-time updates via SSE
+  useSSE({
+    channels: ["test-runs"],
+    onEvent: useCallback((event: any) => {
+      if (event.type === "test-run:updated" && event.data.id === runId) {
+        setRun((prev: any) => prev ? { ...prev, ...event.data } : event.data);
+      }
+    }, [runId]),
+  });
 
   async function loadRun() {
     try {

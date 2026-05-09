@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { store } from '../db/store';
 import { AppError } from '../middleware/error-handler';
+import { eventBus } from '../sse/event-bus';
 
 const router = Router();
 
@@ -64,6 +65,9 @@ router.post('/', (req: Request, res: Response) => {
     failedSteps: 0,
   });
 
+  const tc = store.getTestCase(testCaseId);
+  eventBus.emit('test-runs', 'test-run:created', { ...testRun, testCaseName: tc?.name || 'Unknown' });
+
   res.status(201).json({ data: testRun });
 });
 
@@ -106,6 +110,15 @@ router.put('/:id', (req: Request, res: Response) => {
   if (environment !== undefined) updates.environment = typeof environment === 'string' ? environment : JSON.stringify(environment);
 
   const updated = store.updateTestRun(req.params.id as string, updates);
+
+  const tc = store.getTestCase(existing.testCaseId);
+  const savedStepResults = store.getStepResultsForRun(existing.id);
+  eventBus.emit('test-runs', 'test-run:updated', {
+    ...updated,
+    testCaseName: tc?.name || 'Unknown',
+    stepResults: savedStepResults,
+  });
+
   res.json({ data: updated });
 });
 
