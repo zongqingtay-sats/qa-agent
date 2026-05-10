@@ -152,7 +152,25 @@ function setProgress(label, count, bar, current, total, suffix) {
   if (current !== undefined && total !== undefined && total > 0) {
     label.textContent = `Step ${current} of ${total}`;
     count.textContent = suffix || '';
-    bar.style.width = `${(current / total) * 100}%`;
+
+    const completed = current - 1;
+    const completedPct = (Math.max(0, completed) / total) * 100;
+    const currentPct = (current / total) * 100;
+
+    if (suffix) {
+      // Step finished (failed/paused/passed) — fill up to current, solid color
+      bar.style.width = `${currentPct}%`;
+      bar.style.background = '';  // let CSS class handle color
+    } else {
+      // Running — show completed solid + current step lighter
+      bar.style.width = `${currentPct}%`;
+      if (completed > 0) {
+        const splitPct = (completedPct / currentPct) * 100;
+        bar.style.background = `linear-gradient(to right, #6366f1 ${splitPct}%, #a5b4fc ${splitPct}%)`;
+      } else {
+        bar.style.background = '#a5b4fc';
+      }
+    }
   }
 }
 

@@ -72,20 +72,22 @@ export async function runTestCase(testCaseId: string): Promise<void> {
 
     const saveResults = async (status: string) => {
       const durationMs = Date.now() - startTime;
-      const passedSteps = stepResults.filter(s => s.status === 'passed').length;
-      const failedSteps = stepResults.filter(s => s.status === 'failed').length;
+      const nonRetrySteps = stepResults.filter(s => !s.retry);
+      const passedSteps = nonRetrySteps.filter(s => s.status === 'passed').length;
+      const failedSteps = nonRetrySteps.filter(s => s.status === 'failed').length;
 
       try {
         // Final update — save status, duration, and totals.
         // Step results were already pushed individually via /steps endpoint,
         // so we skip sending them again to avoid duplicates.
+        // Use unique step count (excluding retries) for totalSteps.
         await testRunsApi.update(testRun.id, {
           status,
           completedAt: new Date().toISOString(),
           durationMs,
-          totalSteps: stepResults.length || undefined,
-          passedSteps: stepResults.length ? passedSteps : undefined,
-          failedSteps: stepResults.length ? failedSteps : undefined,
+          totalSteps: nonRetrySteps.length || undefined,
+          passedSteps: nonRetrySteps.length ? passedSteps : undefined,
+          failedSteps: nonRetrySteps.length ? failedSteps : undefined,
         });
       } catch {
         toast.error(`Failed to save results for "${testCase.name}"`);
