@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Image as ImageIcon } from "lucide-react";
+import { Download, Image as ImageIcon, ChevronDown, ChevronRight } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
@@ -24,6 +24,16 @@ export default function TestRunDetailPage() {
   const runId = params.id as string;
   const [run, setRun] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+
+  function toggleStepExpand(stepId: string) {
+    setExpandedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(stepId)) next.delete(stepId);
+      else next.add(stepId);
+      return next;
+    });
+  }
 
   useEffect(() => {
     loadRun();
@@ -95,7 +105,7 @@ export default function TestRunDetailPage() {
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger render={
-              <Button variant="outline" size="sm">
+              <Button variant="outline">
                 <Download className="h-4 w-4 mr-1" /> Export
               </Button>
             } />
@@ -108,7 +118,7 @@ export default function TestRunDetailPage() {
         }
       />
       <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6 max-w-5xl">
+        <div className="p-6 space-y-6">
           {/* Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -181,62 +191,110 @@ export default function TestRunDetailPage() {
                   <TableRow>
                     <TableHead className="w-16">#</TableHead>
                     <TableHead>Action</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead>Expected</TableHead>
-                    <TableHead>Actual</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Screenshot</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(run.stepResults || []).map((step: any) => (
-                    <TableRow key={step.id} className={step.status === 'failed' ? 'bg-red-50' : ''}>
-                      <TableCell className="font-mono text-sm">{step.stepOrder}</TableCell>
-                      <TableCell>
-                        <div>
-                          <Badge variant="outline" className="text-xs mb-1">{step.blockType}</Badge>
-                          {step.description && (
-                            <p className="text-xs text-muted-foreground">{step.description}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs max-w-[150px] truncate">{step.target || '—'}</TableCell>
-                      <TableCell className="text-xs max-w-[120px] truncate">{step.expectedResult || '—'}</TableCell>
-                      <TableCell className="text-xs max-w-[120px] truncate">{step.actualResult || '—'}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={step.status} />
-                        {step.errorMessage && (
-                          <p className="text-xs text-red-600 mt-1">{step.errorMessage}</p>
+                  {(run.stepResults || []).map((step: any) => {
+                    const stepId = step.id || `step-${step.stepOrder}`;
+                    const isExpanded = expandedSteps.has(stepId);
+                    return (
+                      <Fragment key={stepId}>
+                        <TableRow
+                          key={stepId}
+                          className={`cursor-pointer ${step.status === 'failed' ? 'bg-red-50' : ''}`}
+                          onClick={() => toggleStepExpand(stepId)}
+                        >
+                          <TableCell className="font-mono text-sm">
+                            <div className="flex items-center gap-1.5">
+                              {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                              {step.stepOrder}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <Badge variant="outline" className="text-xs mb-1">{step.blockType}</Badge>
+                              {step.description && (
+                                <p className="text-xs text-muted-foreground">{step.description}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={step.status} />
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {step.durationMs ? `${step.durationMs}ms` : '—'}
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            {step.screenshotDataUrl ? (
+                              <Dialog>
+                                <DialogTrigger render={<Button variant="ghost" size="sm" className="h-8" />}>
+                                    <ImageIcon className="h-4 w-4 mr-1" /> View
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl">
+                                  <DialogTitle>Step {step.stepOrder} Screenshot</DialogTitle>
+                                  <img
+                                    src={step.screenshotDataUrl}
+                                    alt={`Step ${step.stepOrder} screenshot`}
+                                    className="w-full rounded border"
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow key={`${stepId}-detail`} className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={5} className="p-0">
+                              <div className="px-6 py-4 space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <p className="text-muted-foreground text-xs font-semibold mb-1">Target / Selector</p>
+                                    <p className="font-mono text-xs bg-muted rounded px-2 py-1 break-all">{step.target || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground text-xs font-semibold mb-1">Block Type</p>
+                                    <p className="text-xs">{step.blockType}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground text-xs font-semibold mb-1">Expected Result</p>
+                                    <p className="text-xs break-all">{step.expectedResult || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground text-xs font-semibold mb-1">Actual Result</p>
+                                    <p className="text-xs break-all">{step.actualResult || '—'}</p>
+                                  </div>
+                                </div>
+                                {step.errorMessage && (
+                                  <div>
+                                    <p className="text-muted-foreground text-xs font-semibold mb-1">Error</p>
+                                    <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 break-all">{step.errorMessage}</p>
+                                  </div>
+                                )}
+                                {step.screenshotDataUrl && (
+                                  <div>
+                                    <p className="text-muted-foreground text-xs font-semibold mb-1">Screenshot</p>
+                                    <img
+                                      src={step.screenshotDataUrl}
+                                      alt={`Step ${step.stepOrder} screenshot`}
+                                      className="rounded border max-h-64 object-contain"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {step.durationMs ? `${step.durationMs}ms` : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {step.screenshotDataUrl ? (
-                          <Dialog>
-                            <DialogTrigger render={<Button variant="ghost" size="sm" className="h-8" />}>
-                                <ImageIcon className="h-4 w-4 mr-1" /> View
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl">
-                              <DialogTitle>Step {step.stepOrder} Screenshot</DialogTitle>
-                              <img
-                                src={step.screenshotDataUrl}
-                                alt={`Step ${step.stepOrder} screenshot`}
-                                className="w-full rounded border"
-                              />
-                            </DialogContent>
-                          </Dialog>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      </Fragment>
+                    );
+                  })}
                   {(!run.stepResults || run.stepResults.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         No step results recorded
                       </TableCell>
                     </TableRow>
