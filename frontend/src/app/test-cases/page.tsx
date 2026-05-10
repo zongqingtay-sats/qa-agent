@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Play, Trash2, Download } from "lucide-react";
+import { Plus, Search, Play, Trash2, Download, Sparkles } from "lucide-react";
 import { testCasesApi, testRunsApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { toast } from "sonner";
@@ -164,11 +164,16 @@ export default function TestCasesPage() {
       <PageHeader
         title="Test Cases"
         description="Manage and run your test cases"
-        actions={
+        actions={<>
           <Button onClick={handleCreateNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Test Case
+            <Plus className="h-4 w-4" />
+            Create
           </Button>
+          <Button onClick={() => router.push("/generate")}>
+            <Sparkles className="h-4 w-4" />
+            Generate
+          </Button>
+        </>
         }
       />
       <div className="flex-1 p-4 space-y-2">

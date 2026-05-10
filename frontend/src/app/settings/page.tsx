@@ -71,7 +71,7 @@ export default function SettingsPage() {
                   placeholder="e.g. abcdefghijklmnopqrstuvwxyz"
                   className="font-mono text-sm"
                 />
-                <Button onClick={handleSave} size="sm">
+                <Button onClick={handleSave}>
                   <Save className="h-4 w-4 mr-1" /> Save
                 </Button>
               </div>
@@ -94,7 +94,7 @@ export default function SettingsPage() {
               {extensionStatus === "disconnected" && (
                 <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Not connected</Badge>
               )}
-              <Button variant="outline" size="sm" onClick={() => checkExtension()} disabled={!extensionId || extensionStatus === "checking"}>
+              <Button variant="outline" onClick={() => checkExtension()} disabled={!extensionId || extensionStatus === "checking"}>
                 Test Connection
               </Button>
             </div>

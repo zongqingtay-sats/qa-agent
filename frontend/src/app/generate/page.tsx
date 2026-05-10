@@ -211,8 +211,15 @@ export default function GeneratePage() {
     }
   }, []);
 
+
+  // Track last uploaded file for each tab
+  const [lastDocFile, setLastDocFile] = useState<File | null>(null);
+  const [lastSrcFiles, setLastSrcFiles] = useState<File[] | null>(null);
+
   const reqDropzone = useDropzone({
-    onDrop: onDocumentDrop,
+    onDrop: (files) => {
+      setLastDocFile(files[0] || null);
+    },
     accept: {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/pdf': ['.pdf'],
@@ -224,9 +231,22 @@ export default function GeneratePage() {
   });
 
   const srcDropzone = useDropzone({
-    onDrop: onSourceDrop,
+    onDrop: (files) => {
+      setLastSrcFiles(files.length > 0 ? files : null);
+    },
     maxSize: 20 * 1024 * 1024,
   });
+
+  function handleGenerateFromDocumentButton() {
+    if (lastDocFile) {
+      onDocumentDrop([lastDocFile]);
+    }
+  }
+  function handleGenerateFromSourceButton() {
+    if (lastSrcFiles && lastSrcFiles.length > 0) {
+      onSourceDrop(lastSrcFiles);
+    }
+  }
 
   async function handleSaveSelected() {
     setSaving(true);
@@ -361,7 +381,7 @@ export default function GeneratePage() {
                   </p>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={handleGenerateFromText} disabled={generating || scraping}>
+                  <Button onClick={handleGenerateFromText} disabled={generating || scraping || !textInput.trim()}>
                     {generating || scraping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
                     {scraping ? "Scraping Page..." : "Generate Test Cases"}
                   </Button>
@@ -388,6 +408,12 @@ export default function GeneratePage() {
                       <Loader2 className="h-10 w-10 text-primary animate-spin" />
                       <p className="text-sm text-muted-foreground">Processing document...</p>
                     </div>
+                  ) : lastDocFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <FileText className="h-10 w-10 text-primary" />
+                      <p className="text-sm font-medium">{lastDocFile.name}</p>
+                      <p className="text-xs text-muted-foreground">Click or drop to replace</p>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="h-10 w-10 text-muted-foreground" />
@@ -409,6 +435,12 @@ export default function GeneratePage() {
                   <p className="text-xs text-muted-foreground">
                     The entry point URL of the application to test.
                   </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleGenerateFromDocumentButton} disabled={generating || !lastDocFile}>
+                    {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                    Generate Test Cases
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -432,6 +464,12 @@ export default function GeneratePage() {
                       <Loader2 className="h-10 w-10 text-primary animate-spin" />
                       <p className="text-sm text-muted-foreground">Analyzing source code...</p>
                     </div>
+                  ) : lastSrcFiles && lastSrcFiles.length > 0 ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Code className="h-10 w-10 text-primary" />
+                      <p className="text-sm font-medium">{lastSrcFiles.length} file(s): {lastSrcFiles.map(f => f.name).join(", ")}</p>
+                      <p className="text-xs text-muted-foreground">Click or drop to replace</p>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <Code className="h-10 w-10 text-muted-foreground" />
@@ -453,6 +491,12 @@ export default function GeneratePage() {
                   <p className="text-xs text-muted-foreground">
                     The entry point URL of the application to test.
                   </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleGenerateFromSourceButton} disabled={generating || !lastSrcFiles}>
+                    {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                    Generate Test Cases
+                  </Button>
                 </div>
               </CardContent>
             </Card>
