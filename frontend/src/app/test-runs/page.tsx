@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -15,18 +16,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Download, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
+import { Download, RotateCcw, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 export default function TestRunsPage() {
+  const router = useRouter();
   const [testRuns, setTestRuns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [runDetails, setRunDetails] = useState<Record<string, any>>({});
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadTestRuns();
@@ -98,7 +102,14 @@ export default function TestRunsPage() {
     try {
       await runTestCase(run.testCaseId);
     } catch (err: any) {
-      toast.error(err.message || "Failed to retry test run");
+      toast.error(err.message || "Failed to re-run test");
+    }
+  }
+
+  async function handleRerunSelected() {
+    const runsToRerun = testRuns.filter(r => selected.has(r.id));
+    for (const run of runsToRerun) {
+      await handleRetry(run);
     }
   }
 
@@ -120,16 +131,38 @@ export default function TestRunsPage() {
     });
   }
 
+  const filteredRuns = useMemo(() => {
+    if (!search.trim()) return testRuns;
+    const q = search.toLowerCase();
+    return testRuns.filter(r =>
+      r.testCaseName?.toLowerCase().includes(q) ||
+      r.status?.toLowerCase().includes(q)
+    );
+  }, [testRuns, search]);
+
   return (
     <>
       <PageHeader title="Test Runs" description="View execution history and results" />
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 space-y-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by test case name or status..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         {selected.size > 0 && (
           <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-lg">
             <span className="text-sm font-medium">{selected.size} selected</span>
+            <Button variant="outline" onClick={handleRerunSelected}>
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Re-run
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm">
+                <Button variant="outline">
                   <Download className="h-3 w-3 mr-1" />
                   Export
                 </Button>
@@ -152,6 +185,7 @@ export default function TestRunsPage() {
                     onCheckedChange={toggleSelectAll}
                   />
                 </TableHead>
+                <TableHead className="w-8"></TableHead>
                 <TableHead>Test Case</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Steps</TableHead>
@@ -163,31 +197,31 @@ export default function TestRunsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                 </TableRow>
-              ) : testRuns.length === 0 ? (
+              ) : filteredRuns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No test runs yet. Run a test case to see results here.
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    {search.trim() ? "No test runs match your search." : "No test runs yet. Run a test case to see results here."}
                   </TableCell>
                 </TableRow>
               ) : (
-              testRuns.map((run) => (
+                filteredRuns.map((run) => (
                   <Fragment key={run.id}>
-                    <TableRow key={run.id} className="cursor-pointer" onClick={() => toggleExpand(run.id)}>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableRow key={run.id} className="cursor-pointer" onClick={() => router.push(`/test-runs/${run.id}`)}>
+                      <TableCell>
                         <Checkbox
                           checked={selected.has(run.id)}
                           onCheckedChange={() => toggleSelect(run.id)}
                         />
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
+                      <TableCell className="align-middle">
+                        <button type="button" onClick={() => toggleExpand(run.id)} className="cursor-pointer flex items-center justify-center">
                           {expanded.has(run.id) ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                          <Link href={`/test-runs/${run.id}`} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
-                            {run.testCaseName}
-                          </Link>
-                        </div>
+                        </button>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {run.testCaseName}
                       </TableCell>
                       <TableCell><StatusBadge status={run.status} /></TableCell>
                       <TableCell className="text-sm">
@@ -204,9 +238,9 @@ export default function TestRunsPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(run.startedAt).toLocaleString()}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Retry" onClick={() => handleRetry(run)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Re-run" onClick={() => handleRetry(run)}>
                             <RotateCcw className="h-3 w-3" />
                           </Button>
                           <DropdownMenu>
@@ -226,7 +260,7 @@ export default function TestRunsPage() {
                     </TableRow>
                     {expanded.has(run.id) && (
                       <TableRow key={`${run.id}-detail`} className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={7} className="p-0">
+                        <TableCell colSpan={8} className="p-0">
                           <div className="px-6 py-4 space-y-3">
                             {!runDetails[run.id] ? (
                               <p className="text-sm text-muted-foreground">Loading details...</p>
@@ -282,7 +316,7 @@ export default function TestRunsPage() {
                                 )}
                                 <div className="flex justify-end">
                                   <Link href={`/test-runs/${run.id}`}>
-                                    <Button variant="outline" size="sm">View Full Details</Button>
+                                    <Button variant="outline">View Full Details</Button>
                                   </Link>
                                 </div>
                               </>

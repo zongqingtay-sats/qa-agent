@@ -39,7 +39,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b px-2 py-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-lg min-w-0 overflow-hidden">
-            <FlaskConical className="h-6 w-6 text-primary shrink-0" />
+            <FlaskConical className="h-6 w-6 text-primary shrink-0 pl-1" />
             <span className="truncate transition-[opacity,width] duration-200 ease-linear group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
               QA Agent
             </span>

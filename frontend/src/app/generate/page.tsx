@@ -361,7 +361,6 @@ export default function GeneratePage() {
                     {textInput && !targetUrl && (
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => {
                           const inferred = inferUrlFromText(textInput);
                           if (inferred) {

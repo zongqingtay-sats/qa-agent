@@ -193,17 +193,17 @@ export default function TestCasesPage() {
         {selected.size > 0 && (
           <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
             <span className="text-sm font-medium">{selected.size} selected</span>
-            <Button variant="outline" size="sm" onClick={handleRunSelected}>
+            <Button variant="outline" onClick={handleRunSelected}>
               <Play className="h-4 w-4 mr-1" />
-              Run Selected
+              Run
             </Button>
-            <Button variant="outline" size="sm" className="text-destructive" onClick={handleDeleteSelected}>
+            <Button variant="outline" className="text-destructive" onClick={handleDeleteSelected}>
               <Trash2 className="h-4 w-4 mr-1" />
               Delete
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm">
+                <Button variant="outline">
                   <Download className="h-4 w-4 mr-1" />
                   Export
                 </Button>

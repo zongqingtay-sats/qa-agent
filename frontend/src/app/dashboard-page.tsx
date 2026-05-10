@@ -45,7 +45,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Test Cases</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Test Cases</CardTitle>
               <TestTube2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -54,7 +54,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Test Runs</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Test Runs</CardTitle>
               <Play className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -63,7 +63,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Passed</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Passed</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
@@ -72,7 +72,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Failed</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Failed</CardTitle>
               <XCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Recent Test Cases</CardTitle>
-              <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/test-cases" />}>
+              <Button variant="ghost" nativeButton={false} render={<Link href="/test-cases" />}>
                 View all <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </CardHeader>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Recent Test Runs</CardTitle>
-              <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/test-runs" />}>
+              <Button variant="ghost" nativeButton={false} render={<Link href="/test-runs" />}>
                 View all <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </CardHeader>

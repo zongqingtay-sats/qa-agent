@@ -14,10 +14,12 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Image as ImageIcon, ChevronDown, ChevronRight } from "lucide-react";
+import { Download, Image as ImageIcon, ChevronDown, ChevronRight, ExternalLink, RotateCcw } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
+import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function TestRunDetailPage() {
   const params = useParams();
@@ -74,6 +76,15 @@ export default function TestRunDetailPage() {
     }
   }
 
+  async function handleRerun() {
+    if (!run) return;
+    try {
+      await runTestCase(run.testCaseId);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to re-run test");
+    }
+  }
+
   if (loading) {
     return (
       <>
@@ -103,7 +114,11 @@ export default function TestRunDetailPage() {
       <PageHeader
         title={run.testCaseName || "Test Run"}
         actions={
-          <DropdownMenu>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleRerun}>
+              <RotateCcw className="h-4 w-4 mr-1" /> Re-run
+            </Button>
+            <DropdownMenu>
             <DropdownMenuTrigger render={
               <Button variant="outline">
                 <Download className="h-4 w-4 mr-1" /> Export
@@ -115,10 +130,11 @@ export default function TestRunDetailPage() {
               <DropdownMenuItem onClick={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         }
       />
       <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-4">
           {/* Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -160,25 +176,51 @@ export default function TestRunDetailPage() {
             </Card>
           </div>
 
-          {/* Description & Criteria */}
-          {(run.testCaseDescription || run.testCasePassingCriteria) && (
-            <Card>
-              <CardContent className="space-y-4">
+          {/* Test Case Info */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Case Info</CardTitle>
+                <Link href={`/test-cases/${run.testCaseId}/editor`}>
+                  <Button variant="outline">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> View Test Case
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Name</p>
+                  <p>{run.testCaseName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Case ID</p>
+                  <Link href={`/test-cases/${run.testCaseId}/editor`} className="text-primary hover:underline font-mono text-xs">
+                    {run.testCaseId}
+                  </Link>
+                </div>
                 {run.testCaseDescription && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-1">Description</h3>
-                    <p className="text-sm text-muted-foreground">{run.testCaseDescription}</p>
+                  <div className="md:col-span-2">
+                    <p className="text-muted-foreground text-xs font-semibold mb-1">Description</p>
+                    <p className="text-muted-foreground">{run.testCaseDescription}</p>
+                  </div>
+                )}
+                {run.testCasePreconditions && (
+                  <div className="md:col-span-2">
+                    <p className="text-muted-foreground text-xs font-semibold mb-1">Preconditions</p>
+                    <p className="text-muted-foreground">{run.testCasePreconditions}</p>
                   </div>
                 )}
                 {run.testCasePassingCriteria && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-1">Passing Criteria</h3>
-                    <p className="text-sm text-muted-foreground">{run.testCasePassingCriteria}</p>
+                  <div className="md:col-span-2">
+                    <p className="text-muted-foreground text-xs font-semibold mb-1">Passing Criteria</p>
+                    <p className="text-muted-foreground">{run.testCasePassingCriteria}</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Step Results */}
           <Card>
@@ -189,6 +231,7 @@ export default function TestRunDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8"></TableHead>
                     <TableHead className="w-16">#</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>Status</TableHead>
@@ -204,14 +247,15 @@ export default function TestRunDetailPage() {
                       <Fragment key={stepId}>
                         <TableRow
                           key={stepId}
-                          className={`cursor-pointer ${step.status === 'failed' ? 'bg-red-50' : ''}`}
-                          onClick={() => toggleStepExpand(stepId)}
+                          className={step.status === 'failed' ? 'bg-red-50' : ''}
                         >
-                          <TableCell className="font-mono text-sm">
-                            <div className="flex items-center gap-1.5">
+                          <TableCell className="align-middle">
+                            <button type="button" onClick={() => toggleStepExpand(stepId)} className="cursor-pointer flex items-center justify-center">
                               {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                              {step.stepOrder}
-                            </div>
+                            </button>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {step.stepOrder}
                           </TableCell>
                           <TableCell>
                             <div>
@@ -227,10 +271,10 @@ export default function TestRunDetailPage() {
                           <TableCell className="text-xs text-muted-foreground">
                             {step.durationMs ? `${step.durationMs}ms` : '—'}
                           </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell>
                             {step.screenshotDataUrl ? (
                               <Dialog>
-                                <DialogTrigger render={<Button variant="ghost" size="sm" className="h-8" />}>
+                                <DialogTrigger render={<Button variant="ghost" />}>
                                     <ImageIcon className="h-4 w-4 mr-1" /> View
                                 </DialogTrigger>
                                 <DialogContent className="max-w-4xl">
@@ -249,7 +293,7 @@ export default function TestRunDetailPage() {
                         </TableRow>
                         {isExpanded && (
                           <TableRow key={`${stepId}-detail`} className="bg-muted/30 hover:bg-muted/30">
-                            <TableCell colSpan={5} className="p-0">
+                            <TableCell colSpan={6} className="p-0">
                               <div className="px-6 py-4 space-y-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                   <div>
@@ -294,7 +338,7 @@ export default function TestRunDetailPage() {
                   })}
                   {(!run.stepResults || run.stepResults.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         No step results recorded
                       </TableCell>
                     </TableRow>

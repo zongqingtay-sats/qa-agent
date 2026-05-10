@@ -48,6 +48,7 @@ import {
   GitBranch,
   Camera,
   ChevronDown,
+  ChevronRight,
   CircleDot,
   CircleStop,
   Hand,
@@ -396,7 +397,7 @@ function BlockPropertiesPanel({
 
         <Separator />
         {blockType !== "start" && (
-          <Button variant="destructive" size="sm" className="w-full" onClick={() => onDelete(node.id)}>
+          <Button variant="destructive" className="w-full" onClick={() => onDelete(node.id)}>
             Delete Block
           </Button>
         )}
@@ -523,8 +524,14 @@ function FlowEditorInner() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [testCaseName, setTestCaseName] = useState("New Test Case");
   const [testCaseDescription, setTestCaseDescription] = useState("");
+  const [testCasePreconditions, setTestCasePreconditions] = useState("");
+  const [testCasePassingCriteria, setTestCasePassingCriteria] = useState("");
+  const [testCaseTags, setTestCaseTags] = useState<string[]>([]);
+  const [tagsInput, setTagsInput] = useState("");
+  const [showMetadata, setShowMetadata] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const initialSnapshot = useRef<string>("");
 
   // Load test case
   useEffect(() => {
@@ -534,6 +541,10 @@ function FlowEditorInner() {
         const tc = res.data;
         setTestCaseName(tc.name);
         setTestCaseDescription(tc.description || "");
+        setTestCasePreconditions(tc.preconditions || "");
+        setTestCasePassingCriteria(tc.passingCriteria || "");
+        setTestCaseTags(tc.tags || []);
+        setTagsInput((tc.tags || []).join(", "));
 
         let flowData;
         try {
@@ -560,6 +571,16 @@ function FlowEditorInner() {
     }
     load();
   }, [testCaseId]);
+
+  // Capture initial snapshot once loaded
+  useEffect(() => {
+    if (loaded && !initialSnapshot.current) {
+      initialSnapshot.current = JSON.stringify({ testCaseName, testCaseDescription, testCasePreconditions, testCasePassingCriteria, testCaseTags, nodes, edges });
+    }
+  }, [loaded, testCaseName, testCaseDescription, testCasePreconditions, testCasePassingCriteria, testCaseTags, nodes, edges]);
+
+  const currentSnapshot = JSON.stringify({ testCaseName, testCaseDescription, testCasePreconditions, testCasePassingCriteria, testCaseTags, nodes, edges });
+  const hasChanges = loaded && initialSnapshot.current !== "" && currentSnapshot !== initialSnapshot.current;
 
   const onConnect: OnConnect = useCallback(
     (connection) => setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
@@ -627,10 +648,14 @@ function FlowEditorInner() {
       await testCasesApi.update(testCaseId, {
         name: testCaseName,
         description: testCaseDescription,
+        preconditions: testCasePreconditions,
+        passingCriteria: testCasePassingCriteria,
+        tags: testCaseTags,
         flowData: { nodes, edges },
         status,
       });
       toast.success("Test case saved");
+      initialSnapshot.current = JSON.stringify({ testCaseName, testCaseDescription, testCasePreconditions, testCasePassingCriteria, testCaseTags, nodes, edges });
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     } finally {
@@ -831,19 +856,19 @@ function FlowEditorInner() {
         }
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleValidate}>
+            <Button variant="outline" onClick={handleValidate}>
               <ListChecks className="h-4 w-4 mr-1" /> Validate
             </Button>
-            <Button variant="outline" size="sm" onClick={handleRefine} disabled={refining || saving}>
+            <Button variant="outline" onClick={handleRefine} disabled={refining || saving}>
               {refining ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
               {refining ? "Refining..." : "Refine"}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleRun} disabled={running || saving}>
+            <Button variant="outline" onClick={handleRun} disabled={running || saving}>
               <Play className="h-4 w-4 mr-1" /> {running ? "Running..." : "Run"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm">
+                <Button variant="outline">
                   <Download className="h-4 w-4 mr-1" /> Export
                 </Button>
               } />
@@ -853,15 +878,73 @@ function FlowEditorInner() {
                 <DropdownMenuItem onClick={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="sm" className="text-destructive" onClick={handleDelete}>
+            <Button variant="outline" className="text-destructive" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-1" /> Delete
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save"}
-            </Button>
+            {hasChanges && (
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         }
       />
+      {/* Collapsible Metadata Panel */}
+      <div className="border-b">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm text-muted-foreground hover:text-foreground w-full text-left"
+          onClick={() => setShowMetadata(!showMetadata)}
+        >
+          {showMetadata ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          Test Case Details
+        </button>
+        {showMetadata && (
+          <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Description</Label>
+              <Textarea
+                value={testCaseDescription}
+                onChange={(e) => setTestCaseDescription(e.target.value)}
+                placeholder="What does this test case verify?"
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Preconditions</Label>
+              <Textarea
+                value={testCasePreconditions}
+                onChange={(e) => setTestCasePreconditions(e.target.value)}
+                placeholder="Setup required before running this test"
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Passing Criteria</Label>
+              <Textarea
+                value={testCasePassingCriteria}
+                onChange={(e) => setTestCasePassingCriteria(e.target.value)}
+                placeholder="What determines if this test passes?"
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tags</Label>
+              <Input
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                onBlur={() => setTestCaseTags(tagsInput.split(",").map(t => t.trim()).filter(Boolean))}
+                placeholder="e.g. login, smoke, regression"
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">Comma-separated</p>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="flex flex-1 overflow-hidden">
         <BlockPalette />
         <div ref={reactFlowWrapper} className="flex-1">
