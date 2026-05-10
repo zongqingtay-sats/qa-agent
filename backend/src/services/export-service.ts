@@ -139,6 +139,19 @@ export async function exportTestRunToDocx(data: ExportTestRun): Promise<Buffer> 
   }
 
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: "Aptos" },
+        },
+        heading1: {
+          run: { font: "Aptos" },
+        },
+        heading2: {
+          run: { font: "Aptos" },
+        },
+      },
+    },
     sections: [{ children }],
   });
 
@@ -184,7 +197,22 @@ export async function exportTestCaseToDocx(data: ExportTestCase): Promise<Buffer
     }
   }
 
-  const doc = new Document({ sections: [{ children }] });
+  const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: "Aptos" },
+        },
+        heading1: {
+          run: { font: "Aptos" },
+        },
+        heading2: {
+          run: { font: "Aptos" },
+        },
+      },
+    },
+    sections: [{ children }],
+  });
   return Buffer.from(await Packer.toBuffer(doc));
 }
 
