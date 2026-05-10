@@ -148,9 +148,14 @@ export default function TestCasesPage() {
         flowData: {
           nodes: [
             { id: "start-1", type: "startNode", position: { x: 250, y: 50 }, data: { label: "Start", blockType: "start" } },
-            { id: "end-1", type: "endNode", position: { x: 250, y: 400 }, data: { label: "End", blockType: "end" } },
+            { id: "navigate-1", type: "actionNode", position: { x: 250, y: 170 }, data: { label: "Navigate to URL", blockType: "navigate", url: "" } },
+            { id: "assert-1", type: "assertNode", position: { x: 250, y: 290 }, data: { label: "Assert", blockType: "assert", assertionType: "element-exists" } },
+            { id: "end-1", type: "endNode", position: { x: 250, y: 410 }, data: { label: "End", blockType: "end" } },
           ],
-          edges: [],
+          edges: [
+            { id: "e-start-nav", source: "start-1", target: "navigate-1", animated: true },
+            { id: "e-assert-end", source: "assert-1", target: "end-1", animated: true },
+          ],
         },
       });
       router.push(`/test-cases/${res.data.id}/editor`);

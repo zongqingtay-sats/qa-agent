@@ -277,8 +277,22 @@ export default function GeneratePage() {
     try {
       const toSave = generatedCases.filter((_, i) => selected.has(i));
       for (const tc of toSave) {
+        // Ensure the first step is always a navigate block
+        const steps = tc.steps || [];
+        if (steps.length === 0 || steps[0].action !== 'navigate') {
+          steps.unshift({
+            order: 0,
+            action: 'navigate',
+            target: targetUrl.trim() || '/',
+            description: `Navigate to ${targetUrl.trim() || 'target URL'}`,
+          });
+        } else if (steps[0].action === 'navigate' && !steps[0].target && targetUrl.trim()) {
+          // Fill in URL if navigate block exists but has no target
+          steps[0].target = targetUrl.trim();
+        }
+
         const nodes: any[] = [
-          { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start", baseUrl: targetUrl.trim() || undefined } },
+          { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start" } },
         ];
         const edges: any[] = [];
 

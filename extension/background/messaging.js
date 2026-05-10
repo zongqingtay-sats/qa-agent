@@ -83,7 +83,7 @@ export function registerListeners() {
 
     const testName = get('currentTestName');
     const step = get('currentStepIndex') + 1;
-    const total = get('currentExecutionOrder')?.length || 0;
+    const total = get('actionableStepCount') || 0;
 
     if (message.type === 'PAUSE_TEST') {
       set('isPaused', true);
@@ -122,7 +122,7 @@ function getStatusPayloadFromState() {
   const order = get('currentExecutionOrder');
   if (order) {
     payload.currentStep = get('currentStepIndex') + 1;
-    payload.totalSteps = order.length;
+    payload.totalSteps = get('actionableStepCount') || 0;
   }
 
   return payload;

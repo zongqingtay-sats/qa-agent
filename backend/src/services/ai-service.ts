@@ -42,6 +42,8 @@ Always return valid JSON arrays of test cases. Each test case should have:
   - value: input value or expected value (when applicable)
   - description: human-readable description of the step
 
+IMPORTANT: The first step of every test case MUST be a "navigate" action with the full target URL. This is mandatory — there is no implicit navigation. Every test must explicitly navigate to its starting page.
+
 When page HTML is provided, use it to:
 1. Determine the correct CSS selectors for elements (prefer id, name, data-testid, or unique class selectors)
 2. Identify input types accurately (text input, dropdown/select, date picker, radio buttons, checkboxes, etc.)

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Image as ImageIcon, ChevronDown, ChevronRight, ExternalLink, RotateCcw } from "lucide-react";
+import { Download, Image as ImageIcon, ChevronDown, ChevronRight, ExternalLink, RotateCcw, RefreshCw, CircleDashed } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
@@ -134,6 +134,95 @@ export default function TestRunDetailPage() {
   }
 
   const statusColor = run.status === 'passed' ? 'text-green-600' : run.status === 'failed' ? 'text-red-600' : 'text-blue-600';
+
+  // Derive expected steps from flow data via BFS (mirrors extension logic)
+  const allSteps = (() => {
+    const executedSteps: any[] = run.stepResults || [];
+
+    // Parse flow data to get the full expected step list
+    let expectedSteps: { blockId: string; blockType: string; description: string; target?: string }[] = [];
+    try {
+      const flow = typeof run.flowData === 'string' ? JSON.parse(run.flowData) : run.flowData;
+      if (flow?.nodes && flow?.edges) {
+        const nodeMap = new Map(flow.nodes.map((n: any) => [n.id, n]));
+        const adjacency = new Map<string, string[]>();
+        flow.edges.forEach((e: any) => {
+          if (!adjacency.has(e.source)) adjacency.set(e.source, []);
+          adjacency.get(e.source)!.push(e.target);
+        });
+        const startNode = flow.nodes.find((n: any) => n.data?.blockType === 'start');
+        if (startNode) {
+          const visited = new Set<string>();
+          const queue = [startNode.id];
+          while (queue.length > 0) {
+            const id = queue.shift()!;
+            if (visited.has(id)) continue;
+            visited.add(id);
+            const node = nodeMap.get(id) as any;
+            if (node) {
+              const d = node.data || {};
+              if (d.blockType !== 'start' && d.blockType !== 'end') {
+                expectedSteps.push({
+                  blockId: node.id,
+                  blockType: d.blockType,
+                  description: d.label || d.description || d.blockType,
+                  target: d.selector || d.url,
+                });
+              }
+            }
+            const targets = adjacency.get(id) || [];
+            targets.forEach((t: string) => { if (!visited.has(t)) queue.push(t); });
+          }
+        }
+      }
+    } catch {
+      // Can't parse flow data — just show executed steps
+    }
+
+    if (expectedSteps.length === 0) return executedSteps;
+
+    // Build merged list: for each expected step, find matching executed results
+    // Retry steps are additional records with the same blockId
+    const merged: any[] = [];
+    const usedExecutedIds = new Set<string>();
+
+    expectedSteps.forEach((expected, idx) => {
+      const stepOrder = idx + 1;
+      // Find all executed results for this step order (including retries)
+      const matches = executedSteps.filter((s: any) => {
+        // Match by blockId (most reliable) or stepOrder
+        return s.blockId === expected.blockId || (!s.blockId && s.stepOrder === stepOrder);
+      });
+
+      if (matches.length === 0) {
+        // Unexecuted step
+        merged.push({
+          stepOrder,
+          blockId: expected.blockId,
+          blockType: expected.blockType,
+          description: expected.description,
+          target: expected.target,
+          status: 'skipped',
+          _unexecuted: true,
+        });
+      } else {
+        matches.forEach((m: any) => {
+          usedExecutedIds.add(m.id || `${m.stepOrder}-${m.retry}`);
+          merged.push({ ...m, stepOrder: m.stepOrder || stepOrder });
+        });
+      }
+    });
+
+    // Append any executed steps that didn't match (edge case)
+    executedSteps.forEach((s: any) => {
+      const id = s.id || `${s.stepOrder}-${s.retry}`;
+      if (!usedExecutedIds.has(id)) {
+        merged.push(s);
+      }
+    });
+
+    return merged;
+  })();
 
   return (
     <>
@@ -266,25 +355,38 @@ export default function TestRunDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(run.stepResults || []).map((step: any) => {
-                    const stepId = step.id || `step-${step.stepOrder}`;
+                  {allSteps.map((step: any, idx: number) => {
+                    const stepId = step.id || `step-${step.stepOrder}-${idx}`;
                     const isExpanded = expandedSteps.has(stepId);
+                    const isUnexecuted = step._unexecuted;
                     return (
                       <Fragment key={stepId}>
                         <TableRow
                           key={stepId}
                           className={
+                            isUnexecuted ? 'opacity-50' :
                             step.status === 'failed' ? 'bg-red-50' :
                             step.status === 'running' ? 'bg-blue-50/50 animate-pulse' : ''
                           }
                         >
                           <TableCell className="align-middle">
-                            <button type="button" onClick={() => toggleStepExpand(stepId)} className="cursor-pointer flex items-center justify-center">
-                              {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                            </button>
+                            {!isUnexecuted ? (
+                              <button type="button" onClick={() => toggleStepExpand(stepId)} className="cursor-pointer flex items-center justify-center">
+                                {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                              </button>
+                            ) : (
+                              <CircleDashed className="h-3.5 w-3.5 text-muted-foreground/50" />
+                            )}
                           </TableCell>
                           <TableCell className="font-mono text-sm">
-                            {step.stepOrder}
+                            <span className="flex items-center gap-1">
+                              {step.stepOrder}
+                              {step.retry && (
+                                <Badge variant="outline" className="text-[10px] text-orange-600 border-orange-300 gap-0.5">
+                                  <RefreshCw className="h-2.5 w-2.5" /> retry
+                                </Badge>
+                              )}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div>
@@ -295,10 +397,14 @@ export default function TestRunDetailPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <StatusBadge status={step.status} />
+                            {isUnexecuted ? (
+                              <span className="text-xs text-muted-foreground italic">Not executed</span>
+                            ) : (
+                              <StatusBadge status={step.status} />
+                            )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {step.durationMs ? `${step.durationMs}ms` : '—'}
+                            {!isUnexecuted && step.durationMs ? `${step.durationMs}ms` : '—'}
                           </TableCell>
                           <TableCell>
                             {step.screenshotDataUrl ? (
@@ -320,7 +426,7 @@ export default function TestRunDetailPage() {
                             )}
                           </TableCell>
                         </TableRow>
-                        {isExpanded && (
+                        {isExpanded && !isUnexecuted && (
                           <TableRow key={`${stepId}-detail`} className="bg-muted/30 hover:bg-muted/30">
                             <TableCell colSpan={6} className="p-0">
                               <div className="px-6 py-4 space-y-3">
@@ -365,7 +471,7 @@ export default function TestRunDetailPage() {
                       </Fragment>
                     );
                   })}
-                  {(!run.stepResults || run.stepResults.length === 0) && (
+                  {allSteps.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         No step results recorded

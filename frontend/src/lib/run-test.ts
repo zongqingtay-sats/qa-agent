@@ -58,8 +58,11 @@ export async function runTestCase(testCaseId: string): Promise<void> {
   const runRes = await testRunsApi.create(testCaseId);
   const testRun = runRes.data;
 
+  // The first Navigate block in the flow handles the target URL navigation.
+  // We pass a placeholder baseUrl for relative URL resolution in the extension.
   const startNode = (flowData.nodes || []).find((n: any) => n.data?.blockType === 'start');
-  const baseUrl = startNode?.data?.baseUrl || 'http://localhost:3000';
+  const firstNav = (flowData.nodes || []).find((n: any) => n.data?.blockType === 'navigate');
+  const baseUrl = firstNav?.data?.url || startNode?.data?.baseUrl || 'about:blank';
 
   await new Promise<void>((resolve) => {
     const stepResults: any[] = [];

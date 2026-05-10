@@ -228,12 +228,6 @@ function BlockPropertiesPanel({
         <Separator />
 
         {/* Type-specific fields */}
-        {blockType === "start" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs">Base URL</Label>
-            <Input value={data.baseUrl || ""} onChange={(e) => update("baseUrl", e.target.value)} placeholder="https://example.com" />
-          </div>
-        )}
 
         {blockType === "navigate" && (
           <div className="space-y-1.5">
@@ -457,10 +451,20 @@ function validateFlow(nodes: Node[], edges: Edge[]): { valid: boolean; errors: s
 
   if (startNodes.length === 0) errors.push("Flow must have a Start block");
   if (startNodes.length > 1) errors.push("Flow must have exactly one Start block");
-  if (startNodes.length === 1 && !(startNodes[0].data as any).baseUrl) {
-    errors.push("Start block must have a Target URL defined");
-  }
   if (endNodes.length === 0) errors.push("Flow must have at least one End block");
+
+  // The first block after Start must be a Navigate block
+  if (startNodes.length === 1) {
+    const startEdges = edges.filter(e => e.source === startNodes[0].id);
+    if (startEdges.length === 0) {
+      errors.push("Start block must be connected to a Navigate block");
+    } else {
+      const firstTarget = nodes.find(n => n.id === startEdges[0].target);
+      if (!firstTarget || (firstTarget.data as any).blockType !== 'navigate') {
+        errors.push("The first block after Start must be a Navigate block");
+      }
+    }
+  }
 
   // Must have at least one assert block
   const assertNodes = nodes.filter(n => (n.data as any).blockType === "assert");
@@ -561,11 +565,19 @@ function FlowEditorInner() {
           setEdges(flowData.edges);
         }
       } catch {
-        // New test case, start with default
+        // New test case — start -> navigate ... assert -> end
+        // No edge between navigate and assert so users can insert blocks in between
         setNodes([
           { id: "start-1", type: "startNode", position: { x: 250, y: 50 }, data: { label: "Start", blockType: "start" } },
-          { id: "end-1", type: "endNode", position: { x: 250, y: 400 }, data: { label: "End", blockType: "end" } },
+          { id: "navigate-1", type: "actionNode", position: { x: 250, y: 170 }, data: { label: "Navigate to URL", blockType: "navigate", url: "" } },
+          { id: "assert-1", type: "assertNode", position: { x: 250, y: 290 }, data: { label: "Assert", blockType: "assert", assertionType: "element-exists" } },
+          { id: "end-1", type: "endNode", position: { x: 250, y: 410 }, data: { label: "End", blockType: "end" } },
         ]);
+        setEdges([
+          { id: "e-start-nav", source: "start-1", target: "navigate-1", animated: true },
+          { id: "e-assert-end", source: "assert-1", target: "end-1", animated: true },
+        ]);
+        nodeIdCounter = 4;
       }
       setLoaded(true);
     }
@@ -741,7 +753,7 @@ function FlowEditorInner() {
 
       // Rebuild flow nodes from refined steps
       const newNodes: Node[] = [
-        { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start", baseUrl } },
+        { id: "start-1", type: "startNode", position: { x: 250, y: 0 }, data: { label: "Start", blockType: "start" } },
       ];
       const newEdges: Edge[] = [];
 

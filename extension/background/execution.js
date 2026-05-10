@@ -38,6 +38,12 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
   const executionOrder = getExecutionOrder(testFlow);
   set('currentExecutionOrder', executionOrder);
 
+  // Count only actionable steps (exclude start/end structural markers)
+  const actionableSteps = executionOrder.filter(
+    (n) => n.data?.blockType !== 'start' && n.data?.blockType !== 'end'
+  ).length;
+  set('actionableStepCount', actionableSteps);
+
   const startNode = executionOrder.find((n) => n.data?.blockType === 'start');
   const resolvedName = testName || startNode?.data?.label || testCaseId || 'Test';
   set('currentTestName', resolvedName);
@@ -50,10 +56,11 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
   const stepResults = [];
 
   try {
-    const initialUrl = startNode?.data?.baseUrl || baseUrl || 'about:blank';
-    const tab = await chrome.tabs.create({ url: initialUrl, active: true });
+    // Start block is a structural marker only — the first Navigate block
+    // will handle navigating to the target URL.
+    const tab = await chrome.tabs.create({ url: 'about:blank', active: true });
     set('executingTabId', tab.id);
-    await waitForTabLoad(tab.id);
+
     // Monitor tab closure — if the testing tab is closed mid-run, abort
     const tabRemovedHandler = (tabId) => {
       if (tabId === tab.id) {
@@ -92,16 +99,16 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
       if (action === 'abort') break;
 
       broadcastStatus('running', {
-        testName: resolvedName, currentStep: i + 1,
-        totalSteps: executionOrder.length, stepDescription,
+        testName: resolvedName, currentStep: stepResults.length + 1,
+        totalSteps: actionableSteps, stepDescription,
       });
 
-      port.postMessage({ type: 'STEP_START', stepId, blockId: node.id, blockType: data.blockType });
+      port.postMessage({ type: 'STEP_START', stepId, blockId: node.id, blockType: data.blockType, retry: isRetry });
       const stepStart = Date.now();
 
       try {
         if (data.blockType === 'navigate' && data.url) {
-          await executeNavigationStep(data, tab.id, stepId, node, stepStart, stepResults, port);
+          await executeNavigationStep(data, tab.id, stepId, node, stepStart, stepResults, port, isRetry);
           continue;
         }
 
@@ -112,7 +119,7 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
         }
 
         const stepResult = buildStepResult(stepId, node, data, 'passed', stepStart, {
-          screenshot, actualResult: result?.actualResult || 'OK',
+          screenshot, actualResult: result?.actualResult || 'OK', retry: isRetry,
         });
         stepResults.push(stepResult);
         port.postMessage({ type: 'STEP_COMPLETE', ...stepResult });
@@ -133,7 +140,7 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
     });
     broadcastStatus('completed', {
       testName: resolvedName, result: 'passed',
-      currentStep: executionOrder.length, totalSteps: executionOrder.length,
+      currentStep: actionableSteps, totalSteps: actionableSteps,
     });
   } catch (error) {
     set('stepResults', stepResults);
@@ -145,7 +152,7 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
     broadcastStatus('completed', {
       testName: resolvedName, result: 'failed',
       error: error.message || String(error),
-      currentStep: get('currentStepIndex') + 1, totalSteps: executionOrder.length,
+      currentStep: stepResults.length, totalSteps: actionableSteps,
     });
   }
 }

@@ -114,7 +114,7 @@ export async function handleStepFailure(opts) {
   broadcastStatus('failed', {
     testName: resolvedName,
     currentStep: i + 1,
-    totalSteps: executionOrder.length,
+    totalSteps: get('actionableStepCount'),
     stepDescription,
     error: error.message || String(error),
   });
@@ -168,7 +168,7 @@ export async function handleStepFailure(opts) {
     result: 'failed',
     error: error.message || String(error),
     currentStep: i + 1,
-    totalSteps: executionOrder.length,
+    totalSteps: get('actionableStepCount'),
   });
 
   return 'return';

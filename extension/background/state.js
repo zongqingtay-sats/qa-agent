@@ -33,6 +33,8 @@ const _state = {
   pauseResolve: null,
   /** @type {Array<object>|null} Ordered list of nodes to execute */
   currentExecutionOrder: null,
+  /** @type {number} Count of actionable steps (excludes start/end) */
+  actionableStepCount: 0,
   /** @type {chrome.runtime.Port|null} The port used by the current test session */
   currentPort: null,
   /** @type {string} Human-readable name of the current test */
@@ -88,7 +90,7 @@ export function getStatusPayload() {
 
   if (_state.currentExecutionOrder) {
     payload.currentStep = _state.currentStepIndex + 1;
-    payload.totalSteps = _state.currentExecutionOrder.length;
+    payload.totalSteps = _state.actionableStepCount || 0;
   }
 
   return payload;
