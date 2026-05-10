@@ -9,75 +9,83 @@
     body {
       width: 320px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      padding: 16px;
       background: #ffffff;
       color: #1a1a1a;
     }
+
+    /* ── Header ── */
     .header {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 16px;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #f0f0f0;
     }
-    .header h1 {
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .header .icon {
-      width: 24px;
-      height: 24px;
-      background: #6366f1;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-    }
-    .status {
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      font-size: 13px;
-    }
-    .status.connected { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-    .status.disconnected { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .status.running { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-    .status-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 6px;
-    }
-    .status.connected .status-dot { background: #10b981; }
-    .status.disconnected .status-dot { background: #ef4444; }
-    .status.running .status-dot { background: #3b82f6; animation: pulse 1.5s infinite; }
-    .status.failed .status-dot { background: #ef4444; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .info {
-      font-size: 12px;
-      color: #6b7280;
-      line-height: 1.5;
-    }
-    .info code {
-      background: #f3f4f6;
-      padding: 1px 4px;
-      border-radius: 3px;
+    .header .icon { width: 20px; height: 20px; display: flex; align-items: center; }
+    .header h1 { font-size: 14px; font-weight: 600; flex: 1; }
+    .status-pill {
       font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+    .status-pill.connected { background: #ecfdf5; color: #065f46; }
+    .status-pill.disconnected { background: #fef2f2; color: #991b1b; }
+    .status-pill.running { background: #eff6ff; color: #1e40af; }
+    .status-pill.paused { background: #fffbeb; color: #92400e; }
+    .status-pill.failed { background: #fef2f2; color: #991b1b; }
+
+    /* ── Main content ── */
+    .body-content { padding: 12px 16px 14px; }
+
+    /* ── Idle / no-test view ── */
+    .idle-view {
+      text-align: center;
+      padding: 20px 0 8px;
+    }
+    .idle-view .idle-icon {
+      width: 40px; height: 40px; margin: 0 auto 10px;
+      color: #d1d5db;
+    }
+    .idle-view p { font-size: 12px; color: #9ca3af; line-height: 1.5; }
+
+    /* ── Execution view ── */
+    #execution-info { display: none; }
+
+    .test-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 10px;
+      word-break: break-word;
+      cursor: pointer;
+    }
+    .test-name:hover { text-decoration: underline; }
+
+    /* Progress section */
+    .progress-section { margin-bottom: 10px; }
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .step-label {
+      font-size: 12px;
+      color: #374151;
+      font-weight: 500;
     }
     .step-count {
-      font-size: 13px;
-      color: #374151;
-      margin-top: 8px;
+      font-size: 11px;
+      color: #9ca3af;
+      font-variant-numeric: tabular-nums;
     }
     .progress-bar {
       width: 100%;
-      height: 4px;
+      height: 3px;
       background: #e5e7eb;
       border-radius: 2px;
-      margin-top: 8px;
       overflow: hidden;
     }
     .progress-bar-fill {
@@ -86,19 +94,19 @@
       border-radius: 2px;
       transition: width 0.3s;
     }
-    .current-test {
-      font-size: 13px;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 4px;
-      word-break: break-word;
-    }
+    .progress-bar-fill.failed { background: #ef4444; }
+    .progress-bar-fill.paused { background: #f59e0b; }
+
+    /* Step description */
     .current-step {
-      font-size: 12px;
+      font-size: 11px;
       color: #6b7280;
-      margin-top: 4px;
+      margin-top: 6px;
       word-break: break-word;
+      line-height: 1.4;
     }
+
+    /* ── Controls ── */
     .controls {
       display: flex;
       gap: 6px;
@@ -106,7 +114,7 @@
     }
     .controls button {
       flex: 1;
-      padding: 6px 10px;
+      padding: 6px 0;
       font-size: 12px;
       font-weight: 500;
       border: 1px solid #d1d5db;
@@ -116,85 +124,201 @@
       color: #374151;
       transition: background 0.15s, border-color 0.15s;
     }
-    .controls button:hover { background: #f3f4f6; }
-    .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .controls button:hover:not(:disabled) { background: #f3f4f6; }
+    .controls button:disabled { opacity: 0.35; cursor: not-allowed; }
     .controls button.btn-pause { border-color: #f59e0b; color: #92400e; }
-    .controls button.btn-pause:hover { background: #fffbeb; }
+    .controls button.btn-pause:hover:not(:disabled) { background: #fffbeb; }
     .controls button.btn-resume { border-color: #10b981; color: #065f46; }
-    .controls button.btn-resume:hover { background: #ecfdf5; }
-    .controls button.btn-retry { border-color: #6366f1; color: #4338ca; }
-    .controls button.btn-retry:hover { background: #eef2ff; }
-    .status.paused { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
-    .status.paused .status-dot { background: #f59e0b; }
-    .status.failed { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .error-message {
-      font-size: 12px;
+    .controls button.btn-resume:hover:not(:disabled) { background: #ecfdf5; }
+    .controls button.btn-retry { border-color: #3b82f6; color: #1e40af; }
+    .controls button.btn-retry:hover:not(:disabled) { background: #eff6ff; }
+
+    /* ── Error card ── */
+    .error-card {
+      display: none;
+      font-size: 11px;
       color: #991b1b;
       background: #fef2f2;
       border: 1px solid #fecaca;
       border-radius: 6px;
-      padding: 8px;
+      padding: 8px 10px;
       margin-top: 8px;
       word-break: break-word;
-      max-height: 80px;
+      max-height: 72px;
       overflow-y: auto;
+      line-height: 1.4;
     }
-    .clickable-id {
+
+    /* ── Fail hint ── */
+    .fail-hint {
+      display: none;
       font-size: 11px;
+      color: #6b7280;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* ── Collapsible details ── */
+    .details-toggle {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #f0f0f0;
+      cursor: pointer;
+      user-select: none;
+      font-size: 11px;
+      color: #9ca3af;
+      transition: color 0.15s;
+    }
+    .details-toggle:hover { color: #6b7280; }
+    .details-toggle .chevron {
+      transition: transform 0.2s;
+      font-size: 10px;
+    }
+    .details-toggle.open .chevron { transform: rotate(90deg); }
+    .details-content {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.2s ease-out;
+    }
+    .details-content.open { max-height: 120px; }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 11px;
+    }
+    .detail-label { color: #9ca3af; }
+    .detail-value {
       color: #6366f1;
       font-family: monospace;
-      margin-bottom: 2px;
-      word-break: break-all;
+      font-size: 10px;
       cursor: pointer;
-      text-decoration: underline;
-      text-decoration-color: transparent;
-      transition: text-decoration-color 0.15s;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
     }
-    .clickable-id:hover {
-      text-decoration-color: #6366f1;
+    .detail-value:hover { text-decoration: underline; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 8px 16px 10px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .current-test {
+    .footer .ext-id {
+      font-size: 10px;
+      color: #d1d5db;
+      font-family: monospace;
+      cursor: pointer;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .footer .ext-id:hover { color: #9ca3af; }
+    .footer .app-link {
+      font-size: 11px;
+      color: #6366f1;
+      text-decoration: none;
       cursor: pointer;
     }
-    .current-test:hover {
-      text-decoration: underline;
+    .footer .app-link:hover { text-decoration: underline; }
+
+    /* Copied toast */
+    .copied-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1f2937;
+      color: #fff;
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
     }
+    .copied-toast.show { opacity: 1; }
   </style>
 </head>
 <body>
+  <!-- Header with inline status pill -->
   <div class="header">
-    <div class="icon">QA</div>
-    <h1>QA Agent Test Runner</h1>
-  </div>
-  
-  <div id="status" class="status disconnected">
-    <span class="status-dot"></span>
-    <span id="status-text">Waiting for connection...</span>
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16.5h10"/></svg>
+    </div>
+    <h1>QA Agent</h1>
+    <span id="status-pill" class="status-pill disconnected">Disconnected</span>
   </div>
 
-  <div id="execution-info" style="display:none">
-    <div class="current-test" id="test-name" title="Click to open test run"></div>
-    <div class="clickable-id" id="test-id" title="Click to open test case"></div>
-    <div class="clickable-id" id="run-id" title="Click to open test run"></div>
-    <div class="step-count" id="step-info"></div>
-    <div class="current-step" id="current-step-desc"></div>
-    <div class="progress-bar">
-      <div class="progress-bar-fill" id="progress"></div>
+  <div class="body-content">
+    <!-- Idle view (shown when no test) -->
+    <div id="idle-view" class="idle-view">
+      <div class="idle-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16.5h10"/></svg>
+      </div>
+      <p>Open your QA Agent web app to start running tests.</p>
     </div>
-    <div class="controls" id="controls">
-      <button class="btn-pause" id="btn-pause" title="Pause">⏸ Pause</button>
-      <button class="btn-resume" id="btn-resume" title="Resume" disabled>▶ Resume</button>
-      <button class="btn-retry" id="btn-retry" title="Retry current step" disabled>↻ Retry</button>
+
+    <!-- Execution view -->
+    <div id="execution-info">
+      <div class="test-name" id="test-name" title="Click to open test run"></div>
+
+      <div class="progress-section">
+        <div class="progress-row">
+          <span class="step-label" id="step-label"></span>
+          <span class="step-count" id="step-count"></span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progress"></div>
+        </div>
+        <div class="current-step" id="current-step-desc"></div>
+      </div>
+
+      <div class="controls" id="controls">
+        <button class="btn-pause" id="btn-pause" title="Pause">⏸ Pause</button>
+        <button class="btn-resume" id="btn-resume" title="Resume" disabled>▶ Resume</button>
+        <button class="btn-retry" id="btn-retry" title="Retry current step" disabled>↻ Retry</button>
+      </div>
+
+      <div class="error-card" id="error-message"></div>
+      <p class="fail-hint" id="fail-hint">
+        Click <strong>↻ Retry</strong> to re-run, or close popup to end test.
+      </p>
+
+      <!-- Collapsible IDs -->
+      <div class="details-toggle" id="details-toggle">
+        <span class="chevron">›</span> Details
+      </div>
+      <div class="details-content" id="details-content">
+        <div class="detail-row">
+          <span class="detail-label">Test Case</span>
+          <span class="detail-value" id="test-id" title="Click to open"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Test Run</span>
+          <span class="detail-value" id="run-id" title="Click to open"></span>
+        </div>
+      </div>
     </div>
-    <div class="error-message" id="error-message" style="display:none"></div>
   </div>
 
-  <p class="info" style="margin-top: 12px;">
-    Extension ID: <code id="ext-id">—</code>
-  </p>
-  <p class="info" style="margin-top: 4px;">
-    Open your QA Agent web app to start running tests.
-  </p>
+  <!-- Footer — always visible -->
+  <div class="footer">
+    <span class="ext-id" id="ext-id" title="Click to copy extension ID">—</span>
+    <a class="app-link" id="app-link">Open App ↗</a>
+  </div>
+
+  <div class="copied-toast" id="copied-toast">Copied!</div>
 
   <script src="popup.js"></script>
 </body>

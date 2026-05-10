@@ -103,16 +103,19 @@ function broadcastStatus(status, extra = {}) {
   // Update badge based on status
   switch (status) {
     case 'running':
-      chrome.action.setBadgeText({ text: 'RUN' });
-      chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
+      chrome.action.setBadgeText({ text: '▶' });
+      chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' });
+      chrome.action.setBadgeTextColor({ color: '#ffffff' });
       break;
     case 'paused':
       chrome.action.setBadgeText({ text: 'II' });
       chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' });
+      chrome.action.setBadgeTextColor({ color: '#ffffff' });
       break;
     case 'failed':
-      chrome.action.setBadgeText({ text: 'ERR' });
+      chrome.action.setBadgeText({ text: '✕' });
       chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      chrome.action.setBadgeTextColor({ color: '#ffffff' });
       break;
     case 'connected':
     case 'completed':
@@ -122,7 +125,7 @@ function broadcastStatus(status, extra = {}) {
       break;
   }
 
-  chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', status, testCaseId: currentTestCaseId, testRunId: currentTestRunId, hasConnectedBefore, ...extra }).catch(() => {});
+  chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', status, testCaseId: currentTestCaseId, testRunId: currentTestRunId, hasConnectedBefore, ...extra }).catch(() => { });
 }
 
 function getStatusPayload() {
@@ -232,8 +235,8 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl, testName,
   isPaused = false;
 
   // Set badge to indicate running
-  chrome.action.setBadgeText({ text: 'RUN' });
-  chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
+  chrome.action.setBadgeText({ text: '▶' });
+  chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' });
 
   // Open popup window to show progress
   await openPopupWindow();
@@ -391,19 +394,6 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl, testName,
         stepResults.push(stepResult);
         port.postMessage({ type: 'STEP_ERROR', ...stepResult });
 
-        // Send TEST_COMPLETE immediately so the frontend can save results
-        try {
-          port.postMessage({
-            type: 'TEST_COMPLETE',
-            testCaseId,
-            status: 'failed',
-            stepResults,
-            durationMs: Date.now() - testStartTime,
-          });
-        } catch (e) {
-          console.warn('[QA Agent] Could not send TEST_COMPLETE:', e);
-        }
-
         // Show failure in popup and wait for retry
         isPaused = true;
         currentStepDescription = stepDescription;
@@ -423,7 +413,20 @@ async function startTestExecution(port, testFlow, testCaseId, baseUrl, testName,
           continue;
         }
 
-        // If not retried, we're done — results already sent
+        // User did not retry — send TEST_COMPLETE with failure
+        try {
+          port.postMessage({
+            type: 'TEST_COMPLETE',
+            testCaseId,
+            status: 'failed',
+            stepResults,
+            durationMs: Date.now() - testStartTime,
+          });
+        } catch (e) {
+          console.warn('[QA Agent] Could not send TEST_COMPLETE:', e);
+        }
+
+        // Done
         broadcastStatus('completed', {
           testName: currentTestName,
           result: 'failed',
@@ -501,26 +504,26 @@ function getExecutionOrder(testFlow) {
   // Find start node
   const startNode = nodes.find(n => n.data?.blockType === 'start');
   if (!startNode) return nodes; // Fallback: return all nodes
-  
+
   // BFS from start
   const order = [];
   const visited = new Set();
   const queue = [startNode.id];
-  
+
   while (queue.length > 0) {
     const id = queue.shift();
     if (visited.has(id)) continue;
     visited.add(id);
-    
+
     const node = nodeMap.get(id);
     if (node) order.push(node);
-    
+
     const targets = adjacency.get(id) || [];
     targets.forEach(t => {
       if (!visited.has(t)) queue.push(t);
     });
   }
-  
+
   return order;
 }
 
