@@ -2,6 +2,36 @@ import { testCasesApi, testRunsApi } from "@/lib/api";
 import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";
 import { toast } from "sonner";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+
+/**
+ * Push a single step result to the backend so the test-run detail page
+ * can update in real time via SSE.
+ */
+async function saveStepResult(testRunId: string, stepOrder: number, data: any) {
+  try {
+    await fetch(`${API_BASE}/test-runs/${encodeURIComponent(testRunId)}/steps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stepOrder,
+        blockId: data.blockId || '',
+        blockType: data.blockType || '',
+        description: data.description || '',
+        target: data.target || '',
+        expectedResult: data.expectedResult || '',
+        actualResult: data.actualResult || '',
+        status: data.status || 'running',
+        screenshotDataUrl: data.screenshot || data.screenshotDataUrl || '',
+        errorMessage: data.error || data.errorMessage || '',
+        durationMs: data.durationMs || 0,
+      }),
+    });
+  } catch {
+    // Non-critical — the final save will capture everything
+  }
+}
+
 /**
  * Run a single test case via the browser extension.
  * Creates a test run, connects to the extension, executes, and saves results.
@@ -34,6 +64,7 @@ export async function runTestCase(testCaseId: string): Promise<void> {
   await new Promise<void>((resolve) => {
     const stepResults: any[] = [];
     const startTime = Date.now();
+    let stepCounter = 0;
 
     const saveResults = async (status: string) => {
       const durationMs = Date.now() - startTime;
@@ -41,6 +72,9 @@ export async function runTestCase(testCaseId: string): Promise<void> {
       const failedSteps = stepResults.filter(s => s.status === 'failed').length;
 
       try {
+        // Final update — save status, duration, and totals.
+        // Step results were already pushed individually via /steps endpoint,
+        // so we skip sending them again to avoid duplicates.
         await testRunsApi.update(testRun.id, {
           status,
           completedAt: new Date().toISOString(),
@@ -48,19 +82,6 @@ export async function runTestCase(testCaseId: string): Promise<void> {
           totalSteps: stepResults.length || undefined,
           passedSteps: stepResults.length ? passedSteps : undefined,
           failedSteps: stepResults.length ? failedSteps : undefined,
-          stepResults: stepResults.length ? stepResults.map((sr, i) => ({
-            stepOrder: i + 1,
-            blockId: sr.blockId || '',
-            blockType: sr.blockType || '',
-            description: sr.description || '',
-            target: sr.target || '',
-            expectedResult: sr.expectedResult || '',
-            actualResult: sr.actualResult || '',
-            status: sr.status || 'passed',
-            screenshotDataUrl: sr.screenshot || sr.screenshotDataUrl || '',
-            errorMessage: sr.error || sr.errorMessage || '',
-            durationMs: sr.durationMs || 0,
-          })) : undefined,
         });
       } catch {
         toast.error(`Failed to save results for "${testCase.name}"`);
@@ -72,11 +93,29 @@ export async function runTestCase(testCaseId: string): Promise<void> {
         toast.info(`Running "${testCase.name}"...`);
         executeTestViaExtension(connection!.port, flowData, testCaseId, baseUrl, testCase.name, testRun.id);
       },
+      onStepStart: (data) => {
+        stepCounter++;
+        // Push a "running" step so the detail page shows the step in progress
+        saveStepResult(testRun.id, stepCounter, {
+          ...data,
+          status: 'running',
+        });
+      },
       onStepComplete: (data) => {
         stepResults.push(data);
+        // Overwrite the "running" step with the final result
+        saveStepResult(testRun.id, stepCounter, {
+          ...data,
+          status: 'passed',
+        });
       },
       onStepError: (data) => {
         stepResults.push({ ...data, status: 'failed' });
+        // Overwrite the "running" step with the failure
+        saveStepResult(testRun.id, stepCounter, {
+          ...data,
+          status: 'failed',
+        });
       },
       onTestComplete: async () => {
         const failedSteps = stepResults.filter(s => s.status === 'failed').length;

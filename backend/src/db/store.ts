@@ -151,6 +151,23 @@ class InMemoryStore {
   // --- Step Results ---
 
   createStepResult(data: Omit<StepResultRecord, 'id' | 'executedAt'>): StepResultRecord {
+    // Upsert: if a step with the same testRunId + stepOrder already exists,
+    // update it in place (e.g. running → passed/failed)
+    const existing = Array.from(this.stepResults.values()).find(
+      sr => sr.testRunId === data.testRunId && sr.stepOrder === data.stepOrder
+    );
+
+    if (existing) {
+      const updated: StepResultRecord = {
+        ...existing,
+        ...data,
+        id: existing.id,
+        executedAt: new Date().toISOString(),
+      };
+      this.stepResults.set(existing.id, updated);
+      return updated;
+    }
+
     const record: StepResultRecord = {
       ...data,
       id: uuidv4(),

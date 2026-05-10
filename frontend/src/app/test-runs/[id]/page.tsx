@@ -45,8 +45,34 @@ export default function TestRunDetailPage() {
   useSSE({
     channels: ["test-runs"],
     onEvent: useCallback((event: any) => {
-      if (event.type === "test-run:updated" && event.data.id === runId) {
+      if (event.data?.id !== runId) return;
+
+      if (event.type === "test-run:updated") {
+        // Full test-run update (e.g. status change, completion)
         setRun((prev: any) => prev ? { ...prev, ...event.data } : event.data);
+      } else if (event.type === "test-run:step") {
+        // Real-time step result — upsert into the stepResults array
+        const step = event.data.step;
+        if (!step) return;
+        setRun((prev: any) => {
+          if (!prev) return prev;
+          const existing = prev.stepResults || [];
+          // Find by stepOrder — replace if exists, append if new
+          const idx = existing.findIndex((s: any) => s.stepOrder === step.stepOrder);
+          const updated = [...existing];
+          if (idx >= 0) {
+            updated[idx] = { ...updated[idx], ...step };
+          } else {
+            updated.push(step);
+          }
+          return {
+            ...prev,
+            stepResults: updated,
+            totalSteps: event.data.totalSteps ?? prev.totalSteps,
+            passedSteps: event.data.passedSteps ?? prev.passedSteps,
+            failedSteps: event.data.failedSteps ?? prev.failedSteps,
+          };
+        });
       }
     }, [runId]),
   });
@@ -247,7 +273,10 @@ export default function TestRunDetailPage() {
                       <Fragment key={stepId}>
                         <TableRow
                           key={stepId}
-                          className={step.status === 'failed' ? 'bg-red-50' : ''}
+                          className={
+                            step.status === 'failed' ? 'bg-red-50' :
+                            step.status === 'running' ? 'bg-blue-50/50 animate-pulse' : ''
+                          }
                         >
                           <TableCell className="align-middle">
                             <button type="button" onClick={() => toggleStepExpand(stepId)} className="cursor-pointer flex items-center justify-center">

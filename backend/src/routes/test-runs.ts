@@ -71,6 +71,53 @@ router.post('/', (req: Request, res: Response) => {
   res.status(201).json({ data: testRun });
 });
 
+// POST /api/test-runs/:id/steps — save a single step result in real time
+router.post('/:id/steps', (req: Request, res: Response) => {
+  const testRun = store.getTestRun(req.params.id as string);
+  if (!testRun) {
+    throw new AppError('Test run not found', 404);
+  }
+
+  const sr = req.body;
+  const stepResult = store.createStepResult({
+    testRunId: testRun.id,
+    stepOrder: sr.stepOrder,
+    blockId: sr.blockId || '',
+    blockType: sr.blockType || '',
+    description: sr.description || '',
+    target: sr.target || '',
+    expectedResult: sr.expectedResult || '',
+    actualResult: sr.actualResult || '',
+    status: sr.status || 'running',
+    screenshotDataUrl: sr.screenshotDataUrl || '',
+    errorMessage: sr.errorMessage || '',
+    durationMs: sr.durationMs || 0,
+  });
+
+  // Update running totals on the test run
+  const allSteps = store.getStepResultsForRun(testRun.id);
+  const passedSteps = allSteps.filter(s => s.status === 'passed').length;
+  const failedSteps = allSteps.filter(s => s.status === 'failed').length;
+  store.updateTestRun(testRun.id, {
+    totalSteps: allSteps.length,
+    passedSteps,
+    failedSteps,
+  });
+
+  // Emit a granular SSE event so the frontend can update in real time
+  const tc = store.getTestCase(testRun.testCaseId);
+  eventBus.emit('test-runs', 'test-run:step', {
+    id: testRun.id,
+    testCaseName: tc?.name || 'Unknown',
+    step: stepResult,
+    totalSteps: allSteps.length,
+    passedSteps,
+    failedSteps,
+  });
+
+  res.status(201).json({ data: stepResult });
+});
+
 // PUT /api/test-runs/:id
 router.put('/:id', (req: Request, res: Response) => {
   const existing = store.getTestRun(req.params.id as string);

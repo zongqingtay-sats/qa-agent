@@ -57,6 +57,15 @@ export default function TestRunsPage() {
         setTestRuns((prev) =>
           prev.map((r) => (r.id === event.data.id ? { ...r, ...event.data } : r))
         );
+      } else if (event.type === "test-run:step") {
+        // Update running step counts on the list row
+        setTestRuns((prev) =>
+          prev.map((r) =>
+            r.id === event.data.id
+              ? { ...r, totalSteps: event.data.totalSteps, passedSteps: event.data.passedSteps, failedSteps: event.data.failedSteps }
+              : r
+          )
+        );
       }
     }, []),
   });
