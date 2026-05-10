@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { PageHeader } from "@/components/layout/page-header";
@@ -39,14 +39,38 @@ export default function GeneratePage() {
     return "";
   }
 
-  // Auto-infer URL when text changes
-  function handleTextChange(value: string) {
-    setTextInput(value);
-    if (!targetUrl) {
-      const inferred = inferUrlFromText(value);
-      if (inferred) setTargetUrl(inferred);
+  // Auto-format URL on blur (prepend https:// if missing)
+  function formatTargetUrl() {
+    const v = targetUrl.trim();
+    if (!v) return;
+    if (/^https?:\/\//i.test(v)) return;
+    if (/^localhost(:|$)/i.test(v)) {
+      setTargetUrl(`http://${v}`);
+    } else {
+      setTargetUrl(`https://${v}`);
     }
   }
+
+  // Auto-infer URL when text changes (debounced to avoid partial matches)
+  const inferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleTextChange(value: string) {
+    setTextInput(value);
+    if (inferTimerRef.current) clearTimeout(inferTimerRef.current);
+    inferTimerRef.current = setTimeout(() => {
+      if (!targetUrl) {
+        const inferred = inferUrlFromText(value);
+        if (inferred) setTargetUrl(inferred);
+      }
+    }, 600);
+  }
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (inferTimerRef.current) clearTimeout(inferTimerRef.current);
+    };
+  }, []);
 
   // After initial generation, find navigation targets and refine with scraped HTML
   async function refineWithNavigationPages(cases: any[], baseUrl?: string) {
@@ -355,6 +379,7 @@ export default function GeneratePage() {
                       id="target-url"
                       value={targetUrl}
                       onChange={(e) => setTargetUrl(e.target.value)}
+                      onBlur={formatTargetUrl}
                       placeholder="e.g., https://example.com/login"
                       className="flex-1"
                     />
@@ -429,6 +454,7 @@ export default function GeneratePage() {
                     id="target-url-req"
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
+                    onBlur={formatTargetUrl}
                     placeholder="e.g., https://example.com/login"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -485,6 +511,7 @@ export default function GeneratePage() {
                     id="target-url-src"
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
+                    onBlur={formatTargetUrl}
                     placeholder="e.g., https://example.com/login"
                   />
                   <p className="text-xs text-muted-foreground">
