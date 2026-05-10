@@ -98,10 +98,12 @@ router.post('/:id/steps', (req: Request, res: Response) => {
 
   // Update running totals on the test run
   const allSteps = store.getStepResultsForRun(testRun.id);
-  const passedSteps = allSteps.filter(s => s.status === 'passed').length;
-  const failedSteps = allSteps.filter(s => s.status === 'failed').length;
+  // totalSteps = unique step positions (retries don't add to the count)
+  const uniqueStepOrders = new Set(allSteps.map(s => s.stepOrder));
+  const passedSteps = allSteps.filter(s => s.status === 'passed' && !s.retry).length;
+  const failedSteps = allSteps.filter(s => s.status === 'failed' && !s.retry).length;
   store.updateTestRun(testRun.id, {
-    totalSteps: allSteps.length,
+    totalSteps: uniqueStepOrders.size,
     passedSteps,
     failedSteps,
   });
@@ -112,7 +114,7 @@ router.post('/:id/steps', (req: Request, res: Response) => {
     id: testRun.id,
     testCaseName: tc?.name || 'Unknown',
     step: stepResult,
-    totalSteps: allSteps.length,
+    totalSteps: uniqueStepOrders.size,
     passedSteps,
     failedSteps,
   });

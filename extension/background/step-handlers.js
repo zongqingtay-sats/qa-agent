@@ -75,7 +75,8 @@ export async function executeNavigationStep(data, tabId, stepId, node, stepStart
 export async function handleStepFailure(opts) {
   const {
     error, tabId, stepId, node, data, stepStart, stepDescription,
-    stepResults, port, executionOrder, i, resolvedName, testCaseId,
+    stepResults, port, executionOrder, i, resolvedName, testCaseId, isRetry,
+    actionableStepIndex,
   } = opts;
 
   // Capture screenshot at the point of failure
@@ -89,6 +90,7 @@ export async function handleStepFailure(opts) {
   const stepResult = buildStepResult(stepId, node, data, 'failed', stepStart, {
     screenshot,
     error: error.message || String(error),
+    retry: isRetry || false,
   });
 
   stepResults.push(stepResult);
@@ -113,7 +115,7 @@ export async function handleStepFailure(opts) {
   set('currentStepDescription', stepDescription);
   broadcastStatus('failed', {
     testName: resolvedName,
-    currentStep: i + 1,
+    currentStep: actionableStepIndex,
     totalSteps: get('actionableStepCount'),
     stepDescription,
     error: error.message || String(error),
@@ -138,7 +140,7 @@ export async function handleStepFailure(opts) {
   }
 
   if (errorAction === 'abort') {
-    // Popup or tab was closed — record as aborted
+    // Popup or tab was closed while test was running — record as aborted
     set('stepResults', stepResults);
     try {
       port.postMessage({
@@ -155,19 +157,19 @@ export async function handleStepFailure(opts) {
       testName: resolvedName,
       result: 'stopped',
       error: 'Test aborted — popup or tab was closed',
-      currentStep: i + 1,
+      currentStep: actionableStepIndex,
       totalSteps: get('actionableStepCount'),
     });
     return 'return';
   }
 
-  // User did not retry — already sent TEST_COMPLETE above
+  // 'dismiss' or no action — test stays failed (TEST_COMPLETE already sent above)
   set('stepResults', stepResults);
   broadcastStatus('completed', {
     testName: resolvedName,
     result: 'failed',
     error: error.message || String(error),
-    currentStep: i + 1,
+    currentStep: actionableStepIndex,
     totalSteps: get('actionableStepCount'),
   });
 

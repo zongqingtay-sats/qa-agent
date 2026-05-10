@@ -57,13 +57,21 @@ export default function TestRunDetailPage() {
         setRun((prev: any) => {
           if (!prev) return prev;
           const existing = prev.stepResults || [];
-          // Find by stepOrder — replace if exists, append if new
-          const idx = existing.findIndex((s: any) => s.stepOrder === step.stepOrder);
           const updated = [...existing];
-          if (idx >= 0) {
-            updated[idx] = { ...updated[idx], ...step };
-          } else {
+
+          if (step.retry) {
+            // Retry steps are always appended to preserve the failed step history
             updated.push(step);
+          } else {
+            // Non-retry: upsert by id (preferred) or stepOrder
+            const idx = step.id
+              ? existing.findIndex((s: any) => s.id === step.id)
+              : existing.findIndex((s: any) => s.stepOrder === step.stepOrder && !s.retry);
+            if (idx >= 0) {
+              updated[idx] = { ...updated[idx], ...step };
+            } else {
+              updated.push(step);
+            }
           }
           return {
             ...prev,
@@ -140,7 +148,7 @@ export default function TestRunDetailPage() {
     const executedSteps: any[] = run.stepResults || [];
 
     // Parse flow data to get the full expected step list
-    let expectedSteps: { blockId: string; blockType: string; description: string; target?: string }[] = [];
+    let expectedSteps: { blockId: string; blockType: string; description: string; target?: string; }[] = [];
     try {
       const flow = typeof run.flowData === 'string' ? JSON.parse(run.flowData) : run.flowData;
       if (flow?.nodes && flow?.edges) {
@@ -234,17 +242,17 @@ export default function TestRunDetailPage() {
               <RotateCcw className="h-4 w-4 mr-1" /> Re-run
             </Button>
             <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button variant="outline">
-                <Download className="h-4 w-4 mr-1" /> Export
-              </Button>
-            } />
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('docx')}>Export as DOCX</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-1" /> Export
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('docx')}>Export as DOCX</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
@@ -365,8 +373,8 @@ export default function TestRunDetailPage() {
                           key={stepId}
                           className={
                             isUnexecuted ? 'opacity-50' :
-                            step.status === 'failed' ? 'bg-red-50' :
-                            step.status === 'running' ? 'bg-blue-50/50 animate-pulse' : ''
+                              step.status === 'failed' ? 'bg-red-50' :
+                                step.status === 'running' ? 'bg-blue-50/50 animate-pulse' : ''
                           }
                         >
                           <TableCell className="align-middle">
@@ -379,12 +387,10 @@ export default function TestRunDetailPage() {
                             )}
                           </TableCell>
                           <TableCell className="font-mono text-sm">
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1" title={step.retry ? 'Retry step' : ''}>
                               {step.stepOrder}
                               {step.retry && (
-                                <Badge variant="outline" className="text-[10px] text-orange-600 border-orange-300 gap-0.5">
-                                  <RefreshCw className="h-2.5 w-2.5" /> retry
-                                </Badge>
+                                <RefreshCw className="h-2.5 w-2.5" />
                               )}
                             </span>
                           </TableCell>
@@ -410,7 +416,7 @@ export default function TestRunDetailPage() {
                             {step.screenshotDataUrl ? (
                               <Dialog>
                                 <DialogTrigger render={<Button variant="ghost" />}>
-                                    <ImageIcon className="h-4 w-4 mr-1" /> View
+                                  <ImageIcon className="h-4 w-4 mr-1" /> View
                                 </DialogTrigger>
                                 <DialogContent className="max-w-4xl">
                                   <DialogTitle>Step {step.stepOrder} Screenshot</DialogTitle>

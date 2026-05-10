@@ -225,7 +225,7 @@ export default function TestRunsPage() {
                         />
                       </TableCell>
                       <TableCell className="align-middle">
-                        <button type="button" onClick={() => toggleExpand(run.id)} className="cursor-pointer flex items-center justify-center">
+                        <button type="button" onClick={e => {toggleExpand(run.id); e.stopPropagation();}} className="cursor-pointer flex items-center justify-center">
                           {expanded.has(run.id) ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                         </button>
                       </TableCell>
@@ -323,11 +323,6 @@ export default function TestRunsPage() {
                                     </Table>
                                   </div>
                                 )}
-                                <div className="flex justify-end">
-                                  <Link href={`/test-runs/${run.id}`}>
-                                    <Button variant="outline">View Full Details</Button>
-                                  </Link>
-                                </div>
                               </>
                             )}
                           </div>

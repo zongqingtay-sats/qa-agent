@@ -25,6 +25,7 @@ async function saveStepResult(testRunId: string, stepOrder: number, data: any) {
         screenshotDataUrl: data.screenshot || data.screenshotDataUrl || '',
         errorMessage: data.error || data.errorMessage || '',
         durationMs: data.durationMs || 0,
+        retry: data.retry || false,
       }),
     });
   } catch {
@@ -97,7 +98,8 @@ export async function runTestCase(testCaseId: string): Promise<void> {
         executeTestViaExtension(connection!.port, flowData, testCaseId, baseUrl, testCase.name, testRun.id);
       },
       onStepStart: (data) => {
-        stepCounter++;
+        // Only increment for new steps, not retries
+        if (!data.retry) stepCounter++;
         // Push a "running" step so the detail page shows the step in progress
         saveStepResult(testRun.id, stepCounter, {
           ...data,
@@ -120,6 +122,7 @@ export async function runTestCase(testCaseId: string): Promise<void> {
         saveStepResult(testRun.id, stepCounter, {
           ...data,
           status: 'failed',
+          retry: data.retry || false,
         });
       },
       onTestComplete: async (data) => {

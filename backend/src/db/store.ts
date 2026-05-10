@@ -152,24 +152,26 @@ class InMemoryStore {
   // --- Step Results ---
 
   createStepResult(data: Omit<StepResultRecord, 'id' | 'executedAt'>): StepResultRecord {
-    // Upsert: if a step with the same testRunId + stepOrder already exists,
-    // update it in place (e.g. running → passed/failed).
-    // Retry steps always create a new record to preserve history.
-    if (!data.retry) {
-      const existing = Array.from(this.stepResults.values()).find(
-        sr => sr.testRunId === data.testRunId && sr.stepOrder === data.stepOrder
-      );
+    // Upsert logic: find a record with the same testRunId + stepOrder + retry flag
+    // that is still in "running" status. This handles the running → passed/failed
+    // transition. If the existing record is already completed (passed/failed),
+    // a new record is created (e.g. subsequent retries get separate records).
+    const existing = Array.from(this.stepResults.values()).find(
+      sr => sr.testRunId === data.testRunId
+        && sr.stepOrder === data.stepOrder
+        && (sr.retry || false) === (data.retry || false)
+        && sr.status === 'running'
+    );
 
-      if (existing) {
-        const updated: StepResultRecord = {
-          ...existing,
-          ...data,
-          id: existing.id,
-          executedAt: new Date().toISOString(),
-        };
-        this.stepResults.set(existing.id, updated);
-        return updated;
-      }
+    if (existing) {
+      const updated: StepResultRecord = {
+        ...existing,
+        ...data,
+        id: existing.id,
+        executedAt: new Date().toISOString(),
+      };
+      this.stepResults.set(existing.id, updated);
+      return updated;
     }
 
     const record: StepResultRecord = {

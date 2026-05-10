@@ -68,7 +68,8 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
         if (get('isPaused')) {
           const resolve = get('pauseResolve');
           if (resolve) {
-            resolve('abort');
+            const status = get('currentStatus');
+            resolve(status === 'failed' ? 'dismiss' : 'abort');
             set('pauseResolve', null);
           }
           set('isPaused', false);
@@ -78,6 +79,8 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
       }
     };
     chrome.tabs.onRemoved.addListener(tabRemovedHandler);
+
+    let actionableStepIndex = 0; // Tracks the logical step position (excludes start/end, doesn't change on retry)
 
     for (let i = 0; i < executionOrder.length; i++) {
       const node = executionOrder[i];
@@ -91,19 +94,35 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
       const isRetry = get('nextStepIsRetry') || false;
       if (isRetry) set('nextStepIsRetry', false);
 
+      // Only increment for new steps, not retries
+      if (!isRetry) actionableStepIndex++;
+
       const action = await waitIfPausedLocal();
       if (action === 'retry' && i > 0) {
         set('nextStepIsRetry', true);
         i--; continue;
       }
-      if (action === 'abort') break;
+      if (action === 'abort') {
+        // Tab or popup closed while actively running — send stopped
+        set('stepResults', stepResults);
+        port.postMessage({
+          type: 'TEST_COMPLETE', testCaseId, status: 'stopped',
+          stepResults, durationMs: Date.now() - get('testStartTime'),
+        });
+        broadcastStatus('completed', {
+          testName: resolvedName, result: 'stopped',
+          error: 'Test aborted — popup or tab was closed',
+          currentStep: actionableStepIndex, totalSteps: actionableSteps,
+        });
+        return;
+      }
 
       broadcastStatus('running', {
-        testName: resolvedName, currentStep: stepResults.length + 1,
+        testName: resolvedName, currentStep: actionableStepIndex,
         totalSteps: actionableSteps, stepDescription,
       });
 
-      port.postMessage({ type: 'STEP_START', stepId, blockId: node.id, blockType: data.blockType, retry: isRetry });
+      port.postMessage({ type: 'STEP_START', stepId, blockId: node.id, blockType: data.blockType, retry: isRetry, stepIndex: actionableStepIndex });
       const stepStart = Date.now();
 
       try {
@@ -126,10 +145,11 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
       } catch (error) {
         const outcome = await handleStepFailure({
           error, tabId: tab.id, stepId, node, data, stepStart, stepDescription,
-          stepResults, port, executionOrder, i, resolvedName, testCaseId,
+          stepResults, port, executionOrder, i, resolvedName, testCaseId, isRetry,
+          actionableStepIndex,
         });
         if (outcome === 'return') return;
-        if (outcome === 'retry') { i--; continue; }
+        if (outcome === 'retry') { set('nextStepIsRetry', true); i--; continue; }
       }
     }
 

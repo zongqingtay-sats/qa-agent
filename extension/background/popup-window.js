@@ -50,11 +50,14 @@ export async function openPopupWindow() {
       set('popupWindowId', null);
       chrome.windows.onRemoved.removeListener(onRemoved);
 
-      // If a test is paused (e.g. on failure), closing the popup means abort
+      // If a test is paused, closing the popup resolves the pause.
+      // Only abort if the test was actively running (paused by user).
+      // If paused due to a failure, dismiss — the test stays "failed".
       if (get('isPaused')) {
         const resolve = get('pauseResolve');
         if (resolve) {
-          resolve('abort');
+          const status = get('currentStatus');
+          resolve(status === 'failed' ? 'dismiss' : 'abort');
           set('pauseResolve', null);
         }
         set('isPaused', false);
