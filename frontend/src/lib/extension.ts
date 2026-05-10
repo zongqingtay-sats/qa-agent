@@ -47,6 +47,7 @@ export function connectToExtension(
     onStepComplete?: (data: any) => void;
     onStepError?: (data: any) => void;
     onTestComplete?: (data: any) => void;
+    onTestResumed?: (data: any) => void;
     onDisconnect?: () => void;
   }
 ): { port: any; disconnect: () => void } | null {
@@ -73,6 +74,9 @@ export function connectToExtension(
           break;
         case 'TEST_COMPLETE':
           callbacks.onTestComplete?.(message);
+          break;
+        case 'TEST_RESUMED':
+          callbacks.onTestResumed?.(message);
           break;
       }
     });

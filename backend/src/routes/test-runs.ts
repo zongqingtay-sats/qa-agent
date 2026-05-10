@@ -39,6 +39,7 @@ router.get('/:id', (req: Request, res: Response) => {
       testCaseDescription: tc?.description,
       testCasePreconditions: tc?.preconditions,
       testCasePassingCriteria: tc?.passingCriteria,
+      flowData: tc?.flowData,
       stepResults,
     },
   });
@@ -92,6 +93,7 @@ router.post('/:id/steps', (req: Request, res: Response) => {
     screenshotDataUrl: sr.screenshotDataUrl || '',
     errorMessage: sr.errorMessage || '',
     durationMs: sr.durationMs || 0,
+    retry: sr.retry || false,
   });
 
   // Update running totals on the test run

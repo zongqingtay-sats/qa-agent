@@ -49,6 +49,16 @@ export async function openPopupWindow() {
     if (windowId === win.id) {
       set('popupWindowId', null);
       chrome.windows.onRemoved.removeListener(onRemoved);
+
+      // If a test is paused (e.g. on failure), closing the popup means abort
+      if (get('isPaused')) {
+        const resolve = get('pauseResolve');
+        if (resolve) {
+          resolve('abort');
+          set('pauseResolve', null);
+        }
+        set('isPaused', false);
+      }
     }
   });
 }

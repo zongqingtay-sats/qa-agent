@@ -99,6 +99,7 @@ export async function runTestCase(testCaseId: string): Promise<void> {
         saveStepResult(testRun.id, stepCounter, {
           ...data,
           status: 'running',
+          retry: data.retry || false,
         });
       },
       onStepComplete: (data) => {
@@ -107,6 +108,7 @@ export async function runTestCase(testCaseId: string): Promise<void> {
         saveStepResult(testRun.id, stepCounter, {
           ...data,
           status: 'passed',
+          retry: data.retry || false,
         });
       },
       onStepError: (data) => {
@@ -117,17 +119,30 @@ export async function runTestCase(testCaseId: string): Promise<void> {
           status: 'failed',
         });
       },
-      onTestComplete: async () => {
-        const failedSteps = stepResults.filter(s => s.status === 'failed').length;
-        const status = failedSteps > 0 ? 'failed' : 'passed';
+      onTestComplete: async (data) => {
+        const status = data.status || (stepResults.filter(s => s.status === 'failed').length > 0 ? 'failed' : 'passed');
         await saveResults(status);
-        toast.success(`"${testCase.name}" ${status}`);
-        connection?.disconnect();
-        resolve();
+        if (status === 'passed') {
+          toast.success(`"${testCase.name}" passed`);
+        } else if (status === 'stopped') {
+          toast.warning(`"${testCase.name}" aborted`);
+        } else {
+          // Don't disconnect yet on failure — user may retry from popup
+        }
+        // Only disconnect and resolve on final completion (passed or stopped)
+        if (status === 'passed' || status === 'stopped') {
+          connection?.disconnect();
+          resolve();
+        }
+      },
+      onTestResumed: async () => {
+        // User clicked retry in the popup — test is back to running
+        await testRunsApi.update(testRun.id, { status: 'running', completedAt: undefined as any });
       },
       onDisconnect: async () => {
+        // If we get disconnected, save whatever state we have
         const failedSteps = stepResults.filter(s => s.status === 'failed').length;
-        const status = failedSteps > 0 ? 'failed' : (stepResults.length === 0 ? 'failed' : 'passed');
+        const status = failedSteps > 0 ? 'failed' : (stepResults.length === 0 ? 'stopped' : 'passed');
         await saveResults(status);
         resolve();
       },

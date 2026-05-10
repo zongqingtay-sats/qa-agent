@@ -54,6 +54,23 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
     const tab = await chrome.tabs.create({ url: initialUrl, active: true });
     set('executingTabId', tab.id);
     await waitForTabLoad(tab.id);
+    // Monitor tab closure — if the testing tab is closed mid-run, abort
+    const tabRemovedHandler = (tabId) => {
+      if (tabId === tab.id) {
+        chrome.tabs.onRemoved.removeListener(tabRemovedHandler);
+        if (get('isPaused')) {
+          const resolve = get('pauseResolve');
+          if (resolve) {
+            resolve('abort');
+            set('pauseResolve', null);
+          }
+          set('isPaused', false);
+        }
+        // Mark the tab as gone so the loop can break
+        set('executingTabId', null);
+      }
+    };
+    chrome.tabs.onRemoved.addListener(tabRemovedHandler);
 
     for (let i = 0; i < executionOrder.length; i++) {
       const node = executionOrder[i];
@@ -64,9 +81,15 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
 
       const stepId = `step-${i}`;
       const stepDescription = data.label || data.description || data.blockType;
+      const isRetry = get('nextStepIsRetry') || false;
+      if (isRetry) set('nextStepIsRetry', false);
 
       const action = await waitIfPausedLocal();
-      if (action === 'retry' && i > 0) { i--; continue; }
+      if (action === 'retry' && i > 0) {
+        set('nextStepIsRetry', true);
+        i--; continue;
+      }
+      if (action === 'abort') break;
 
       broadcastStatus('running', {
         testName: resolvedName, currentStep: i + 1,

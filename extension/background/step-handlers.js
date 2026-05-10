@@ -21,9 +21,10 @@ import { waitForTabLoad, captureScreenshot } from './tab-utils.js';
  * @param {number} stepStart   - Timestamp when the step started.
  * @param {Array}  stepResults - Accumulated results array (mutated in place).
  * @param {chrome.runtime.Port} port - Port to the web app.
+ * @param {boolean} [isRetry=false] - Whether this is a retry attempt.
  * @returns {Promise<void>}
  */
-export async function executeNavigationStep(data, tabId, stepId, node, stepStart, stepResults, port) {
+export async function executeNavigationStep(data, tabId, stepId, node, stepStart, stepResults, port, isRetry = false) {
   let navUrl = data.url;
 
   // Resolve relative URLs against the configured base URL
@@ -37,6 +38,7 @@ export async function executeNavigationStep(data, tabId, stepId, node, stepStart
 
   const stepResult = buildStepResult(stepId, node, data, 'passed', stepStart, {
     actualResult: `Navigated to ${navUrl}`,
+    retry: isRetry,
   });
 
   // Capture screenshot after navigation
@@ -92,6 +94,20 @@ export async function handleStepFailure(opts) {
   stepResults.push(stepResult);
   port.postMessage({ type: 'STEP_ERROR', ...stepResult });
 
+  // Immediately mark the test run as "failed" (completed) so the frontend
+  // shows the correct status right away instead of staying "running".
+  try {
+    port.postMessage({
+      type: 'TEST_COMPLETE',
+      testCaseId,
+      status: 'failed',
+      stepResults,
+      durationMs: Date.now() - get('testStartTime'),
+    });
+  } catch (e) {
+    console.warn('[QA Agent] Could not send TEST_COMPLETE on failure:', e);
+  }
+
   // Pause and show the failure in the popup so the user can decide
   set('isPaused', true);
   set('currentStepDescription', stepDescription);
@@ -106,24 +122,47 @@ export async function handleStepFailure(opts) {
   const errorAction = await waitIfPausedLocal();
 
   if (errorAction === 'retry') {
-    stepResults.pop(); // Discard the failed result before retrying
+    // Don't remove the failed result — keep it for history.
+    // The retry will append a new step record with a retry flag.
+    // Notify the frontend that the test is resuming (back to running).
+    try {
+      port.postMessage({
+        type: 'TEST_RESUMED',
+        testCaseId,
+        status: 'running',
+      });
+    } catch (e) {
+      console.warn('[QA Agent] Could not send TEST_RESUMED:', e);
+    }
     return 'retry';
   }
 
-  // User did not retry — finalise the test as failed
-  set('stepResults', stepResults);
-  try {
-    port.postMessage({
-      type: 'TEST_COMPLETE',
-      testCaseId,
-      status: 'failed',
-      stepResults,
-      durationMs: Date.now() - get('testStartTime'),
+  if (errorAction === 'abort') {
+    // Popup or tab was closed — record as aborted
+    set('stepResults', stepResults);
+    try {
+      port.postMessage({
+        type: 'TEST_COMPLETE',
+        testCaseId,
+        status: 'stopped',
+        stepResults,
+        durationMs: Date.now() - get('testStartTime'),
+      });
+    } catch (e) {
+      console.warn('[QA Agent] Could not send TEST_COMPLETE (abort):', e);
+    }
+    broadcastStatus('completed', {
+      testName: resolvedName,
+      result: 'stopped',
+      error: 'Test aborted — popup or tab was closed',
+      currentStep: i + 1,
+      totalSteps: get('actionableStepCount'),
     });
-  } catch (e) {
-    console.warn('[QA Agent] Could not send TEST_COMPLETE:', e);
+    return 'return';
   }
 
+  // User did not retry — already sent TEST_COMPLETE above
+  set('stepResults', stepResults);
   broadcastStatus('completed', {
     testName: resolvedName,
     result: 'failed',

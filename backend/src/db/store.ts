@@ -43,6 +43,7 @@ export interface StepResultRecord {
   screenshotDataUrl?: string;
   errorMessage?: string;
   durationMs?: number;
+  retry?: boolean;
   executedAt: string;
 }
 
@@ -152,20 +153,23 @@ class InMemoryStore {
 
   createStepResult(data: Omit<StepResultRecord, 'id' | 'executedAt'>): StepResultRecord {
     // Upsert: if a step with the same testRunId + stepOrder already exists,
-    // update it in place (e.g. running → passed/failed)
-    const existing = Array.from(this.stepResults.values()).find(
-      sr => sr.testRunId === data.testRunId && sr.stepOrder === data.stepOrder
-    );
+    // update it in place (e.g. running → passed/failed).
+    // Retry steps always create a new record to preserve history.
+    if (!data.retry) {
+      const existing = Array.from(this.stepResults.values()).find(
+        sr => sr.testRunId === data.testRunId && sr.stepOrder === data.stepOrder
+      );
 
-    if (existing) {
-      const updated: StepResultRecord = {
-        ...existing,
-        ...data,
-        id: existing.id,
-        executedAt: new Date().toISOString(),
-      };
-      this.stepResults.set(existing.id, updated);
-      return updated;
+      if (existing) {
+        const updated: StepResultRecord = {
+          ...existing,
+          ...data,
+          id: existing.id,
+          executedAt: new Date().toISOString(),
+        };
+        this.stepResults.set(existing.id, updated);
+        return updated;
+      }
     }
 
     const record: StepResultRecord = {
