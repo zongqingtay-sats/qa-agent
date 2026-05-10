@@ -196,9 +196,10 @@ When a block is selected, the right panel shows:
 #### 3.3.1 Browser Extension Architecture
 
 The browser extension (Chrome/Edge, Manifest V3) consists of:
-- **Popup UI** — Shows connection status and current execution state
-- **Background Service Worker** — Receives test flows from the web app, orchestrates step execution
+- **Popup UI** — Shows connection status, current execution state, progress bar, step count, current step description, and pause/resume/retry/skip controls
+- **Background Service Worker** — Receives test flows from the web app, orchestrates step execution, manages pause/resume state
 - **Content Script** — Injected into the target page, performs DOM interactions (click, type, assert)
+- **Page Scraper** — Content script also supports `SCRAPE_PAGE` message to extract page HTML for AI context
 
 #### 3.3.2 Communication Protocol
 
@@ -214,10 +215,17 @@ Web App ←→ Background Service Worker ←→ Content Script
 | `CONNECT` | Web App → Extension | `{ type: "CONNECT" }` |
 | `CONNECTED` | Extension → Web App | `{ type: "CONNECTED", extensionId }` |
 | `EXECUTE_TEST` | Web App → Extension | `{ type: "EXECUTE_TEST", testFlow }` |
+| `STOP_TEST` | Web App → Extension | `{ type: "STOP_TEST" }` |
+| `SCRAPE_PAGE` | Web App → Extension | `{ type: "SCRAPE_PAGE", url }` |
 | `STEP_START` | Extension → Web App | `{ type: "STEP_START", stepId, blockType }` |
 | `STEP_COMPLETE` | Extension → Web App | `{ type: "STEP_COMPLETE", stepId, screenshot, duration }` |
 | `STEP_ERROR` | Extension → Web App | `{ type: "STEP_ERROR", stepId, error, screenshot }` |
 | `TEST_COMPLETE` | Extension → Web App | `{ type: "TEST_COMPLETE", results }` |
+| `PAUSE_TEST` | Popup → Background | `{ type: "PAUSE_TEST" }` |
+| `RESUME_TEST` | Popup → Background | `{ type: "RESUME_TEST" }` |
+| `RETRY_STEP` | Popup → Background | `{ type: "RETRY_STEP" }` |
+| `GET_STATUS` | Popup → Background | `{ type: "GET_STATUS" }` |
+| `STATUS_UPDATE` | Background → Popup | `{ type: "STATUS_UPDATE", status, ... }` |
 
 #### 3.3.3 Step Execution Model
 
@@ -243,6 +251,25 @@ During execution, the web app displays:
 - Step-by-step log panel with timestamps and screenshots
 - Progress bar showing completed/total steps
 - "Stop" button to abort execution
+
+#### 3.3.5 Extension Popup UI
+
+During execution, the extension popup displays:
+- Connection status with color-coded dot (green=connected, red=disconnected, blue=running)
+- Current test case name
+- Current step description
+- Progress bar with step count (e.g., "Step 3 / 10")
+- **Pause** button — pauses execution before the next step
+- **Resume** button — resumes paused execution
+- **Retry Step** button — retries the current failed step
+- **Skip Step** button — skips the current step and continues
+- Status badge icons on the extension toolbar: ▶ (running), ⏸ (paused), ✕ (failed)
+
+#### 3.3.6 Real-Time Updates
+
+The backend uses Server-Sent Events (SSE) to push real-time updates to the frontend:
+- Test run created/updated events on the `test-runs` channel
+- The frontend subscribes via a `useSSE` hook for live status updates on the test runs listing page
 
 ### 3.4 Result Document Generator (FR-4)
 
@@ -306,10 +333,10 @@ Test Run Report
 ## 4. UI Screen Descriptions
 
 ### 4.1 Dashboard
-- Welcome header with quick stats (total test cases, recent runs, pass rate)
+- Welcome header with quick stats cards (total test cases, total test runs, passed, failed) with muted labels
 - Quick action cards: "Import Tests", "Generate with AI", "Create New Test"
-- Recent test runs table with status
-- Recent test cases list
+- Recent test runs table with status badges
+- Recent test cases list with status and last run info
 
 ### 4.2 Test Case List
 - Table with sortable columns: Name, Project, Status, Last Run Date, Tags
@@ -321,8 +348,10 @@ Test Run Report
 - **Left panel**: Block palette organized by category (Control, Action, Validation, Capture)
 - **Center**: React Flow canvas with blocks and edges
 - **Right panel**: Block properties form (shown when a block is selected)
-- **Top bar**: Test case name, Validate button, Save button, Export dropdown, Run button
-- **Bottom bar**: Minimap, zoom controls, undo/redo
+- **Top bar**: Test case name, Save button (hidden when no changes), Export dropdown, Run button
+- **Collapsible metadata panel**: Description, preconditions, passing criteria, tags (editable inline)
+- **Bottom bar**: Minimap, zoom controls
+- **Dirty-state tracking**: Save button appears only when changes detected via snapshot comparison
 
 ### 4.4 Execution Monitor
 - **Left**: Read-only flow view with real-time block status highlighting
@@ -331,16 +360,32 @@ Test Run Report
 - **Bottom**: Summary stats (completed, passed, failed, running)
 
 ### 4.5 Test Results Page
-- List of past test runs with filter by date/status
+- List of past test runs with search bar (filter by test case name or status)
 - Each row shows: test name, date, duration, pass/fail badge, step count
-- Click to expand/view detailed step results
+- Expandable/collapsible rows with chevron icon — lazy-loads step details inline
+- Checkbox multi-select with bulk action bar: Re-run, Export (JSON/DOCX/PDF)
+- Per-row actions: Re-run button, Export dropdown
 - Export button per run (JSON, DOCX, PDF)
 
 ### 4.6 Test Result Detail
-- Summary card with pass/fail status, duration, environment info
-- Tabbed view: "Steps" (step-by-step table with screenshots) and "Flow" (visual flow with status colors)
-- Each step row: step #, action, target, expected, actual, screenshot thumbnail (click to enlarge), status
-- Export button
+- Summary stat cards: Status, Steps (passed/total), Duration, Date
+- Case Info card with test case name, ID (linked to editor), description, preconditions, passing criteria
+- Step Results table with expandable rows — each row shows: step #, action/block type, status badge, duration, screenshot
+- Expanded step row shows: target/selector, expected result, actual result, error message, full screenshot
+- Re-run button and Export dropdown in page header
+
+### 4.7 Settings Page
+- Extension ID input field with Save button
+- Connection status indicator (connected/disconnected) with "Test Connection" button
+- Backend API URL configuration
+
+### 4.8 AI Generation Page Enhancements
+- Three input tabs: Natural Language, Requirements Document, Source Code
+- **Target URL field** on all tabs with auto-format on blur (prepends `https://` if missing)
+- **Natural Language tab**: URL auto-inference from text input (debounced 600ms)
+- **Infer URL button**: Manual trigger to extract URL from text when auto-inference doesn't fire
+- **Page scraping**: When extension is connected and target URL is provided, scrapes the target page HTML to provide context for AI generation
+- **Navigation refinement**: After initial generation, identifies navigation URLs in generated test cases and scrapes those pages to refine the test steps with real page structure
 
 ---
 

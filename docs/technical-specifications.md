@@ -30,11 +30,26 @@
 | Component | Responsibility |
 |-----------|---------------|
 | **Next.js Frontend** | UI rendering, routing, state management, flow editor, result viewer |
-| **Express.js Backend** | REST API, document parsing, AI integration, export generation, data persistence |
-| **Browser Extension** | DOM interaction on target apps, screenshot capture, step execution |
-| **Azure SQL Server** | Persistent storage for test cases, runs, results, users, projects |
+| **Express.js Backend** | REST API, SSE real-time updates, document parsing, AI integration, export generation, data persistence |
+| **Browser Extension** | DOM interaction on target apps, screenshot capture, step execution, page scraping, pause/resume/retry/skip |
+| **Shared Package** | Shared TypeScript types and utilities between frontend and backend |
+| **Azure SQL Server** | Persistent storage for test cases, runs, results, users, projects (Production) |
 | **Azure Blob Storage** | Screenshot image storage (Production) |
 | **GitHub Copilot Chat API** | AI-powered test case generation and requirement analysis |
+
+### 1.1 Monorepo Structure
+
+The project uses a monorepo with npm workspaces:
+
+```
+qa-agent/
+├── package.json              # Root workspace config
+├── frontend/                 # Next.js 15 frontend
+├── backend/                  # Express.js 5 backend
+├── extension/                # Chrome/Edge extension (vanilla JS, Manifest V3)
+├── shared/                   # Shared types and utilities
+└── docs/                     # Specification documents
+```
 
 ---
 
@@ -61,98 +76,52 @@
 frontend/
 ├── src/
 │   ├── app/                        # Next.js App Router pages
-│   │   ├── layout.tsx              # Root layout
-│   │   ├── page.tsx                # Dashboard
+│   │   ├── layout.tsx              # Root layout with sidebar
+│   │   ├── page.tsx                # Dashboard (redirects to dashboard-page)
+│   │   ├── dashboard-page.tsx      # Dashboard with stats, quick actions, recent items
 │   │   ├── test-cases/
-│   │   │   ├── page.tsx            # Test case list
+│   │   │   ├── page.tsx            # Test case list with search, filters, batch actions
 │   │   │   └── [id]/
-│   │   │       ├── page.tsx        # Test case detail (redirects to editor)
 │   │   │       └── editor/
-│   │   │           └── page.tsx    # Visual flow editor
+│   │   │           └── page.tsx    # Visual flow editor with metadata panel
 │   │   ├── test-runs/
-│   │   │   ├── page.tsx            # Test run history
+│   │   │   ├── page.tsx            # Test run history with search, expandable rows
 │   │   │   └── [id]/
-│   │   │       └── page.tsx        # Test run result detail
+│   │   │       └── page.tsx        # Test run detail with expandable steps, case info
 │   │   ├── import/
-│   │   │   └── page.tsx            # Import test cases
-│   │   └── generate/
-│   │       └── page.tsx            # AI generate test cases
+│   │   │   └── page.tsx            # Import test cases from files
+│   │   ├── generate/
+│   │   │   └── page.tsx            # AI generate (natural language, document, source)
+│   │   └── settings/
+│   │       └── page.tsx            # Extension ID config, connection test
 │   ├── components/
-│   │   ├── ui/                     # shadcn/ui components
+│   │   ├── ui/                     # shadcn/ui components (button, card, table, etc.)
 │   │   ├── layout/
-│   │   │   ├── sidebar.tsx         # App sidebar navigation
-│   │   │   ├── header.tsx          # Top header bar
-│   │   │   └── app-shell.tsx       # Main layout wrapper
-│   │   ├── flow-editor/
-│   │   │   ├── flow-canvas.tsx     # React Flow canvas wrapper
-│   │   │   ├── block-palette.tsx   # Draggable block types panel
-│   │   │   ├── block-properties.tsx # Right panel: selected block config
-│   │   │   ├── nodes/             # Custom React Flow node components
-│   │   │   │   ├── start-node.tsx
-│   │   │   │   ├── end-node.tsx
-│   │   │   │   ├── action-node.tsx
-│   │   │   │   ├── assert-node.tsx
-│   │   │   │   ├── condition-node.tsx
-│   │   │   │   └── wait-node.tsx
-│   │   │   └── edges/
-│   │   │       └── custom-edge.tsx
-│   │   ├── test-cases/
-│   │   │   ├── test-case-table.tsx
-│   │   │   ├── test-case-row.tsx
-│   │   │   └── test-case-filters.tsx
-│   │   ├── execution/
-│   │   │   ├── execution-monitor.tsx
-│   │   │   ├── step-log.tsx
-│   │   │   └── extension-status.tsx
-│   │   └── results/
-│   │       ├── result-summary.tsx
-│   │       ├── step-result-table.tsx
-│   │       └── screenshot-viewer.tsx
+│   │   │   ├── app-sidebar.tsx     # App sidebar navigation with FlaskConical icon
+│   │   │   └── page-header.tsx     # Reusable page header with actions slot
+│   ├── hooks/
+│   │   ├── use-mobile.ts          # Mobile detection hook
+│   │   └── use-sse.ts             # Server-Sent Events hook for real-time updates
 │   ├── lib/
-│   │   ├── api.ts                  # API client (fetch wrapper)
-│   │   ├── extension.ts            # Browser extension communication
-│   │   ├── store.ts                # Zustand stores
-│   │   └── utils.ts                # Utility functions
-│   └── types/
-│       └── index.ts                # Shared TypeScript types
+│   │   ├── api.ts                  # API client (fetch wrapper for all endpoints)
+│   │   ├── extension.ts            # Browser extension communication (ping, scrape, connect)
+│   │   ├── run-test.ts             # Test execution orchestration
+│   │   ├── store.ts                # Client-side storage utilities
+│   │   └── utils.ts                # Utility functions (cn, etc.)
 ├── public/
-├── tailwind.config.ts
 ├── next.config.ts
 ├── tsconfig.json
 └── package.json
 ```
 
-### 2.3 State Management (Zustand)
+### 2.3 State Management
 
-```typescript
-// Key stores:
+The PoC uses React component-level state (`useState`, `useRef`) and local storage rather than a global store (Zustand). Key patterns:
 
-interface FlowEditorStore {
-  nodes: Node[];
-  edges: Edge[];
-  selectedNodeId: string | null;
-  addNode: (type: BlockType, position: XYPosition) => void;
-  updateNode: (id: string, data: Partial<BlockData>) => void;
-  deleteNode: (id: string) => void;
-  setSelectedNode: (id: string | null) => void;
-  onNodesChange: OnNodesChange;
-  onEdgesChange: OnEdgesChange;
-  onConnect: OnConnect;
-  validate: () => ValidationResult;
-  toTestFlow: () => TestFlow;
-  fromTestFlow: (flow: TestFlow) => void;
-}
-
-interface ExecutionStore {
-  status: 'idle' | 'connecting' | 'running' | 'completed' | 'error';
-  currentStepId: string | null;
-  stepResults: StepResult[];
-  extensionConnected: boolean;
-  startExecution: (testFlow: TestFlow) => void;
-  handleStepComplete: (result: StepResult) => void;
-  handleStepError: (error: StepError) => void;
-  stopExecution: () => void;
-}
+- **Flow editor state**: `useNodesState` / `useEdgesState` from `@xyflow/react` for nodes and edges
+- **Dirty-state tracking**: `initialSnapshot` ref compared to current state to show/hide save button
+- **Real-time updates**: `useSSE` custom hook subscribes to SSE channels for live test run updates
+- **Extension communication**: `lib/extension.ts` manages extension ID in local storage, provides `pingExtension()`, `scrapePageViaExtension()`, and connection utilities
 ```
 
 ---
@@ -181,38 +150,29 @@ interface ExecutionStore {
 ```
 backend/
 ├── src/
-│   ├── index.ts                    # Express app entry point
+│   ├── index.ts                    # Express app entry point with SSE support
 │   ├── config/
 │   │   └── index.ts                # Environment configuration
 │   ├── routes/
-│   │   ├── testCases.ts            # /api/test-cases
-│   │   ├── testRuns.ts             # /api/test-runs
+│   │   ├── test-cases.ts           # /api/test-cases
+│   │   ├── test-runs.ts            # /api/test-runs
 │   │   ├── import.ts               # /api/import
 │   │   ├── generate.ts             # /api/generate
 │   │   └── export.ts               # /api/export
-│   ├── controllers/
-│   │   ├── testCaseController.ts
-│   │   ├── testRunController.ts
-│   │   ├── importController.ts
-│   │   ├── generateController.ts
-│   │   └── exportController.ts
 │   ├── services/
-│   │   ├── testCaseService.ts
-│   │   ├── testRunService.ts
-│   │   ├── importService.ts        # Document parsing logic
-│   │   ├── aiService.ts            # Copilot Chat API integration
-│   │   ├── exportService.ts        # JSON/DOCX/PDF generation
-│   │   └── dbService.ts            # Database operations
+│   │   ├── ai-service.ts           # Copilot Chat API integration
+│   │   ├── import-service.ts       # Document parsing (docx, pdf, txt, json)
+│   │   └── export-service.ts       # JSON/DOCX/PDF generation (Aptos font)
 │   ├── middleware/
-│   │   ├── errorHandler.ts
-│   │   ├── validate.ts             # Zod validation middleware
+│   │   ├── error-handler.ts        # Global error handling
 │   │   └── upload.ts               # Multer file upload config
 │   ├── db/
-│   │   ├── connection.ts           # SQL Server connection pool
-│   │   ├── schema.sql              # Database schema DDL
-│   │   └── queries.ts              # Parameterized queries
-│   └── types/
-│       └── index.ts                # Backend-specific types
+│   │   └── store.ts                # In-memory data store (PoC)
+│   ├── copilot/
+│   │   ├── client.ts               # Copilot API client
+│   │   └── types.ts                # Copilot type definitions
+├── scripts/
+│   └── copilot/                    # Copilot integration utility scripts
 ├── tsconfig.json
 └── package.json
 ```
@@ -269,24 +229,17 @@ backend/
 ```
 extension/
 ├── manifest.json                   # Manifest V3
-├── src/
-│   ├── background/
-│   │   └── service-worker.ts       # Background service worker
-│   ├── content/
-│   │   └── content-script.ts       # Injected into target pages
-│   ├── popup/
-│   │   ├── popup.html
-│   │   ├── popup.ts
-│   │   └── popup.css
-│   └── types/
-│       └── messages.ts             # Message type definitions
-├── icons/
-│   ├── icon-16.png
-│   ├── icon-48.png
-│   └── icon-128.png
-├── tsconfig.json
-├── webpack.config.js               # Bundle for extension
-└── package.json
+├── background.js                   # Background service worker (pause/resume/retry/skip)
+├── content-script.js               # Injected into target pages (DOM actions + page scraping)
+├── popup.html                      # Popup UI with progress, controls
+├── popup.js                        # Popup logic (status updates, pause/resume/retry/skip)
+├── readme.md                       # Extension documentation
+└── icons/
+    ├── icon.svg                    # Source SVG (FlaskConical, black stroke, transparent bg)
+    ├── icon-16.png                 # Generated from SVG
+    ├── icon-48.png                 # Generated from SVG
+    ├── icon-128.png                # Generated from SVG
+    └── generate-icons.js           # SVG→PNG conversion script (uses sharp)
 ```
 
 ### 4.2 Manifest V3
@@ -304,18 +257,17 @@ extension/
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background/service-worker.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/content-script.js"],
+      "js": ["content-script.js"],
       "run_at": "document_idle"
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",

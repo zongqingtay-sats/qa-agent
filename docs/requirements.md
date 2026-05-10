@@ -49,6 +49,10 @@ The project is delivered in two phases:
 | FR-1.7 | Generate test cases from application source code files via AI | Should |
 | FR-1.8 | AI-generated test cases must be editable before saving | Must |
 | FR-1.9 | Support batch import of multiple test cases from a single document | Should |
+| FR-1.10 | Scrape target web page via browser extension to provide page context for AI generation | Should |
+| FR-1.11 | Auto-infer target URL from natural language input (debounced) | Should |
+| FR-1.12 | Auto-format manually entered URLs (prepend https:// if missing) | Should |
+| FR-1.13 | After initial generation, refine test cases by scraping navigation target pages | Should |
 
 ### FR-2: Visual Test Flow Editor
 
@@ -64,6 +68,8 @@ The project is delivered in two phases:
 | FR-2.8 | Export test flows to JSON format | Must |
 | FR-2.9 | Export test flows to Word (.docx) format | Must |
 | FR-2.10 | Export test flows to PDF format | Must |
+| FR-2.11 | Support editing test case metadata (description, preconditions, passing criteria, tags) from the editor | Should |
+| FR-2.12 | Save button should be hidden when no changes have been made (dirty-state tracking) | Should |
 
 ### FR-3: Test Execution
 
@@ -73,11 +79,15 @@ The project is delivered in two phases:
 | FR-3.2 | Execute test cases on live web applications via browser automation | Must |
 | FR-3.3 | Use a browser extension (Chrome/Edge) to perform test actions on the target application | Must |
 | FR-3.4 | Capture a screenshot at each test step during execution | Must |
-| FR-3.5 | Display real-time execution progress (current step, status) | Must |
+| FR-3.5 | Display real-time execution progress (current step, status) via SSE | Must |
 | FR-3.6 | On error, highlight the offending block in the flow view | Must |
 | FR-3.7 | On error, halt the entire test flow and report the failure | Must |
 | FR-3.8 | Support running multiple selected test cases sequentially | Should |
 | FR-3.9 | Record step execution time for each step | Should |
+| FR-3.10 | Support pause, resume, retry-step, and skip-step controls during execution | Should |
+| FR-3.11 | Display execution progress in the browser extension popup with progress bar, step count, and current step description | Should |
+| FR-3.12 | Support re-running test cases from the test run listing and detail pages | Should |
+| FR-3.13 | Support multi-select re-run of test runs | Should |
 
 ### FR-4: Result Document Generation
 
@@ -90,6 +100,27 @@ The project is delivered in two phases:
 | FR-4.5 | Export results to PDF format | Must |
 | FR-4.6 | Include timestamp, duration, and environment info in results | Should |
 | FR-4.7 | Include error messages and stack traces for failed steps | Must |
+| FR-4.8 | Test run listing supports expandable/collapsible rows with lazy-loaded step details | Should |
+| FR-4.9 | Test run detail page shows expandable step rows with full detail (target, expected/actual, error, screenshot) | Should |
+| FR-4.10 | Test run listing supports search by test case name or status | Should |
+| FR-4.11 | Test run detail page shows case info card with link to test case editor | Should |
+
+### FR-4A: Dashboard
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-4A.1 | Display quick stats: total test cases, total test runs, passed count, failed count | Must |
+| FR-4A.2 | Provide quick action cards for Import, Generate, and Create New Test | Should |
+| FR-4A.3 | Show recent test runs with status | Should |
+| FR-4A.4 | Show recent test cases list | Should |
+
+### FR-4B: Settings
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-4B.1 | Provide a settings page to configure the browser extension ID | Must |
+| FR-4B.2 | Support connection test (ping) to verify extension connectivity | Must |
+| FR-4B.3 | Persist extension ID in local storage | Must |
 
 ---
 
