@@ -1,32 +1,23 @@
+/**
+ * Test cases list page.
+ *
+ * Displays all test cases in a searchable, selectable table with
+ * bulk actions (run, delete, export) and create/generate buttons.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, Search, Play, Trash2, Download, Sparkles } from "lucide-react";
-import { testCasesApi, testRunsApi, exportApi } from "@/lib/api";
+import { testCasesApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { toast } from "sonner";
+import { TestCaseTable } from "./_components/test-case-table";
 
 export default function TestCasesPage() {
   const router = useRouter();
@@ -35,111 +26,79 @@ export default function TestCasesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadTestCases();
-  }, []);
+  useEffect(() => { loadTestCases(); }, []);
 
-  async function loadTestCases() {
-    try {
-      const res = await testCasesApi.list({ search: search || undefined });
-      setTestCases(res.data);
-    } catch {
-      // API not available
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  /** Reload list whenever search changes (debounced). */
   useEffect(() => {
     const timeout = setTimeout(loadTestCases, 300);
     return () => clearTimeout(timeout);
   }, [search]);
 
-  function toggleSelect(id: string) {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  async function loadTestCases() {
+    try { setTestCases((await testCasesApi.list({ search: search || undefined })).data); }
+    catch { /* API not available */ }
+    finally { setLoading(false); }
   }
 
-  function toggleSelectAll() {
-    if (selected.size === testCases.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(testCases.map(tc => tc.id)));
-    }
+  // ── Selection ──
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
+  function toggleSelectAll() {
+    setSelected(selected.size === testCases.length ? new Set() : new Set(testCases.map((tc) => tc.id)));
+  }
+
+  // ── Single-item actions ──
 
   async function handleDelete(id: string) {
-    try {
-      await testCasesApi.delete(id);
-      toast.success("Test case deleted");
-      loadTestCases();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
+    try { await testCasesApi.delete(id); toast.success("Test case deleted"); loadTestCases(); }
+    catch (err: any) { toast.error(err.message); }
   }
 
-  async function handleExport(id: string, format: 'json' | 'docx' | 'pdf') {
+  async function handleExport(id: string, format: "json" | "docx" | "pdf") {
     try {
       const blob = await exportApi.testCase(id, format);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `test-case.${format}`;
-      a.click();
+      const a = document.createElement("a");
+      a.href = url; a.download = `test-case.${format}`; a.click();
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
+    } catch (err: any) { toast.error(err.message); }
   }
 
-  async function handleExportSelected(format: 'json' | 'docx' | 'pdf') {
+  async function handleRunSingle(id: string) {
+    try { await runTestCase(id); router.push("/test-runs"); }
+    catch (err: any) { toast.error(err.message || "Failed to run test case"); }
+  }
+
+  // ── Bulk actions ──
+
+  async function handleExportSelected(format: "json" | "docx" | "pdf") {
     if (selected.size === 0) return;
-    for (const id of selected) {
-      await handleExport(id, format);
-    }
+    for (const id of selected) await handleExport(id, format);
     toast.success(`Exported ${selected.size} test case(s) as ${format.toUpperCase()}`);
   }
 
   async function handleRunSelected() {
     if (selected.size === 0) return;
     try {
-      for (const testCaseId of selected) {
-        await runTestCase(testCaseId);
-      }
+      for (const id of selected) await runTestCase(id);
       setSelected(new Set());
       router.push("/test-runs");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to run test cases");
-    }
-  }
-
-  async function handleRunSingle(id: string) {
-    try {
-      await runTestCase(id);
-      router.push("/test-runs");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to run test case");
-    }
+    } catch (err: any) { toast.error(err.message || "Failed to run test cases"); }
   }
 
   async function handleDeleteSelected() {
     if (selected.size === 0) return;
     try {
-      for (const id of selected) {
-        await testCasesApi.delete(id);
-      }
+      for (const id of selected) await testCasesApi.delete(id);
       toast.success(`Deleted ${selected.size} test case(s)`);
       setSelected(new Set());
       loadTestCases();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete");
-    }
+    } catch (err: any) { toast.error(err.message || "Failed to delete"); }
   }
 
+  /** Create a new empty test case with the default flow scaffold. */
   async function handleCreateNew() {
     try {
       const res = await testCasesApi.create({
@@ -159,9 +118,7 @@ export default function TestCasesPage() {
         },
       });
       router.push(`/test-cases/${res.data.id}/editor`);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
+    } catch (err: any) { toast.error(err.message); }
   }
 
   return (
@@ -169,141 +126,47 @@ export default function TestCasesPage() {
       <PageHeader
         title="Test Cases"
         description="Manage and run your test cases"
-        actions={<>
-          <Button onClick={handleCreateNew}>
-            <Plus className="h-4 w-4" />
-            Create
-          </Button>
-          <Button onClick={() => router.push("/generate")}>
-            <Sparkles className="h-4 w-4" />
-            Generate
-          </Button>
-        </>
+        actions={
+          <>
+            <Button onClick={handleCreateNew}><Plus className="h-4 w-4" /> Create</Button>
+            <Button onClick={() => router.push("/generate")}><Sparkles className="h-4 w-4" /> Generate</Button>
+          </>
         }
       />
       <div className="flex-1 p-4 space-y-2">
-        {/* Search & Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search test cases..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+            <Input placeholder="Search test cases..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
         </div>
 
         {selected.size > 0 && (
           <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
             <span className="text-sm font-medium">{selected.size} selected</span>
-            <Button variant="outline" onClick={handleRunSelected}>
-              <Play className="h-4 w-4 mr-1" />
-              Run
-            </Button>
-            <Button variant="outline" className="text-destructive" onClick={handleDeleteSelected}>
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete
-            </Button>
+            <Button variant="outline" onClick={handleRunSelected}><Play className="h-4 w-4 mr-1" /> Run</Button>
+            <Button variant="outline" className="text-destructive" onClick={handleDeleteSelected}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
             <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-1" />
-                  Export
-                </Button>
-              } />
+              <DropdownMenuTrigger render={<Button variant="outline"><Download className="h-4 w-4 mr-1" /> Export</Button>} />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExportSelected('json')}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExportSelected('docx')}>Export as DOCX</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExportSelected('pdf')}>Export as PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportSelected("json")}>Export as JSON</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportSelected("docx")}>Export as DOCX</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportSelected("pdf")}>Export as PDF</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         )}
 
-        {/* Table */}
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={testCases.length > 0 && selected.size === testCases.length}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : testCases.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No test cases found. Create one or import from a document.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                testCases.map((tc) => (
-                  <TableRow key={tc.id} className="cursor-pointer" onClick={() => router.push(`/test-cases/${tc.id}/editor`)}>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selected.has(tc.id)}
-                        onCheckedChange={() => toggleSelect(tc.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{tc.name}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={tc.status} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {(tc.tags || []).map((tag: string) => (
-                          <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {new Date(tc.updatedAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Run" onClick={() => handleRunSingle(tc.id)}>
-                          <Play className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Delete" onClick={() => handleDelete(tc.id)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger render={
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Export">
-                              <Download className="h-3 w-3" />
-                            </Button>
-                          } />
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleExport(tc.id, 'json')}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExport(tc.id, 'docx')}>Export as DOCX</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExport(tc.id, 'pdf')}>Export as PDF</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <TestCaseTable
+          testCases={testCases}
+          loading={loading}
+          selected={selected}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAll}
+          onRun={handleRunSingle}
+          onDelete={handleDelete}
+          onExport={handleExport}
+        />
       </div>
     </>
   );
