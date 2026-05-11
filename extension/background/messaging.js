@@ -129,6 +129,19 @@ async function handlePickElement(port, tabId) {
     }
     // Focus the tab so user can interact
     await chrome.tabs.update(targetTabId, { active: true });
+    // Ensure content scripts are injected (no-op if already present)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: targetTabId },
+        files: [
+          'content/utils.js',
+          'content/actions.js',
+          'content/assertions.js',
+          'content/element-picker.js',
+          'content-script.js',
+        ],
+      });
+    } catch { /* already injected or restricted page */ }
     const result = await chrome.tabs.sendMessage(targetTabId, { type: 'PICK_ELEMENT' });
     port.postMessage({ type: 'PICK_ELEMENT_RESULT', ...result });
   } catch (err) {
