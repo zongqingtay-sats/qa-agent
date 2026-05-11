@@ -50,6 +50,18 @@ export function registerListeners() {
         case 'SCRAPE_PAGE':
           await handleScrapePage(port, message.url);
           break;
+
+        case 'PICK_ELEMENT':
+          await handlePickElement(port, message.tabId);
+          break;
+
+        case 'LIST_TABS':
+          await handleListTabs(port);
+          break;
+
+        case 'OPEN_TAB':
+          await handleOpenTab(port, message.url);
+          break;
       }
     });
 
@@ -101,6 +113,60 @@ export function registerListeners() {
 }
 
 // ── Private helpers ────────────────────────────────────────────────
+
+/**
+ * Send PICK_ELEMENT to the active tab's content script and relay the result.
+ * @param {chrome.runtime.Port} port
+ * @param {number} [tabId] - Optional specific tab to target.
+ */
+async function handlePickElement(port, tabId) {
+  try {
+    let targetTabId = tabId;
+    if (!targetTabId) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) throw new Error('No active tab found');
+      targetTabId = tab.id;
+    }
+    // Focus the tab so user can interact
+    await chrome.tabs.update(targetTabId, { active: true });
+    const result = await chrome.tabs.sendMessage(targetTabId, { type: 'PICK_ELEMENT' });
+    port.postMessage({ type: 'PICK_ELEMENT_RESULT', ...result });
+  } catch (err) {
+    port.postMessage({ type: 'PICK_ELEMENT_RESULT', selector: '', error: err.message });
+  }
+}
+
+/**
+ * Return a list of open browser tabs to the web app.
+ * @param {chrome.runtime.Port} port
+ */
+async function handleListTabs(port) {
+  try {
+    const tabs = await chrome.tabs.query({});
+    const list = tabs
+      .filter((t) => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'))
+      .map((t) => ({ id: t.id, title: t.title, url: t.url, favIconUrl: t.favIconUrl, active: t.active }));
+    port.postMessage({ type: 'LIST_TABS_RESULT', tabs: list });
+  } catch (err) {
+    port.postMessage({ type: 'LIST_TABS_RESULT', tabs: [], error: err.message });
+  }
+}
+
+/**
+ * Open a new tab with the given URL and return its id.
+ * @param {chrome.runtime.Port} port
+ * @param {string} url
+ */
+async function handleOpenTab(port, url) {
+  try {
+    const tab = await chrome.tabs.create({ url, active: true });
+    // Wait a moment for the page to start loading
+    await new Promise((r) => setTimeout(r, 1500));
+    port.postMessage({ type: 'OPEN_TAB_RESULT', tabId: tab.id });
+  } catch (err) {
+    port.postMessage({ type: 'OPEN_TAB_RESULT', error: err.message });
+  }
+}
 
 /**
  * Build the status payload by reading directly from state.

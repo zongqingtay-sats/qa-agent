@@ -20,6 +20,7 @@
         "content/utils.js",
         "content/actions.js",
         "content/assertions.js",
+        "content/element-picker.js",
         "content-script.js"
       ],
       "run_at": "document_idle"

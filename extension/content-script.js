@@ -11,6 +11,12 @@
  */
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  // ── Element picker (used by the editor) ──
+  if (message.type === 'PICK_ELEMENT') {
+    pickElement().then((result) => sendResponse(result));
+    return true; // keep channel open for async response
+  }
+
   // ── Page scraping (used by the generate flow) ──
   if (message.type === 'SCRAPE_PAGE') {
     try {

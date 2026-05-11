@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Node } from "@xyflow/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Crosshair, Loader2, ExternalLink, Globe } from "lucide-react";
 import { getBlockConfig } from "./block-config";
+import { formatUrl } from "@/app/generate/_lib/url-utils";
+import {
+  getExtensionId,
+  pickElementViaExtension,
+  listTabsViaExtension,
+  openTabViaExtension,
+  type BrowserTab,
+} from "@/lib/extension";
+import { toast } from "sonner";
 
 interface BlockPropertiesPanelProps {
   /** The currently selected node, or `null` when nothing is selected. */
@@ -37,7 +49,143 @@ interface BlockPropertiesPanelProps {
  * @param props.onUpdate - Called with `(nodeId, newData)` on every field change.
  * @param props.onDelete - Called with `(nodeId)` when the delete button is clicked.
  */
+
+/** Reusable CSS selector field with textarea + element picker dialog. */
+function SelectorField({ value, onChange, picking, setPicking, placeholder }: {
+  value: string; onChange: (v: string) => void;
+  picking: boolean; setPicking: (v: boolean) => void;
+  placeholder?: string;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tabs, setTabs] = useState<BrowserTab[]>([]);
+  const [loadingTabs, setLoadingTabs] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
+  const [selectedTabId, setSelectedTabId] = useState<number | null>(null);
+
+  /** Open the dialog and fetch available tabs. */
+  async function openPicker() {
+    const extId = getExtensionId();
+    if (!extId) { toast.error("Connect the browser extension first (Settings page)"); return; }
+    setDialogOpen(true);
+    setLoadingTabs(true);
+    setManualUrl("");
+    setSelectedTabId(null);
+    try {
+      const result = await listTabsViaExtension(extId);
+      if (result.error) toast.error(result.error);
+      setTabs(result.tabs);
+    } finally { setLoadingTabs(false); }
+  }
+
+  /** Navigate to the chosen tab (or open a new one) then start picking. */
+  async function handleGo() {
+    const extId = getExtensionId();
+    if (!extId) return;
+
+    setDialogOpen(false);
+    setPicking(true);
+
+    try {
+      let tabId = selectedTabId ?? undefined;
+
+      // If user typed a manual URL, open a new tab for it
+      if (manualUrl.trim()) {
+        const url = formatUrl(manualUrl);
+        const res = await openTabViaExtension(extId, url);
+        if (res.error) { toast.error(res.error); return; }
+        tabId = res.tabId;
+      }
+
+      const result = await pickElementViaExtension(extId, tabId);
+      if (result.error) { toast.error(result.error); }
+      else if (result.selector) { onChange(result.selector); toast.success("Selector captured"); }
+    } finally { setPicking(false); }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">CSS Selector</Label>
+      <div className="flex gap-1 items-start">
+        <Textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-mono text-xs flex-1 min-h-9 resize-y" rows={1} />
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0 h-9 w-9 mt-0"
+          disabled={picking}
+          title="Pick element from page"
+          onClick={openPicker}
+        >
+          {picking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Target Page</DialogTitle>
+          </DialogHeader>
+
+          {/* Tab list */}
+          <div className="space-y-1 max-h-56 overflow-y-auto">
+            {loadingTabs ? (
+              <div className="flex items-center justify-center py-4 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading tabs…
+              </div>
+            ) : tabs.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">No browser tabs found.</p>
+            ) : (
+              tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => { setSelectedTabId(tab.id); setManualUrl(""); }}
+                  className={`cursor-pointer w-full flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+                    selectedTabId === tab.id ? "bg-accent" : ""
+                  }`}
+                >
+                  {tab.favIconUrl ? (
+                    <img src={tab.favIconUrl} alt="" className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{tab.title || "Untitled"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{tab.url}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Manual URL */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Or enter a URL</Label>
+            <Input
+              value={manualUrl}
+              onChange={(e) => { setManualUrl(e.target.value); setSelectedTabId(null); }}
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={!selectedTabId && !manualUrl.trim()}
+            onClick={handleGo}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            {manualUrl.trim() ? "Open & Pick Element" : "Go to Tab & Pick Element"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockPropertiesPanelProps) {
+  const [picking, setPicking] = useState(false);
+
   if (!node) {
     return (
       <div className="w-72 border-l bg-muted/30 p-4 flex items-center justify-center">
@@ -92,15 +240,12 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
         {blockType === "navigate" && (
           <div className="space-y-1.5">
             <Label className="text-xs">URL</Label>
-            <Input value={data.url || ""} onChange={(e) => update("url", e.target.value)} placeholder="/page or https://..." />
+            <Input value={data.url || ""} onChange={(e) => update("url", e.target.value)} onBlur={(e) => { const f = formatUrl(e.target.value); if (f !== e.target.value) update("url", f); }} placeholder="/page or https://..." />
           </div>
         )}
 
         {(blockType === "click" || blockType === "type" || blockType === "select" || blockType === "hover" || blockType === "scroll") && (
-          <div className="space-y-1.5">
-            <Label className="text-xs">CSS Selector</Label>
-            <Input value={data.selector || ""} onChange={(e) => update("selector", e.target.value)} placeholder='button.submit, #login-form, [data-testid="..."]' className="font-mono text-xs" />
-          </div>
+          <SelectorField value={data.selector || ""} onChange={(v) => update("selector", v)} picking={picking} setPicking={setPicking} placeholder='button.submit, #login-form, [data-testid="..."]' />
         )}
 
         {blockType === "click" && (
@@ -180,10 +325,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
 
         {blockType === "assert" && (
           <>
-            <div className="space-y-1.5">
-              <Label className="text-xs">CSS Selector</Label>
-              <Input value={data.selector || ""} onChange={(e) => update("selector", e.target.value)} placeholder="Element to assert on" className="font-mono text-xs" />
-            </div>
+            <SelectorField value={data.selector || ""} onChange={(v) => update("selector", v)} picking={picking} setPicking={setPicking} placeholder="Element to assert on" />
             <div className="space-y-1.5">
               <Label className="text-xs">Assertion Type</Label>
               <Select value={data.assertionType || "element-exists"} onValueChange={(v) => update("assertionType", v)}>
