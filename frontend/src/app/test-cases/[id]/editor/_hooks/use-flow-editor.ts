@@ -20,6 +20,7 @@ import {
   type OnConnect,
   type Node,
   type Edge,
+  getConnectedEdges,
 } from "@xyflow/react";
 import { toast } from "sonner";
 
@@ -65,6 +66,150 @@ export function useFlowEditor(testCaseId: string) {
     startedAt: string;
     stepResults: any[];
   } | null>(null);
+
+  // ── Undo / Redo history ──
+  type Snapshot = { nodes: Node[]; edges: Edge[] };
+  const undoStack = useRef<Snapshot[]>([]);
+  const redoStack = useRef<Snapshot[]>([]);
+  const isUndoRedo = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  /** Push current state onto the undo stack (call before mutations). */
+  const pushUndo = useCallback(() => {
+    undoStack.current.push({ nodes: structuredClone(nodes), edges: structuredClone(edges) });
+    if (undoStack.current.length > 50) undoStack.current.shift(); // cap history
+    redoStack.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
+  }, [nodes, edges]);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const prev = undoStack.current.pop()!;
+    redoStack.current.push({ nodes: structuredClone(nodes), edges: structuredClone(edges) });
+    isUndoRedo.current = true;
+    setNodes(prev.nodes);
+    setEdges(prev.edges);
+    setCanUndo(undoStack.current.length > 0);
+    setCanRedo(true);
+  }, [nodes, edges, setNodes, setEdges]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    const next = redoStack.current.pop()!;
+    undoStack.current.push({ nodes: structuredClone(nodes), edges: structuredClone(edges) });
+    isUndoRedo.current = true;
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    setCanUndo(true);
+    setCanRedo(redoStack.current.length > 0);
+  }, [nodes, edges, setNodes, setEdges]);
+
+  // ── Clipboard (copy / cut / paste) ──
+  const clipboard = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
+
+  const handleCopy = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected);
+    if (selected.length === 0) return;
+    const selectedIds = new Set(selected.map((n) => n.id));
+    const connectedEdges = edges.filter((e) => selectedIds.has(e.source) && selectedIds.has(e.target));
+    clipboard.current = { nodes: structuredClone(selected), edges: structuredClone(connectedEdges) };
+    toast.success(`Copied ${selected.length} block(s)`);
+  }, [nodes, edges]);
+
+  const handleCut = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected);
+    if (selected.length === 0) return;
+    pushUndo();
+    const selectedIds = new Set(selected.map((n) => n.id));
+    const connectedEdges = edges.filter((e) => selectedIds.has(e.source) && selectedIds.has(e.target));
+    clipboard.current = { nodes: structuredClone(selected), edges: structuredClone(connectedEdges) };
+    setNodes((nds) => nds.filter((n) => !n.selected));
+    setEdges((eds) => eds.filter((e) => !selectedIds.has(e.source) && !selectedIds.has(e.target)));
+    setSelectedNode(null);
+    toast.success(`Cut ${selected.length} block(s)`);
+  }, [nodes, edges, pushUndo, setNodes, setEdges]);
+
+  const handlePaste = useCallback(() => {
+    if (!clipboard.current || clipboard.current.nodes.length === 0) return;
+    pushUndo();
+    const offset = 40;
+    const idMap = new Map<string, string>();
+    const newNodes = clipboard.current.nodes.map((n) => {
+      const newId = `${n.data?.blockType || "node"}-${++nodeIdCounter}`;
+      idMap.set(n.id, newId);
+      return {
+        ...n,
+        id: newId,
+        position: { x: n.position.x + offset, y: n.position.y + offset },
+        selected: true,
+      };
+    });
+    const newEdges = clipboard.current.edges.map((e) => ({
+      ...e,
+      id: `e-${idMap.get(e.source)}-${idMap.get(e.target)}`,
+      source: idMap.get(e.source) || e.source,
+      target: idMap.get(e.target) || e.target,
+    }));
+    // Deselect existing nodes
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
+    setEdges((eds) => [...eds, ...newEdges]);
+    toast.success(`Pasted ${newNodes.length} block(s)`);
+  }, [pushUndo, setNodes, setEdges]);
+
+  // ── Track node/edge changes for undo ──
+  // Capture a snapshot at the START of a drag/batch, then ignore further
+  // changes until 300ms of inactivity (i.e. the drag has ended).
+  const changeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSnap = useRef<Snapshot | null>(null);
+
+  const flushPendingSnap = useCallback(() => {
+    if (pendingSnap.current) {
+      undoStack.current.push(pendingSnap.current);
+      if (undoStack.current.length > 50) undoStack.current.shift();
+      redoStack.current = [];
+      setCanUndo(true);
+      setCanRedo(false);
+      pendingSnap.current = null;
+    }
+  }, []);
+
+  const wrappedOnNodesChange: typeof onNodesChange = useCallback(
+    (changes) => {
+      const isSubstantive = changes.some(
+        (c: any) => c.type !== "select" && c.type !== "dimensions"
+      );
+      if (isSubstantive && !isUndoRedo.current) {
+        // Only capture the snapshot once at the start of the gesture
+        if (!pendingSnap.current) {
+          pendingSnap.current = { nodes: structuredClone(nodes), edges: structuredClone(edges) };
+        }
+        // Reset the debounce timer — flush when idle for 300ms
+        if (changeTimer.current) clearTimeout(changeTimer.current);
+        changeTimer.current = setTimeout(flushPendingSnap, 300);
+      }
+      isUndoRedo.current = false;
+      onNodesChange(changes);
+    },
+    [nodes, edges, onNodesChange, flushPendingSnap]
+  );
+
+  const wrappedOnEdgesChange: typeof onEdgesChange = useCallback(
+    (changes) => {
+      const isSubstantive = changes.some((c: any) => c.type !== "select");
+      if (isSubstantive && !isUndoRedo.current) {
+        if (!pendingSnap.current) {
+          pendingSnap.current = { nodes: structuredClone(nodes), edges: structuredClone(edges) };
+        }
+        if (changeTimer.current) clearTimeout(changeTimer.current);
+        changeTimer.current = setTimeout(flushPendingSnap, 300);
+      }
+      isUndoRedo.current = false;
+      onEdgesChange(changes);
+    },
+    [nodes, edges, onEdgesChange, flushPendingSnap]
+  );
 
   /** Snapshot taken immediately after load so we can detect unsaved changes. */
   const initialSnapshot = useRef<string>("");
@@ -168,6 +313,47 @@ export function useFlowEditor(testCaseId: string) {
     testCasePassingCriteria, testCaseTags, nodes, edges,
   });
   const hasChanges = loaded && initialSnapshot.current !== "" && currentSnapshot !== initialSnapshot.current;
+
+  // ── Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+S) ──
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      // Don't intercept when typing in inputs/textareas
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (!ctrl) return;
+
+      switch (e.key.toLowerCase()) {
+        case "z":
+          if (e.shiftKey) { handleRedo(); } else { handleUndo(); }
+          e.preventDefault();
+          break;
+        case "y":
+          handleRedo();
+          e.preventDefault();
+          break;
+        case "c":
+          handleCopy();
+          e.preventDefault();
+          break;
+        case "x":
+          handleCut();
+          e.preventDefault();
+          break;
+        case "v":
+          handlePaste();
+          e.preventDefault();
+          break;
+        case "s":
+          handleSave();
+          e.preventDefault();
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste]);
 
   // ── ReactFlow event handlers ──
 
@@ -434,9 +620,14 @@ export function useFlowEditor(testCaseId: string) {
     reactFlowWrapper,
     // Flow state
     nodes, edges, selectedNode,
-    onNodesChange, onEdgesChange, onConnect,
+    onNodesChange: wrappedOnNodesChange,
+    onEdgesChange: wrappedOnEdgesChange,
+    onConnect,
     onNodeClick, onPaneClick, onDragOver, onDrop,
     updateNodeData, deleteNode,
+    // Undo / Redo / Clipboard
+    canUndo, canRedo, handleUndo, handleRedo,
+    handleCopy, handleCut, handlePaste,
     // Metadata
     testCaseName, setTestCaseName,
     testCaseDescription, setTestCaseDescription,

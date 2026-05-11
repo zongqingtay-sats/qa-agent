@@ -64,12 +64,16 @@ function FlowEditorInner() {
             refining={editor.refining}
             running={editor.running}
             hasChanges={editor.hasChanges}
+            canUndo={editor.canUndo}
+            canRedo={editor.canRedo}
             onValidate={editor.handleValidate}
             onRefine={editor.handleRefine}
             onRun={editor.handleRun}
             onSave={editor.handleSave}
             onDelete={editor.handleDelete}
             onExport={editor.handleExport}
+            onUndo={editor.handleUndo}
+            onRedo={editor.handleRedo}
           />
         }
       />

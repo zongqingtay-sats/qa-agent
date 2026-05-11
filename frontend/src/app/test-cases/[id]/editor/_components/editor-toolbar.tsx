@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Save, Play, Download, Trash2, ListChecks, Sparkles, Loader2 } from "lucide-react";
+import { Save, Play, Download, Trash2, ListChecks, Sparkles, Loader2, Undo2, Redo2 } from "lucide-react";
 
 interface EditorToolbarProps {
   /** Whether the flow is currently being saved. */
@@ -25,6 +25,10 @@ interface EditorToolbarProps {
   running: boolean;
   /** Whether there are unsaved changes (shows the Save button). */
   hasChanges: boolean;
+  /** Whether undo is available. */
+  canUndo: boolean;
+  /** Whether redo is available. */
+  canRedo: boolean;
   /** Callbacks for each toolbar action. */
   onValidate: () => void;
   onRefine: () => void;
@@ -32,6 +36,8 @@ interface EditorToolbarProps {
   onSave: () => void;
   onDelete: () => void;
   onExport: (format: "json" | "docx" | "pdf") => void;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 /**
@@ -40,11 +46,19 @@ interface EditorToolbarProps {
  * @param props - Button states and action callbacks.
  */
 export function EditorToolbar({
-  saving, refining, running, hasChanges,
-  onValidate, onRefine, onRun, onSave, onDelete, onExport,
+  saving, refining, running, hasChanges, canUndo, canRedo,
+  onValidate, onRefine, onRun, onSave, onDelete, onExport, onUndo, onRedo,
 }: EditorToolbarProps) {
   return (
     <div className="flex items-center gap-2">
+      <div className="flex items-center gap-0.5 mr-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+          <Undo2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+          <Redo2 className="h-4 w-4" />
+        </Button>
+      </div>
       <Button variant="outline" onClick={onValidate}>
         <ListChecks className="h-4 w-4 mr-1" /> Validate
       </Button>
