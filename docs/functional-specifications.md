@@ -184,8 +184,50 @@ When a block is selected, the right panel shows:
 | If-Else blocks must have both true and false edges | Warning |
 | CSS selectors should be non-empty for action blocks | Error |
 | Navigate blocks must have a valid URL | Error |
+| Multiple edges connected to the same handle | Warning |
 
-#### 3.2.5 Export Formats
+#### 3.2.5 Undo/Redo System
+
+- **Undo stack**: Captures snapshots of nodes + edges (max 50 entries)
+- **Redo stack**: Populated when undo is triggered, cleared on new edits
+- **Debounced drag grouping**: Node drag operations are grouped into a single undo entry (300ms debounce) to prevent flooding the stack with per-pixel moves
+- **Keyboard shortcuts**: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo)
+- **Toolbar buttons**: Undo/Redo buttons with disabled state based on stack availability
+
+#### 3.2.6 Copy/Cut/Paste
+
+- **Copy (Ctrl+C)**: Stores selected nodes in an in-memory clipboard with relative positions
+- **Cut (Ctrl+X)**: Copies selected nodes then deletes them from the canvas
+- **Paste (Ctrl+V)**: Inserts clipboard nodes at an offset position with new IDs; strips `executionStatus` from pasted nodes to avoid stale highlights
+- Internal edges between copied nodes are preserved
+
+#### 3.2.7 Element Picker
+
+Allows users to interactively select CSS selectors from the target web page:
+
+1. User clicks the crosshair icon next to a CSS selector field in the properties panel
+2. A dialog opens showing available browser tabs (fetched from extension via `LIST_TABS` message)
+3. User selects a tab or enters a URL manually and clicks "Go & Pick"
+4. Extension injects the element picker content script into the target tab
+5. User hovers over elements (blue outline highlight) and clicks to select
+6. Extension builds an optimal CSS selector (prefers `data-testid` → `id` → unique classes → `nth-of-type` path)
+7. Selected selector is returned to the dialog and applied to the field
+
+#### 3.2.8 Last Run Panel
+
+A collapsible panel below the metadata panel in the editor showing:
+- Last run ID (clickable link to test run detail page)
+- Status badge (passed/failed/running)
+- Error message (collapsed by default)
+- When a node is selected: step detail and screenshot for that node from the last run
+- On page load: automatically fetches the most recent run and applies highlight colors (green=passed, red=failed, blue=running) to flow blocks
+
+#### 3.2.9 Save Shortcut
+
+- **Ctrl+S**: Triggers save when the flow is dirty (prevents browser default save dialog)
+- Save button is hidden when no unsaved changes exist (dirty-state via snapshot comparison)
+
+#### 3.2.10 Export Formats
 
 - **JSON** — Full test flow data including block positions, edges, and properties
 - **DOCX** — Formatted document with test case name, description, numbered steps, and passing criteria

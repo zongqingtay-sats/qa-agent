@@ -122,6 +122,52 @@ The project is delivered in two phases:
 | FR-4B.2 | Support connection test (ping) to verify extension connectivity | Must |
 | FR-4B.3 | Persist extension ID in local storage | Must |
 
+### FR-2A: Visual Editor — Additional Features (Implemented Beyond PoC Scope)
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-2A.1 | Support copy/cut/paste of selected blocks via Ctrl+C/X/V with position offset | Implemented | ✅ Done |
+| FR-2A.2 | Ctrl+S keyboard shortcut to save test flow | Implemented | ✅ Done |
+| FR-2A.3 | Single-edge-per-handle validation (warn when multiple edges connect to same handle) | Implemented | ✅ Done |
+| FR-2A.4 | Element picker: select CSS selectors interactively from the target page via browser extension | Implemented | ✅ Done |
+| FR-2A.5 | Element picker dialog with browser tab list and manual URL input | Implemented | ✅ Done |
+| FR-2A.6 | Last run panel in editor showing most recent run status, error, and step screenshots | Implemented | ✅ Done |
+| FR-2A.7 | Collapsible metadata panel with inline editing | Implemented | ✅ Done |
+
+---
+
+## 3A. PoC Implementation Status
+
+### Must Requirements — All Complete ✅
+
+All PoC "Must" priority requirements (FR-1.1–1.6, FR-1.8, FR-2.1–2.4, FR-2.7–2.10, FR-3.1–3.7, FR-4.1–4.5, FR-4.7, FR-4A.1, FR-4B.1–4B.3) have been implemented.
+
+### Should Requirements — Completed
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-2.5 | Minimap on canvas | ✅ Done |
+| FR-2.6 | Undo/redo operations | ✅ Done |
+| FR-2.11 | Edit metadata from editor | ✅ Done |
+| FR-2.12 | Dirty-state tracking (hide save when clean) | ✅ Done |
+| FR-3.12 | Re-running test cases from listing/detail | ✅ Done |
+| FR-4.8 | Expandable/collapsible rows with lazy-loaded steps | ✅ Done |
+| FR-4.9 | Test run detail expandable step rows | ✅ Done |
+| FR-4.10 | Search by test case name or status | ✅ Done |
+| FR-4.11 | Test run detail case info card with link to editor | ✅ Done |
+| FR-4A.2 | Quick action cards on dashboard | ✅ Done |
+| FR-4A.3 | Recent test runs on dashboard | ✅ Done |
+| FR-4A.4 | Recent test cases on dashboard | ✅ Done |
+
+### Should Requirements — Remaining
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-1.9 | Batch import multiple test cases from single document | ❌ Not started |
+| FR-3.10 | Skip-step control during execution | ❌ Not started |
+| FR-3.13 | Multi-select re-run of test runs | ❌ Not started |
+| FR-4.6 | Timestamp/duration/environment in exported results | ❌ Not started |
+
 ---
 
 ## 4. Production Functional Requirements

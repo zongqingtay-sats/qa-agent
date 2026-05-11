@@ -121,7 +121,35 @@ The PoC uses React component-level state (`useState`, `useRef`) and local storag
 - **Flow editor state**: `useNodesState` / `useEdgesState` from `@xyflow/react` for nodes and edges
 - **Dirty-state tracking**: `initialSnapshot` ref compared to current state to show/hide save button
 - **Real-time updates**: `useSSE` custom hook subscribes to SSE channels for live test run updates
-- **Extension communication**: `lib/extension.ts` manages extension ID in local storage, provides `pingExtension()`, `scrapePageViaExtension()`, and connection utilities
+- **Extension communication**: `lib/extension.ts` manages extension ID in local storage, provides `pingExtension()`, `scrapePageViaExtension()`, `pickElementViaExtension()`, `listTabsViaExtension()`, and connection utilities
+
+### 2.4 Flow Editor Architecture
+
+The flow editor (`test-cases/[id]/editor/`) is modularized into:
+
+```
+editor/
+├── page.tsx                    # Page component (loads test case, renders editor)
+├── _hooks/
+│   └── use-flow-editor.ts     # Main editor hook (~670 lines)
+├── _components/
+│   ├── editor-toolbar.tsx      # Toolbar (save, export, run, undo/redo buttons)
+│   ├── flow-block-node.tsx     # Custom node component with execution highlights
+│   ├── block-palette.tsx       # Left panel with draggable block types
+│   ├── block-properties-panel.tsx  # Right panel with property form + element picker
+│   ├── metadata-panel.tsx      # Collapsible metadata (description, preconditions, tags)
+│   └── last-run-panel.tsx      # Collapsible last run status + step detail
+├── _lib/
+│   └── flow-validation.ts     # Validation rules (9 rules, errors + warnings)
+```
+
+**`use-flow-editor` hook manages:**
+- Undo/redo stacks (50-entry cap, 300ms debounce for drag grouping)
+- Clipboard (copy/cut/paste with `executionStatus` stripping)
+- Keyboard shortcuts (Ctrl+Z/Y/C/X/V/S)
+- Single-edge-per-handle validation in `onConnect`
+- Last run loading on mount with node execution status highlighting
+- Dirty-state comparison via JSON snapshot
 ```
 
 ---
@@ -302,6 +330,40 @@ Background Service Worker
     │ chrome.runtime.sendMessage() → back to web app
     ▼
 Web App (receives step result + screenshot)
+```
+
+### 4.3A Additional Extension Messages (Element Picker)
+
+| Message | Direction | Payload |
+|---------|-----------|---------|
+| `LIST_TABS` | Web App → Extension | `{ type: "LIST_TABS" }` |
+| `OPEN_TAB` | Web App → Extension | `{ type: "OPEN_TAB", url }` |
+| `PICK_ELEMENT` | Web App → Extension | `{ type: "PICK_ELEMENT", tabId }` |
+| `ELEMENT_PICKED` | Extension → Web App | `{ type: "ELEMENT_PICKED", selector }` |
+
+**Element Picker Content Script (`content/element-picker.js`):**
+- Injected on demand into target tab via `chrome.scripting.executeScript`
+- Creates a full-page overlay with blue outline highlight on hovered elements
+- Displays a fixed banner ("Click an element to pick its selector — Esc to cancel")
+- On click: builds an optimal CSS selector (priority: `data-testid` → `id` → unique class combination → `nth-of-type` path)
+- Sends result back via `chrome.runtime.sendMessage`
+
+### 4.3B Extension Project Structure (Updated)
+
+```
+extension/
+├── manifest.json
+├── background.js               # Main service worker (imports from background/)
+├── background/
+│   ├── messaging.js            # External message handlers (LIST_TABS, OPEN_TAB, PICK_ELEMENT, EXECUTE_TEST, etc.)
+│   ├── execution.js            # Test execution orchestration
+│   └── state.js                # Execution state management
+├── content-script.js           # Main content script (DOM actions + scraping)
+├── content/
+│   └── element-picker.js       # Interactive element picker overlay
+├── popup.html
+├── popup.js
+└── icons/
 ```
 
 ### 4.4 Content Script Actions
