@@ -84,6 +84,7 @@ router.post('/test-run/:id', async (req: Request, res: Response) => {
     startedAt: testRun.startedAt,
     completedAt: testRun.completedAt,
     durationMs: testRun.durationMs,
+    environment: testRun.environment,
     totalSteps: testRun.totalSteps,
     passedSteps: testRun.passedSteps,
     failedSteps: testRun.failedSteps,

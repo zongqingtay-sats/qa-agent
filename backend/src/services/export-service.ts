@@ -23,6 +23,7 @@ interface ExportTestRun {
   startedAt: string;
   completedAt?: string;
   durationMs?: number;
+  environment?: string;
   totalSteps: number;
   passedSteps: number;
   failedSteps: number;
@@ -79,10 +80,29 @@ export async function exportTestRunToDocx(data: ExportTestRun): Promise<Buffer> 
   }));
 
   children.push(new Paragraph({ children: [new TextRun({ text: `Date: ${new Date(data.startedAt).toLocaleString()}` })] }));
+  if (data.completedAt) {
+    children.push(new Paragraph({ children: [new TextRun({ text: `Completed: ${new Date(data.completedAt).toLocaleString()}` })] }));
+  }
   if (data.durationMs) {
     children.push(new Paragraph({ children: [new TextRun({ text: `Duration: ${(data.durationMs / 1000).toFixed(1)}s` })] }));
   }
   children.push(new Paragraph({ children: [new TextRun({ text: `Steps: ${data.passedSteps}/${data.totalSteps} passed` })] }));
+  if (data.environment) {
+    try {
+      const env = JSON.parse(data.environment);
+      const envParts: string[] = [];
+      if (env.browser) envParts.push(`Browser: ${env.browser}`);
+      if (env.url) envParts.push(`URL: ${env.url}`);
+      if (env.userAgent) envParts.push(`User Agent: ${env.userAgent}`);
+      if (envParts.length > 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: `Environment: ${envParts.join(' | ')}` })] }));
+      } else {
+        children.push(new Paragraph({ children: [new TextRun({ text: `Environment: ${data.environment}` })] }));
+      }
+    } catch {
+      children.push(new Paragraph({ children: [new TextRun({ text: `Environment: ${data.environment}` })] }));
+    }
+  }
 
   children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
 
@@ -124,6 +144,9 @@ export async function exportTestRunToDocx(data: ExportTestRun): Promise<Buffer> 
     }
     if (step.errorMessage) {
       children.push(new Paragraph({ children: [new TextRun({ text: `Error: ${step.errorMessage}`, color: 'ef4444' })] }));
+    }
+    if (step.durationMs != null) {
+      children.push(new Paragraph({ children: [new TextRun({ text: `Duration: ${step.durationMs}ms`, italics: true, color: '6b7280' })] }));
     }
 
     // Embed screenshot if available
@@ -239,8 +262,21 @@ export function exportTestRunToPdf(data: ExportTestRun): Promise<Buffer> {
       // Summary
       doc.fontSize(10).font('Helvetica');
       doc.text(`Date: ${new Date(data.startedAt).toLocaleString()}`);
+      if (data.completedAt) doc.text(`Completed: ${new Date(data.completedAt).toLocaleString()}`);
       if (data.durationMs) doc.text(`Duration: ${(data.durationMs / 1000).toFixed(1)}s`);
       doc.text(`Steps: ${data.passedSteps}/${data.totalSteps} passed`);
+      if (data.environment) {
+        try {
+          const env = JSON.parse(data.environment);
+          const envParts: string[] = [];
+          if (env.browser) envParts.push(`Browser: ${env.browser}`);
+          if (env.url) envParts.push(`URL: ${env.url}`);
+          if (env.userAgent) envParts.push(`User Agent: ${env.userAgent}`);
+          doc.text(envParts.length > 0 ? `Environment: ${envParts.join(' | ')}` : `Environment: ${data.environment}`);
+        } catch {
+          doc.text(`Environment: ${data.environment}`);
+        }
+      }
       doc.moveDown(1);
 
       // Description
@@ -272,6 +308,7 @@ export function exportTestRunToPdf(data: ExportTestRun): Promise<Buffer> {
         if (step.expectedResult) doc.text(`Expected: ${step.expectedResult}`);
         if (step.actualResult) doc.text(`Actual: ${step.actualResult}`);
         if (step.errorMessage) doc.fillColor('#ef4444').text(`Error: ${step.errorMessage}`).fillColor('#000000');
+        if (step.durationMs != null) doc.fillColor('#6b7280').text(`Duration: ${step.durationMs}ms`).fillColor('#000000');
 
         // Embed screenshot
         if (step.screenshotDataUrl) {

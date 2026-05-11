@@ -163,10 +163,10 @@ All PoC "Must" priority requirements (FR-1.1–1.6, FR-1.8, FR-2.1–2.4, FR-2.7
 
 | ID | Requirement | Status |
 |----|-------------|--------|
-| FR-1.9 | Batch import multiple test cases from single document | ❌ Not started |
+| FR-1.9 | Batch import multiple test cases from single document | ✅ Done |
 | FR-3.10 | Skip-step control during execution | ❌ Not started |
 | FR-3.13 | Multi-select re-run of test runs | ❌ Not started |
-| FR-4.6 | Timestamp/duration/environment in exported results | ❌ Not started |
+| FR-4.6 | Timestamp/duration/environment in exported results | ✅ Done |
 
 ---
 

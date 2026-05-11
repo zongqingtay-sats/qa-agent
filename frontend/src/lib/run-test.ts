@@ -88,6 +88,12 @@ export async function runTestCase(testCaseId: string): Promise<void> {
           totalSteps: nonRetrySteps.length || undefined,
           passedSteps: nonRetrySteps.length ? passedSteps : undefined,
           failedSteps: nonRetrySteps.length ? failedSteps : undefined,
+          environment: JSON.stringify({
+            browser: navigator.userAgent.includes('Edg/') ? 'Edge' : 'Chrome',
+            url: baseUrl,
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString(),
+          }),
         });
       } catch {
         toast.error(`Failed to save results for "${testCase.name}"`);
