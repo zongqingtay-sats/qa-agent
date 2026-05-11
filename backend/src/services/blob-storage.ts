@@ -48,7 +48,8 @@ export async function uploadScreenshot(dataUrl: string, testRunId: string, stepO
       blobHTTPHeaders: { blobContentType: `image/${format}` },
     });
 
-    return blockBlob.url;
+    // Return a proxied URL instead of the direct Azure blob URL
+    return `/api/blob/${CONTAINER_NAME}/${blobName}`;
   } catch (err) {
     console.error('Failed to upload screenshot to blob storage:', err);
     // Fall back to inline storage
@@ -59,9 +60,30 @@ export async function uploadScreenshot(dataUrl: string, testRunId: string, stepO
 /**
  * Download a blob URL back to a base64 data URL (needed for DOCX/PDF export embedding).
  * If the URL is already a data URL, returns it as-is.
+ * Handles both proxied paths (/api/blob/...) and full URLs.
  */
 export async function downloadScreenshotAsDataUrl(url: string): Promise<string> {
   if (!url || url.startsWith('data:')) return url;
+
+  // Handle proxied blob paths
+  if (url.startsWith('/api/blob/')) {
+    try {
+      const blobPath = url.replace(/^\/api\/blob\/screenshots\//, '');
+      const container = await getContainerClient();
+      const blockBlob = container.getBlockBlobClient(blobPath);
+      const downloadResponse = await blockBlob.download(0);
+      const chunks: Buffer[] = [];
+      for await (const chunk of downloadResponse.readableStreamBody as NodeJS.ReadableStream) {
+        chunks.push(Buffer.from(chunk as any));
+      }
+      const buffer = Buffer.concat(chunks);
+      const contentType = downloadResponse.contentType || 'image/png';
+      return `data:${contentType};base64,${buffer.toString('base64')}`;
+    } catch (err) {
+      console.error('Failed to download screenshot from blob storage:', err);
+      return url;
+    }
+  }
 
   try {
     const response = await fetch(url);
@@ -73,6 +95,27 @@ export async function downloadScreenshotAsDataUrl(url: string): Promise<string> 
   } catch (err) {
     console.error('Failed to download screenshot from blob storage:', err);
     return url;
+  }
+}
+
+/**
+ * Stream a blob by its path (used by the proxy route).
+ * Returns { stream, contentType, contentLength } or null if not found.
+ */
+export async function getBlobStream(blobPath: string) {
+  if (!isBlobStorageEnabled()) return null;
+
+  try {
+    const container = await getContainerClient();
+    const blockBlob = container.getBlockBlobClient(blobPath);
+    const downloadResponse = await blockBlob.download(0);
+    return {
+      stream: downloadResponse.readableStreamBody,
+      contentType: downloadResponse.contentType || 'application/octet-stream',
+      contentLength: downloadResponse.contentLength,
+    };
+  } catch {
+    return null;
   }
 }
 
