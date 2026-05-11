@@ -139,9 +139,12 @@ export function useFlowEditor(testCaseId: string) {
     const newNodes = clipboard.current.nodes.map((n) => {
       const newId = `${n.data?.blockType || "node"}-${++nodeIdCounter}`;
       idMap.set(n.id, newId);
+      // Strip executionStatus so pasted blocks don't inherit highlights
+      const { executionStatus, ...cleanData } = (n.data || {}) as any;
       return {
         ...n,
         id: newId,
+        data: cleanData,
         position: { x: n.position.x + offset, y: n.position.y + offset },
         selected: true,
       };
@@ -358,7 +361,32 @@ export function useFlowEditor(testCaseId: string) {
   // ── ReactFlow event handlers ──
 
   const onConnect: OnConnect = useCallback(
-    (connection) => setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
+    (connection) => {
+      setEdges((eds) => {
+        // Enforce single-edge-per-handle: reject if the source handle or
+        // target handle already has a connection.
+        const sourceHandle = connection.sourceHandle || null;
+        const targetHandle = connection.targetHandle || null;
+
+        const sourceOccupied = eds.some(
+          (e) => e.source === connection.source && (e.sourceHandle || null) === sourceHandle
+        );
+        const targetOccupied = eds.some(
+          (e) => e.target === connection.target && (e.targetHandle || null) === targetHandle
+        );
+
+        if (sourceOccupied) {
+          toast.warning("This output is already connected. Remove the existing edge first.");
+          return eds;
+        }
+        if (targetOccupied) {
+          toast.warning("This input is already connected. Remove the existing edge first.");
+          return eds;
+        }
+
+        return addEdge({ ...connection, animated: true }, eds);
+      });
+    },
     [setEdges]
   );
 

@@ -101,5 +101,32 @@ export function validateFlow(nodes: Node[], edges: Edge[]): ValidationResult {
     }
   });
 
+  // Rule 9 — each handle should have at most one edge
+  // (except if-else which has two named source handles)
+  const sourceCount = new Map<string, number>();
+  const targetCount = new Map<string, number>();
+  edges.forEach((e) => {
+    const sKey = `${e.source}::${e.sourceHandle || "default"}`;
+    const tKey = `${e.target}::${e.targetHandle || "default"}`;
+    sourceCount.set(sKey, (sourceCount.get(sKey) || 0) + 1);
+    targetCount.set(tKey, (targetCount.get(tKey) || 0) + 1);
+  });
+  sourceCount.forEach((count, key) => {
+    if (count > 1) {
+      const nodeId = key.split("::")[0];
+      const node = nodes.find((n) => n.id === nodeId);
+      const label = (node?.data as any)?.label || nodeId;
+      warnings.push(`"${label}" has ${count} outgoing edges from the same output`);
+    }
+  });
+  targetCount.forEach((count, key) => {
+    if (count > 1) {
+      const nodeId = key.split("::")[0];
+      const node = nodes.find((n) => n.id === nodeId);
+      const label = (node?.data as any)?.label || nodeId;
+      warnings.push(`"${label}" has ${count} incoming edges to the same input`);
+    }
+  });
+
   return { valid: errors.length === 0, errors, warnings };
 }
