@@ -23,7 +23,7 @@ import {
 } from "@xyflow/react";
 import { toast } from "sonner";
 
-import { testCasesApi, exportApi, generateApi } from "@/lib/api";
+import { testCasesApi, exportApi, generateApi, testRunsApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
 import { buildFlowFromSteps } from "@/lib/flow-utils";
@@ -57,6 +57,14 @@ export function useFlowEditor(testCaseId: string) {
   const [running, setRunning] = useState(false);
   const [refining, setRefining] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // ── Last test run data (for inline result panel) ──
+  const [lastRun, setLastRun] = useState<{
+    id: string;
+    status: string;
+    startedAt: string;
+    stepResults: any[];
+  } | null>(null);
 
   /** Snapshot taken immediately after load so we can detect unsaved changes. */
   const initialSnapshot = useRef<string>("");
@@ -108,6 +116,39 @@ export function useFlowEditor(testCaseId: string) {
         nodeIdCounter = 4;
       }
       setLoaded(true);
+
+      // Load the latest test run for this test case (if any)
+      try {
+        const runs = await testRunsApi.list({ testCaseId });
+        const latestRun = runs.data?.[0];
+        if (latestRun?.id) {
+          const runDetail = await testRunsApi.get(latestRun.id);
+          const steps: any[] = runDetail.data?.stepResults || [];
+          setLastRun({
+            id: latestRun.id,
+            status: runDetail.data?.status || latestRun.status,
+            startedAt: runDetail.data?.startedAt || latestRun.startedAt,
+            stepResults: steps,
+          });
+
+          // Apply execution status highlights to nodes
+          if (steps.length > 0) {
+            setNodes((nds) =>
+              nds.map((n) => {
+                const step = [...steps]
+                  .reverse()
+                  .find((s: any) => s.blockId === n.id && !s.retry);
+                if (step) {
+                  return { ...n, data: { ...n.data, executionStatus: step.status } };
+                }
+                return n;
+              })
+            );
+          }
+        }
+      } catch {
+        // No previous runs — that's fine
+      }
     }
     load();
   }, [testCaseId]);
@@ -295,9 +336,66 @@ export function useFlowEditor(testCaseId: string) {
   /** Save then execute the test case via the browser extension. */
   async function handleRun() {
     setRunning(true);
+    // Clear any previous execution highlights
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.data?.executionStatus) {
+          const { executionStatus, ...rest } = n.data as any;
+          return { ...n, data: rest };
+        }
+        return n;
+      })
+    );
     try {
       await handleSave();
       await runTestCase(testCaseId);
+
+      // After run completes, fetch step results and highlight nodes
+      try {
+        const runs = await testRunsApi.list({ testCaseId });
+        const latestRun = runs.data?.[0];
+        if (latestRun?.id) {
+          const runDetail = await testRunsApi.get(latestRun.id);
+          const steps: any[] = runDetail.data?.stepResults || [];
+
+          // Store run data for the inline result panel
+          setLastRun({
+            id: latestRun.id,
+            status: runDetail.data?.status || latestRun.status,
+            startedAt: runDetail.data?.startedAt || latestRun.startedAt,
+            stepResults: steps,
+          });
+
+          if (steps.length > 0) {
+            let failedNodeToSelect: Node | null = null;
+            const failedStep = steps.find((s: any) => s.status === "failed" && !s.retry);
+
+            setNodes((nds) => {
+              const updated = nds.map((n) => {
+                const step = [...steps]
+                  .reverse()
+                  .find((s: any) => s.blockId === n.id && !s.retry);
+                if (step) {
+                  // Track the first failed node for auto-selection
+                  if (step.status === "failed" && !failedNodeToSelect) {
+                    failedNodeToSelect = { ...n, data: { ...n.data, executionStatus: step.status } };
+                  }
+                  return { ...n, data: { ...n.data, executionStatus: step.status } };
+                }
+                return n;
+              });
+              return updated;
+            });
+
+            // Auto-select the first failed node so the user sees it immediately
+            if (failedNodeToSelect) {
+              setSelectedNode(failedNodeToSelect);
+            }
+          }
+        }
+      } catch {
+        // Non-critical — highlighting is best-effort
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to run test case");
     } finally {
@@ -349,6 +447,8 @@ export function useFlowEditor(testCaseId: string) {
     showMetadata, setShowMetadata,
     // UI flags
     loaded, saving, running, refining, hasChanges,
+    // Last run
+    lastRun,
     // Actions
     handleSave, handleValidate, handleRefine, handleRun, handleExport, handleDelete,
   };

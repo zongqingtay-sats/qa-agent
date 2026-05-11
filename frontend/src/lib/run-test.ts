@@ -135,13 +135,10 @@ export async function runTestCase(testCaseId: string): Promise<void> {
         } else if (status === 'stopped') {
           toast.warning(`"${testCase.name}" aborted`);
         } else {
-          // Don't disconnect yet on failure — user may retry from popup
+          toast.error(`"${testCase.name}" failed`);
         }
-        // Only disconnect and resolve on final completion (passed or stopped)
-        if (status === 'passed' || status === 'stopped') {
-          connection?.disconnect();
-          resolve();
-        }
+        connection?.disconnect();
+        resolve();
       },
       onTestResumed: async () => {
         // User clicked retry in the popup — test is back to running

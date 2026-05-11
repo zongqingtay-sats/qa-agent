@@ -27,11 +27,11 @@ export function FlowBlockNode({ data, selected }: { data: any; selected: boolean
   // Highlight based on live execution feedback from the extension
   const executionStatusClass =
     data.executionStatus === "passed"
-      ? "ring-2 ring-green-500"
+      ? "ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.5)]"
       : data.executionStatus === "failed"
-        ? "ring-2 ring-red-500"
+        ? "ring-4 ring-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)] border-red-400"
         : data.executionStatus === "running"
-          ? "ring-2 ring-blue-500 animate-pulse"
+          ? "ring-4 ring-blue-500 animate-pulse shadow-[0_0_12px_rgba(59,130,246,0.5)]"
           : "";
 
   const isStart = data.blockType === "start";
