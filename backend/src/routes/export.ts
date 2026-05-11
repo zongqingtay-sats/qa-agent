@@ -5,6 +5,7 @@ import {
   exportTestCaseToJson, exportTestCaseToDocx, exportTestCaseToPdf,
   exportTestRunToJson, exportTestRunToDocx, exportTestRunToPdf,
 } from '../services/export-service';
+import { downloadScreenshotAsDataUrl, isBlobStorageEnabled } from '../services/blob-storage';
 
 const router = Router();
 
@@ -101,6 +102,15 @@ router.post('/test-run/:id', async (req: Request, res: Response) => {
       durationMs: sr.durationMs,
     })),
   };
+
+  // For DOCX/PDF, resolve blob URLs to data URLs for embedding
+  if ((format === 'docx' || format === 'pdf') && isBlobStorageEnabled()) {
+    for (const step of exportData.stepResults) {
+      if (step.screenshotDataUrl && !step.screenshotDataUrl.startsWith('data:')) {
+        step.screenshotDataUrl = await downloadScreenshotAsDataUrl(step.screenshotDataUrl);
+      }
+    }
+  }
 
   if (format === 'json') {
     res.setHeader('Content-Type', 'application/json');

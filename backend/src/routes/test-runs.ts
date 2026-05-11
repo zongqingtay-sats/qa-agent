@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { store } from '../db/store';
 import { AppError } from '../middleware/error-handler';
 import { eventBus } from '../sse/event-bus';
+import { uploadScreenshot } from '../services/blob-storage';
 
 const router = Router();
 
@@ -73,13 +74,19 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // POST /api/test-runs/:id/steps — save a single step result in real time
-router.post('/:id/steps', (req: Request, res: Response) => {
+router.post('/:id/steps', async (req: Request, res: Response) => {
   const testRun = store.getTestRun(req.params.id as string);
   if (!testRun) {
     throw new AppError('Test run not found', 404);
   }
 
   const sr = req.body;
+
+  // Upload screenshot to blob storage if configured
+  const screenshotUrl = sr.screenshotDataUrl
+    ? await uploadScreenshot(sr.screenshotDataUrl, testRun.id, sr.stepOrder)
+    : '';
+
   const stepResult = store.createStepResult({
     testRunId: testRun.id,
     stepOrder: sr.stepOrder,
@@ -90,7 +97,7 @@ router.post('/:id/steps', (req: Request, res: Response) => {
     expectedResult: sr.expectedResult || '',
     actualResult: sr.actualResult || '',
     status: sr.status || 'running',
-    screenshotDataUrl: sr.screenshotDataUrl || '',
+    screenshotDataUrl: screenshotUrl,
     errorMessage: sr.errorMessage || '',
     durationMs: sr.durationMs || 0,
     retry: sr.retry || false,
@@ -123,7 +130,7 @@ router.post('/:id/steps', (req: Request, res: Response) => {
 });
 
 // PUT /api/test-runs/:id
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   const existing = store.getTestRun(req.params.id as string);
   if (!existing) {
     throw new AppError('Test run not found', 404);
@@ -134,6 +141,9 @@ router.put('/:id', (req: Request, res: Response) => {
   // Save step results if provided
   if (stepResults && Array.isArray(stepResults)) {
     for (const sr of stepResults) {
+      const screenshotUrl = sr.screenshotDataUrl
+        ? await uploadScreenshot(sr.screenshotDataUrl, existing.id, sr.stepOrder)
+        : sr.screenshotDataUrl;
       store.createStepResult({
         testRunId: existing.id,
         stepOrder: sr.stepOrder,
@@ -144,7 +154,7 @@ router.put('/:id', (req: Request, res: Response) => {
         expectedResult: sr.expectedResult,
         actualResult: sr.actualResult,
         status: sr.status,
-        screenshotDataUrl: sr.screenshotDataUrl,
+        screenshotDataUrl: screenshotUrl,
         errorMessage: sr.errorMessage,
         durationMs: sr.durationMs,
       });
