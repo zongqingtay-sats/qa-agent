@@ -19,7 +19,7 @@ function buildSelector(el) {
   // Try unique class combination
   if (el.classList.length > 0) {
     const classes = Array.from(el.classList)
-      .filter((c) => !c.startsWith('hover') && !c.startsWith('focus') && c.length < 50)
+      .filter((c) => !c.startsWith('hover') && !c.startsWith('focus') && !c.startsWith('qa-agent-') && c.length < 50)
       .map((c) => `.${CSS.escape(c)}`)
       .join('');
     if (classes && document.querySelectorAll(`${el.tagName.toLowerCase()}${classes}`).length === 1) {
@@ -105,6 +105,8 @@ function activateElementPicker() {
       e.stopPropagation();
       e.stopImmediatePropagation();
       if (e.target === banner) return;
+      // Remove highlight class before building selector so it's not included
+      if (highlighted) highlighted.classList.remove(HIGHLIGHT);
       const selector = buildSelector(e.target);
       cleanup();
       resolve({ selector, tagName: e.target.tagName.toLowerCase() });
