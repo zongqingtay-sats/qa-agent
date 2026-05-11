@@ -1,0 +1,67 @@
+// Prisma schema for QA Agent — Azure SQL Server
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model TestCase {
+  id              String    @id @default(uuid()) @db.NVarChar(36)
+  name            String    @db.NVarChar(255)
+  description     String    @db.NVarChar(Max)
+  preconditions   String?   @db.NVarChar(Max)
+  passingCriteria String?   @db.NVarChar(Max)
+  tags            String    @default("[]") @db.NVarChar(Max) // JSON array
+  flowData        String    @db.NVarChar(Max) // JSON (nodes + edges)
+  status          String    @default("draft") @db.NVarChar(20)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  testRuns TestRun[]
+
+  @@map("test_cases")
+}
+
+model TestRun {
+  id           String    @id @default(uuid()) @db.NVarChar(36)
+  testCaseId   String    @db.NVarChar(36)
+  status       String    @db.NVarChar(20) // running, passed, failed, stopped
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  durationMs   Int?
+  environment  String?   @db.NVarChar(Max) // JSON
+  totalSteps   Int       @default(0)
+  passedSteps  Int       @default(0)
+  failedSteps  Int       @default(0)
+
+  testCase    TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  stepResults StepResult[]
+
+  @@map("test_runs")
+}
+
+model StepResult {
+  id             String   @id @default(uuid()) @db.NVarChar(36)
+  testRunId      String   @db.NVarChar(36)
+  stepOrder      Int
+  blockId        String   @db.NVarChar(36)
+  blockType      String   @db.NVarChar(50)
+  description    String?  @db.NVarChar(Max)
+  target         String?  @db.NVarChar(Max)
+  expectedResult String?  @db.NVarChar(Max)
+  actualResult   String?  @db.NVarChar(Max)
+  status         String   @db.NVarChar(20) // passed, failed, skipped, running
+  screenshotUrl  String?  @db.NVarChar(Max) // Blob URL or base64 data URL
+  errorMessage   String?  @db.NVarChar(Max)
+  durationMs     Int?
+  retry          Boolean  @default(false)
+  executedAt     DateTime @default(now())
+
+  testRun TestRun @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+
+  @@map("step_results")
+}

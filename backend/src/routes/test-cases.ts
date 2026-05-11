@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
-import { store } from '../db/store';
+import { dataStore as store } from '../db';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
 
 // GET /api/test-cases
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const { status, search } = req.query;
-  const testCases = store.getAllTestCases({
+  const testCases = await store.getAllTestCases({
     status: status as string | undefined,
     search: search as string | undefined,
   });
@@ -15,8 +15,8 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // GET /api/test-cases/:id
-router.get('/:id', (req: Request, res: Response) => {
-  const testCase = store.getTestCase(req.params.id as string);
+router.get('/:id', async (req: Request, res: Response) => {
+  const testCase = await store.getTestCase(req.params.id as string);
   if (!testCase) {
     throw new AppError('Test case not found', 404);
   }
@@ -24,14 +24,14 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // POST /api/test-cases
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { name, description, preconditions, passingCriteria, tags, flowData } = req.body;
 
   if (!name || !flowData) {
     throw new AppError('Name and flowData are required');
   }
 
-  const testCase = store.createTestCase({
+  const testCase = await store.createTestCase({
     name,
     description: description || '',
     preconditions,
@@ -45,8 +45,8 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // PUT /api/test-cases/:id
-router.put('/:id', (req: Request, res: Response) => {
-  const existing = store.getTestCase(req.params.id as string);
+router.put('/:id', async (req: Request, res: Response) => {
+  const existing = await store.getTestCase(req.params.id as string);
   if (!existing) {
     throw new AppError('Test case not found', 404);
   }
@@ -62,13 +62,13 @@ router.put('/:id', (req: Request, res: Response) => {
   if (flowData !== undefined) updates.flowData = typeof flowData === 'string' ? flowData : JSON.stringify(flowData);
   if (status !== undefined) updates.status = status;
 
-  const updated = store.updateTestCase(req.params.id as string, updates);
+  const updated = await store.updateTestCase(req.params.id as string, updates);
   res.json({ data: updated });
 });
 
 // DELETE /api/test-cases/:id
-router.delete('/:id', (req: Request, res: Response) => {
-  const existed = store.deleteTestCase(req.params.id as string);
+router.delete('/:id', async (req: Request, res: Response) => {
+  const existed = await store.deleteTestCase(req.params.id as string);
   if (!existed) {
     throw new AppError('Test case not found', 404);
   }

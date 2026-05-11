@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { store } from '../db/store';
+import { dataStore as store } from '../db';
 import { AppError } from '../middleware/error-handler';
 import { eventBus } from '../sse/event-bus';
 import { uploadScreenshot } from '../services/blob-storage';
@@ -7,31 +7,31 @@ import { uploadScreenshot } from '../services/blob-storage';
 const router = Router();
 
 // GET /api/test-runs
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const { testCaseId, status } = req.query;
-  const testRuns = store.getAllTestRuns({
+  const testRuns = await store.getAllTestRuns({
     testCaseId: testCaseId as string | undefined,
     status: status as string | undefined,
   });
 
   // Include test case name for each run
-  const enriched = testRuns.map(run => {
-    const tc = store.getTestCase(run.testCaseId);
+  const enriched = await Promise.all(testRuns.map(async run => {
+    const tc = await store.getTestCase(run.testCaseId);
     return { ...run, testCaseName: tc?.name || 'Unknown' };
-  });
+  }));
 
   res.json({ data: enriched, total: enriched.length });
 });
 
 // GET /api/test-runs/:id
-router.get('/:id', (req: Request, res: Response) => {
-  const testRun = store.getTestRun(req.params.id as string);
+router.get('/:id', async (req: Request, res: Response) => {
+  const testRun = await store.getTestRun(req.params.id as string);
   if (!testRun) {
     throw new AppError('Test run not found', 404);
   }
 
-  const stepResults = store.getStepResultsForRun(testRun.id);
-  const tc = store.getTestCase(testRun.testCaseId);
+  const stepResults = await store.getStepResultsForRun(testRun.id);
+  const tc = await store.getTestCase(testRun.testCaseId);
 
   res.json({
     data: {
@@ -47,19 +47,19 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // POST /api/test-runs
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { testCaseId } = req.body;
 
   if (!testCaseId) {
     throw new AppError('testCaseId is required');
   }
 
-  const testCase = store.getTestCase(testCaseId);
+  const testCase = await store.getTestCase(testCaseId);
   if (!testCase) {
     throw new AppError('Test case not found', 404);
   }
 
-  const testRun = store.createTestRun({
+  const testRun = await store.createTestRun({
     testCaseId,
     status: 'running',
     totalSteps: 0,
@@ -67,15 +67,14 @@ router.post('/', (req: Request, res: Response) => {
     failedSteps: 0,
   });
 
-  const tc = store.getTestCase(testCaseId);
-  eventBus.emit('test-runs', 'test-run:created', { ...testRun, testCaseName: tc?.name || 'Unknown' });
+  eventBus.emit('test-runs', 'test-run:created', { ...testRun, testCaseName: testCase.name });
 
   res.status(201).json({ data: testRun });
 });
 
 // POST /api/test-runs/:id/steps — save a single step result in real time
 router.post('/:id/steps', async (req: Request, res: Response) => {
-  const testRun = store.getTestRun(req.params.id as string);
+  const testRun = await store.getTestRun(req.params.id as string);
   if (!testRun) {
     throw new AppError('Test run not found', 404);
   }
@@ -87,7 +86,7 @@ router.post('/:id/steps', async (req: Request, res: Response) => {
     ? await uploadScreenshot(sr.screenshotDataUrl, testRun.id, sr.stepOrder)
     : '';
 
-  const stepResult = store.createStepResult({
+  const stepResult = await store.createStepResult({
     testRunId: testRun.id,
     stepOrder: sr.stepOrder,
     blockId: sr.blockId || '',
@@ -104,19 +103,18 @@ router.post('/:id/steps', async (req: Request, res: Response) => {
   });
 
   // Update running totals on the test run
-  const allSteps = store.getStepResultsForRun(testRun.id);
-  // totalSteps = unique step positions (retries don't add to the count)
+  const allSteps = await store.getStepResultsForRun(testRun.id);
   const uniqueStepOrders = new Set(allSteps.map(s => s.stepOrder));
   const passedSteps = allSteps.filter(s => s.status === 'passed' && !s.retry).length;
   const failedSteps = allSteps.filter(s => s.status === 'failed' && !s.retry).length;
-  store.updateTestRun(testRun.id, {
+  await store.updateTestRun(testRun.id, {
     totalSteps: uniqueStepOrders.size,
     passedSteps,
     failedSteps,
   });
 
   // Emit a granular SSE event so the frontend can update in real time
-  const tc = store.getTestCase(testRun.testCaseId);
+  const tc = await store.getTestCase(testRun.testCaseId);
   eventBus.emit('test-runs', 'test-run:step', {
     id: testRun.id,
     testCaseName: tc?.name || 'Unknown',
@@ -131,7 +129,7 @@ router.post('/:id/steps', async (req: Request, res: Response) => {
 
 // PUT /api/test-runs/:id
 router.put('/:id', async (req: Request, res: Response) => {
-  const existing = store.getTestRun(req.params.id as string);
+  const existing = await store.getTestRun(req.params.id as string);
   if (!existing) {
     throw new AppError('Test run not found', 404);
   }
@@ -144,7 +142,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       const screenshotUrl = sr.screenshotDataUrl
         ? await uploadScreenshot(sr.screenshotDataUrl, existing.id, sr.stepOrder)
         : sr.screenshotDataUrl;
-      store.createStepResult({
+      await store.createStepResult({
         testRunId: existing.id,
         stepOrder: sr.stepOrder,
         blockId: sr.blockId,
@@ -170,10 +168,10 @@ router.put('/:id', async (req: Request, res: Response) => {
   if (failedSteps !== undefined) updates.failedSteps = failedSteps;
   if (environment !== undefined) updates.environment = typeof environment === 'string' ? environment : JSON.stringify(environment);
 
-  const updated = store.updateTestRun(req.params.id as string, updates);
+  const updated = await store.updateTestRun(req.params.id as string, updates);
 
-  const tc = store.getTestCase(existing.testCaseId);
-  const savedStepResults = store.getStepResultsForRun(existing.id);
+  const tc = await store.getTestCase(existing.testCaseId);
+  const savedStepResults = await store.getStepResultsForRun(existing.id);
   eventBus.emit('test-runs', 'test-run:updated', {
     ...updated,
     testCaseName: tc?.name || 'Unknown',

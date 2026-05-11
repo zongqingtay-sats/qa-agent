@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { store } from '../db/store';
+import { dataStore as store } from '../db';
 import { AppError } from '../middleware/error-handler';
 import {
   exportTestCaseToJson, exportTestCaseToDocx, exportTestCaseToPdf,
@@ -16,7 +16,7 @@ router.post('/test-case/:id', async (req: Request, res: Response) => {
     throw new AppError('Format must be one of: json, docx, pdf');
   }
 
-  const testCase = store.getTestCase(req.params.id as string);
+  const testCase = await store.getTestCase(req.params.id as string);
   if (!testCase) {
     throw new AppError('Test case not found', 404);
   }
@@ -68,13 +68,13 @@ router.post('/test-run/:id', async (req: Request, res: Response) => {
     throw new AppError('Format must be one of: json, docx, pdf');
   }
 
-  const testRun = store.getTestRun(req.params.id as string);
+  const testRun = await store.getTestRun(req.params.id as string);
   if (!testRun) {
     throw new AppError('Test run not found', 404);
   }
 
-  const testCase = store.getTestCase(testRun.testCaseId);
-  const stepResults = store.getStepResultsForRun(testRun.id);
+  const testCase = await store.getTestCase(testRun.testCaseId);
+  const stepResults = await store.getStepResultsForRun(testRun.id);
 
   const exportData = {
     testCaseName: testCase?.name || 'Unknown',

@@ -10,4 +10,5 @@ export const appConfig = {
   nodeEnv: process.env.NODE_ENV || 'development',
   maxFileSize: 20 * 1024 * 1024, // 20MB
   azureBlobConnectionString: process.env.AZURE_BLOB_CONNECTION_STRING || '',
+  databaseUrl: process.env.DATABASE_URL || '',
 };
