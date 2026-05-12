@@ -62,8 +62,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
   const [phaseDialogOpen, setPhaseDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignFPDialogOpen, setAssignFPDialogOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [assignUserIds, setAssignUserIds] = useState("");
+  const [bulkFeatureIds, setBulkFeatureIds] = useState<Set<string>>(new Set());
+  const [bulkPhaseIds, setBulkPhaseIds] = useState<Set<string>>(new Set());
 
   const loadProject = useCallback(async () => {
     try {
@@ -228,6 +231,26 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     } catch (e: any) { toast.error(e.message); }
   }
 
+  async function handleBulkAssignFP() {
+    if (selected.size === 0) return;
+    try {
+      await Promise.all(
+        Array.from(selected).map((id) =>
+          testCasesApi.update(id, {
+            featureIds: Array.from(bulkFeatureIds),
+            phaseIds: Array.from(bulkPhaseIds),
+          })
+        )
+      );
+      toast.success(`${selected.size} test case(s) updated`);
+      setAssignFPDialogOpen(false);
+      setBulkFeatureIds(new Set());
+      setBulkPhaseIds(new Set());
+      setSelected(new Set());
+      loadProject();
+    } catch (e: any) { toast.error(e.message); }
+  }
+
   const groups = buildGroups();
 
   if (!project) {
@@ -302,6 +325,46 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <DialogHeader><DialogTitle>Assign Users</DialogTitle><DialogDescription>Enter user emails/IDs separated by commas.</DialogDescription></DialogHeader>
                   <div className="py-2"><Label htmlFor="assign-users">Users</Label><Input id="assign-users" value={assignUserIds} onChange={(e) => setAssignUserIds(e.target.value)} placeholder="user1@email.com, user2@email.com" /></div>
                   <DialogFooter><Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button><Button onClick={handleBulkAssign} disabled={!assignUserIds.trim()}>Assign</Button></DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={assignFPDialogOpen} onOpenChange={(open) => { setAssignFPDialogOpen(open); if (!open) { setBulkFeatureIds(new Set()); setBulkPhaseIds(new Set()); } }}>
+                <DialogTrigger render={<Button variant="outline" size="sm" />}>
+                  <Layers className="h-4 w-4 mr-1" /> Feature / Phase
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Assign Feature / Phase</DialogTitle><DialogDescription>Select features and phases for {selected.size} test case(s).</DialogDescription></DialogHeader>
+                  <div className="space-y-4 py-2">
+                    {features.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label>Features</Label>
+                        <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
+                          {features.map((f) => (
+                            <label key={f.id} className="flex items-center gap-2 cursor-pointer py-0.5">
+                              <Checkbox checked={bulkFeatureIds.has(f.id)} onCheckedChange={() => { setBulkFeatureIds((prev) => { const n = new Set(prev); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); return n; }); }} />
+                              <span className="text-sm">{f.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {phases.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label>Phases</Label>
+                        <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
+                          {phases.map((p) => (
+                            <label key={p.id} className="flex items-center gap-2 cursor-pointer py-0.5">
+                              <Checkbox checked={bulkPhaseIds.has(p.id)} onCheckedChange={() => { setBulkPhaseIds((prev) => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; }); }} />
+                              <span className="text-sm">{p.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {features.length === 0 && phases.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No features or phases in this project yet.</p>
+                    )}
+                  </div>
+                  <DialogFooter><Button variant="outline" onClick={() => setAssignFPDialogOpen(false)}>Cancel</Button><Button onClick={handleBulkAssignFP}>Save</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
               <Button variant="destructive" size="sm" onClick={handleDeleteSelected}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>

@@ -13,11 +13,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Play, Trash2, Download, Sparkles } from "lucide-react";
+import { Plus, Search, Play, Trash2, Download, Sparkles, FolderKanban } from "lucide-react";
 import { testCasesApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { toast } from "sonner";
 import { TestCaseTable } from "./_components/test-case-table";
+import { AssignProjectDialog } from "@/components/assign-project-dialog";
 
 export default function TestCasesPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function TestCasesPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   useEffect(() => { loadTestCases(); }, []);
 
@@ -145,6 +147,7 @@ export default function TestCasesPage() {
           <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
             <span className="text-sm font-medium">{selected.size} selected</span>
             <Button variant="outline" onClick={handleRunSelected}><Play className="h-4 w-4 mr-1" /> Run</Button>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(true)}><FolderKanban className="h-4 w-4 mr-1" /> Assign to Project</Button>
             <Button variant="outline" className="text-destructive" onClick={handleDeleteSelected}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline"><Download className="h-4 w-4 mr-1" /> Export</Button>} />
@@ -168,6 +171,13 @@ export default function TestCasesPage() {
           onExport={handleExport}
         />
       </div>
+
+      <AssignProjectDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        testCaseIds={Array.from(selected)}
+        onAssigned={() => { setSelected(new Set()); loadTestCases(); }}
+      />
     </>
   );
 }

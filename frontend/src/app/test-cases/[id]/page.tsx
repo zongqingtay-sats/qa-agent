@@ -10,10 +10,12 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Pencil,
   Clock,
+  FolderKanban,
 } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
 import { CommentsSection } from "./_components/comments-section";
 import { AssigneeSection } from "./_components/assignee-section";
+import { AssignProjectDialog } from "@/components/assign-project-dialog";
 import { toast } from "sonner";
 
 export default function TestCaseOverviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +24,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const [testCase, setTestCase] = useState<any>(null);
   const [runs, setRuns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -131,10 +134,58 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
 
         {/* Sidebar - 1 col */}
         <div className="space-y-4">
+          {/* Project / Feature / Phase */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2"><FolderKanban className="h-4 w-4" /> Project</span>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAssignDialogOpen(true)}>
+                  Edit
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {testCase.projectId ? (
+                <>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Project: </span>
+                    <Link href={`/projects/${testCase.projectId}`} className="text-primary hover:underline">
+                      {testCase.projectName || testCase.projectId}
+                    </Link>
+                  </div>
+                  {testCase.featureIds?.length > 0 && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Features: </span>
+                      {(testCase.featureNames || testCase.featureIds).join(", ")}
+                    </div>
+                  )}
+                  {testCase.phaseIds?.length > 0 && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Phases: </span>
+                      {(testCase.phaseNames || testCase.phaseIds).join(", ")}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Not assigned to a project</p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Assignees */}
           <AssigneeSection testCaseId={testCaseId} />
         </div>
       </div>
+
+      <AssignProjectDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        testCaseIds={[testCaseId]}
+        currentProjectId={testCase.projectId}
+        currentFeatureIds={testCase.featureIds || []}
+        currentPhaseIds={testCase.phaseIds || []}
+        onAssigned={load}
+      />
     </>
   );
 }
