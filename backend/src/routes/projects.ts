@@ -1,20 +1,29 @@
 import { Router, Request, Response } from 'express';
 import { dataStore as store } from '../db';
 import { AppError } from '../middleware/error-handler';
+import { requirePermission, requireProjectAccess } from '../rbac/middleware';
+import { getPrismaClient } from '../db/prisma';
+import { appConfig } from '../config';
 
 const router = Router();
 
 // GET /api/projects
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requirePermission('project:read'), async (req: Request, res: Response) => {
   const { search } = req.query;
-  const projects = await store.getAllProjects({
+  let projects = await store.getAllProjects({
     search: search as string | undefined,
   });
+
+  // Filter by project access for non-admin users
+  if (req.accessibleProjectIds !== undefined) {
+    projects = projects.filter(p => req.accessibleProjectIds!.includes(p.id));
+  }
+
   res.json({ data: projects, total: projects.length });
 });
 
 // GET /api/projects/:id
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireProjectAccess('project:read'), async (req: Request, res: Response) => {
   const project = await store.getProject(req.params.id as string);
   if (!project) throw new AppError('Project not found', 404);
 
@@ -27,7 +36,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/projects
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePermission('project:create'), async (req: Request, res: Response) => {
   const { name, description } = req.body;
   if (!name) throw new AppError('Name is required');
   const project = await store.createProject({
@@ -35,11 +44,26 @@ router.post('/', async (req: Request, res: Response) => {
     description: description || undefined,
     createdBy: req.user?.id,
   });
+
+  // Auto-assign the creator to the project
+  if (appConfig.databaseUrl && req.user?.id && req.user.id !== 'anonymous') {
+    try {
+      const prisma = getPrismaClient();
+      await (prisma as any).projectAccess.create({
+        data: {
+          userId: req.user.id,
+          projectId: project.id,
+          grantedBy: req.user.email || req.user.id,
+        },
+      });
+    } catch { /* ignore if already exists */ }
+  }
+
   res.status(201).json({ data: project });
 });
 
 // PUT /api/projects/:id
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requireProjectAccess('project:update'), async (req: Request, res: Response) => {
   const existing = await store.getProject(req.params.id as string);
   if (!existing) throw new AppError('Project not found', 404);
   const { name, description } = req.body;
@@ -51,14 +75,14 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/projects/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireProjectAccess('project:delete'), async (req: Request, res: Response) => {
   const existed = await store.deleteProject(req.params.id as string);
   if (!existed) throw new AppError('Project not found', 404);
   res.json({ message: 'Deleted' });
 });
 
 // GET /api/projects/:id/test-cases
-router.get('/:id/test-cases', async (req: Request, res: Response) => {
+router.get('/:id/test-cases', requireProjectAccess('testcase:read'), async (req: Request, res: Response) => {
   const project = await store.getProject(req.params.id as string);
   if (!project) throw new AppError('Project not found', 404);
 
@@ -93,7 +117,7 @@ router.get('/:id/features', async (req: Request, res: Response) => {
 });
 
 // POST /api/projects/:id/features
-router.post('/:id/features', async (req: Request, res: Response) => {
+router.post('/:id/features', requireProjectAccess('project:update'), async (req: Request, res: Response) => {
   const project = await store.getProject(req.params.id as string);
   if (!project) throw new AppError('Project not found', 404);
   const { name, sortOrder } = req.body;
@@ -133,7 +157,7 @@ router.get('/:id/phases', async (req: Request, res: Response) => {
 });
 
 // POST /api/projects/:id/phases
-router.post('/:id/phases', async (req: Request, res: Response) => {
+router.post('/:id/phases', requireProjectAccess('project:update'), async (req: Request, res: Response) => {
   const project = await store.getProject(req.params.id as string);
   if (!project) throw new AppError('Project not found', 404);
   const { name, sortOrder } = req.body;

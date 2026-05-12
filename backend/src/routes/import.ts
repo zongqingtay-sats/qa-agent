@@ -3,11 +3,12 @@ import { upload } from '../middleware/upload';
 import { parseDocument } from '../services/import-service';
 import { generateTestCases } from '../services/ai-service';
 import { AppError } from '../middleware/error-handler';
+import { requirePermission } from '../rbac/middleware';
 
 const router = Router();
 
 // POST /api/import/parse — Parse an uploaded document
-router.post('/parse', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/parse', requirePermission('import:create'), upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) {
     throw new AppError('No file uploaded');
   }

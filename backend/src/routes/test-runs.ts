@@ -3,28 +3,36 @@ import { dataStore as store } from '../db';
 import { AppError } from '../middleware/error-handler';
 import { eventBus } from '../sse/event-bus';
 import { uploadScreenshot } from '../services/blob-storage';
+import { requirePermission, requireProjectAccess, resolveProjectFromTestRun } from '../rbac/middleware';
 
 const router = Router();
 
 // GET /api/test-runs
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requirePermission('testrun:read'), async (req: Request, res: Response) => {
   const { testCaseId, status } = req.query;
   const testRuns = await store.getAllTestRuns({
     testCaseId: testCaseId as string | undefined,
     status: status as string | undefined,
   });
 
-  // Include test case name for each run
-  const enriched = await Promise.all(testRuns.map(async run => {
+  // Include test case name and filter by project access
+  const enriched: any[] = [];
+  for (const run of testRuns) {
     const tc = await store.getTestCase(run.testCaseId);
-    return { ...run, testCaseName: tc?.name || 'Unknown' };
-  }));
+    // If user has restricted access, skip runs outside their projects
+    // Runs for test cases without a project are visible to all
+    if (req.accessibleProjectIds !== undefined) {
+      const projectId = tc?.projectId;
+      if (projectId && !req.accessibleProjectIds.includes(projectId)) continue;
+    }
+    enriched.push({ ...run, testCaseName: tc?.name || 'Unknown' });
+  }
 
   res.json({ data: enriched, total: enriched.length });
 });
 
 // GET /api/test-runs/:id
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireProjectAccess('testrun:read', resolveProjectFromTestRun), async (req: Request, res: Response) => {
   const testRun = await store.getTestRun(req.params.id as string);
   if (!testRun) {
     throw new AppError('Test run not found', 404);
@@ -47,7 +55,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/test-runs
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePermission('testrun:create'), async (req: Request, res: Response) => {
   const { testCaseId } = req.body;
 
   if (!testCaseId) {

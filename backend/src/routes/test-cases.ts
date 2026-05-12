@@ -1,21 +1,31 @@
 import { Router, Request, Response } from 'express';
 import { dataStore as store } from '../db';
 import { AppError } from '../middleware/error-handler';
+import { requirePermission, requireProjectAccess, resolveProjectFromTestCase } from '../rbac/middleware';
 
 const router = Router();
 
 // GET /api/test-cases
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requirePermission('testcase:read'), async (req: Request, res: Response) => {
   const { status, search } = req.query;
-  const testCases = await store.getAllTestCases({
+  let testCases = await store.getAllTestCases({
     status: status as string | undefined,
     search: search as string | undefined,
   });
+
+  // Filter by project access for non-admin users
+  // Test cases without a project are visible to all authenticated users
+  if (req.accessibleProjectIds !== undefined) {
+    testCases = testCases.filter(tc =>
+      !tc.projectId || req.accessibleProjectIds!.includes(tc.projectId)
+    );
+  }
+
   res.json({ data: testCases, total: testCases.length });
 });
 
 // GET /api/test-cases/:id
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireProjectAccess('testcase:read', resolveProjectFromTestCase), async (req: Request, res: Response) => {
   const testCase = await store.getTestCase(req.params.id as string);
   if (!testCase) {
     throw new AppError('Test case not found', 404);
@@ -48,7 +58,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/test-cases
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePermission('testcase:create'), async (req: Request, res: Response) => {
   const { name, description, preconditions, passingCriteria, tags, flowData } = req.body;
 
   if (!name || !flowData) {
@@ -72,7 +82,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/test-cases/:id
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requireProjectAccess('testcase:update', resolveProjectFromTestCase), async (req: Request, res: Response) => {
   const existing = await store.getTestCase(req.params.id as string);
   if (!existing) {
     throw new AppError('Test case not found', 404);
@@ -97,7 +107,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/test-cases/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireProjectAccess('testcase:delete', resolveProjectFromTestCase), async (req: Request, res: Response) => {
   const existed = await store.deleteTestCase(req.params.id as string);
   if (!existed) {
     throw new AppError('Test case not found', 404);

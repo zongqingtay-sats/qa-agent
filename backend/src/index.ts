@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { appConfig } from './config';
 import { errorHandler } from './middleware/error-handler';
 import { authMiddleware } from './middleware/auth';
+import { loadUserRole, seedDefaultRoles } from './rbac/middleware';
 import testCasesRouter from './routes/test-cases';
 import testRunsRouter from './routes/test-runs';
 import importRouter from './routes/import';
@@ -13,6 +14,7 @@ import blobRouter from './routes/blob';
 import projectsRouter from './routes/projects';
 import testCaseDetailsRouter from './routes/test-case-details';
 import usersRouter from './routes/users';
+import adminRouter from './routes/admin';
 import sseRouter from './sse/router';
 
 const app = express();
@@ -35,6 +37,7 @@ app.get('/api/health', (_req, res) => {
 
 // Auth middleware (applied to all routes below)
 app.use('/api', authMiddleware);
+app.use('/api', loadUserRole);
 
 // Routes
 app.use('/api/test-cases', testCasesRouter);
@@ -46,14 +49,16 @@ app.use('/api/export', exportRouter);
 app.use('/api/blob', blobRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api/events', sseRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
 
-app.listen(appConfig.port, () => {
+app.listen(appConfig.port, async () => {
   console.log(`QA Agent API server running on port ${appConfig.port}`);
   console.log(`CORS origin: ${appConfig.corsOrigin}`);
+  await seedDefaultRoles();
 });
 
 export default app;

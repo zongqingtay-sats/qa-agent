@@ -3,11 +3,12 @@ import { upload } from '../middleware/upload';
 import { parseDocument } from '../services/import-service';
 import { generateTestCases, refineTestCases } from '../services/ai-service';
 import { AppError } from '../middleware/error-handler';
+import { requirePermission } from '../rbac/middleware';
 
 const router = Router();
 
 // POST /api/generate/from-requirements
-router.post('/from-requirements', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/from-requirements', requirePermission('generate:create'), upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) {
     throw new AppError('No file uploaded');
   }
@@ -18,7 +19,7 @@ router.post('/from-requirements', upload.single('file'), async (req: Request, re
 });
 
 // POST /api/generate/from-text
-router.post('/from-text', async (req: Request, res: Response) => {
+router.post('/from-text', requirePermission('generate:create'), async (req: Request, res: Response) => {
   const { text, targetUrl, pageHtml } = req.body;
   if (!text || typeof text !== 'string') {
     throw new AppError('Text input is required');
@@ -29,7 +30,7 @@ router.post('/from-text', async (req: Request, res: Response) => {
 });
 
 // POST /api/generate/from-source
-router.post('/from-source', upload.array('files', 20), async (req: Request, res: Response) => {
+router.post('/from-source', requirePermission('generate:create'), upload.array('files', 20), async (req: Request, res: Response) => {
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
     throw new AppError('No source files uploaded');
@@ -46,7 +47,7 @@ router.post('/from-source', upload.array('files', 20), async (req: Request, res:
 });
 
 // POST /api/generate/refine — refine test cases with additional page HTML
-router.post('/refine', async (req: Request, res: Response) => {
+router.post('/refine', requirePermission('generate:create'), async (req: Request, res: Response) => {
   const { testCases, pageContexts, targetUrl } = req.body;
   if (!testCases || !Array.isArray(testCases)) {
     throw new AppError('testCases array is required');

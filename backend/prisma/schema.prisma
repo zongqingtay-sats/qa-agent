@@ -91,6 +91,7 @@ model Project {
   phases          Phase[]
   testCases       TestCase[]
   groupVisibility GroupVisibility[]
+  projectAccess   ProjectAccess[]
 
   @@map("projects")
 }
@@ -199,10 +200,59 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  accounts Account[]
-  sessions Session[]
+  accounts      Account[]
+  sessions      Session[]
+  userRole      UserRole?
+  projectAccess ProjectAccess[]
 
   @@map("users")
+}
+
+// ── RBAC Models ──────────────────────────────────────────────
+
+model Role {
+  id             String  @id @default(uuid()) @db.NVarChar(36)
+  name           String  @unique @db.NVarChar(100)
+  description    String? @db.NVarChar(500)
+  isAdmin        Boolean @default(false)
+  isSystem       Boolean @default(false) // built-in roles cannot be deleted
+  projectPerms   Int     @default(0)
+  testcasePerms  Int     @default(0)
+  testrunPerms   Int     @default(0)
+  userPerms      Int     @default(0)
+  importPerms    Int     @default(0)
+  generatePerms  Int     @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id     String @id @default(uuid()) @db.NVarChar(36)
+  userId String @unique
+  roleId String @db.NVarChar(36)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("user_roles")
+}
+
+model ProjectAccess {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  userId    String
+  projectId String   @db.NVarChar(36)
+  grantedBy String?  @db.NVarChar(255)
+  grantedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("project_access")
 }
 
 model Account {

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { getPrismaClient } from '../db/prisma';
 import { appConfig } from '../config';
+import { requirePermission } from '../rbac/middleware';
 
 const router = Router();
 
 // GET /api/users?search=...
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requirePermission('user:manage'), async (req: Request, res: Response) => {
   // Only available when SQL database is configured
   if (!appConfig.databaseUrl) {
     res.json({ data: [] });

@@ -6,11 +6,12 @@ import {
   exportTestRunToJson, exportTestRunToDocx, exportTestRunToPdf,
 } from '../services/export-service';
 import { downloadScreenshotAsDataUrl, isBlobStorageEnabled } from '../services/blob-storage';
+import { requirePermission } from '../rbac/middleware';
 
 const router = Router();
 
 // POST /api/export/test-case/:id
-router.post('/test-case/:id', async (req: Request, res: Response) => {
+router.post('/test-case/:id', requirePermission('testcase:export'), async (req: Request, res: Response) => {
   const { format } = req.body;
   if (!format || !['json', 'docx', 'pdf'].includes(format)) {
     throw new AppError('Format must be one of: json, docx, pdf');
@@ -62,7 +63,7 @@ router.post('/test-case/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/export/test-run/:id
-router.post('/test-run/:id', async (req: Request, res: Response) => {
+router.post('/test-run/:id', requirePermission('testcase:export'), async (req: Request, res: Response) => {
   const { format } = req.body;
   if (!format || !['json', 'docx', 'pdf'].includes(format)) {
     throw new AppError('Format must be one of: json, docx, pdf');
