@@ -1,12 +1,26 @@
+import { getSession } from "next-auth/react";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const session = await getSession();
+    if (session?.accessToken) {
+      return { Authorization: `Bearer ${session.accessToken}` };
+    }
+  } catch {}
+  return {};
+}
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120_000);
+  const authHeaders = await getAuthHeaders();
 
   const res = await fetch(`${API_BASE}${url}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options?.headers,
     },
     signal: controller.signal,
@@ -57,7 +71,8 @@ export const importApi = {
   parse: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE}/import/parse`, { method: 'POST', body: formData });
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/import/parse`, { method: 'POST', body: formData, headers: authHeaders });
     if (!res.ok) throw new Error('Failed to parse file');
     return res.json();
   },
@@ -68,7 +83,8 @@ export const generateApi = {
   fromRequirements: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE}/generate/from-requirements`, { method: 'POST', body: formData });
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/generate/from-requirements`, { method: 'POST', body: formData, headers: authHeaders });
     if (!res.ok) throw new Error('Failed to generate from requirements');
     return res.json();
   },
@@ -77,7 +93,8 @@ export const generateApi = {
   fromSource: async (files: File[]) => {
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));
-    const res = await fetch(`${API_BASE}/generate/from-source`, { method: 'POST', body: formData });
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/generate/from-source`, { method: 'POST', body: formData, headers: authHeaders });
     if (!res.ok) throw new Error('Failed to generate from source');
     return res.json();
   },
@@ -88,18 +105,20 @@ export const generateApi = {
 // Export
 export const exportApi = {
   testCase: async (id: string, format: 'json' | 'docx' | 'pdf') => {
+    const authHeaders = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/export/test-case/${encodeURIComponent(id)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({ format }),
     });
     if (!res.ok) throw new Error('Failed to export test case');
     return res.blob();
   },
   testRun: async (id: string, format: 'json' | 'docx' | 'pdf') => {
+    const authHeaders = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/export/test-run/${encodeURIComponent(id)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({ format }),
     });
     if (!res.ok) throw new Error('Failed to export test run');

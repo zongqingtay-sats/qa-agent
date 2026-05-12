@@ -5,12 +5,16 @@ const nextConfig: NextConfig = {
     proxyTimeout: 120_000,
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:4000/api/:path*",
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        {
+          source: "/api/:path((?!auth).*)",
+          destination: "http://localhost:4000/api/:path*",
+        },
+      ],
+      fallback: [],
+    };
   },
 };
 

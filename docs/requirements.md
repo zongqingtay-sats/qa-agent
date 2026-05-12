@@ -194,12 +194,27 @@ All PoC "Must" priority requirements (FR-1.1–1.6, FR-1.8, FR-2.1–2.4, FR-2.7
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-7.1 | Provide a project management interface similar to Jira/ClickUp | Must |
+| FR-7.1 | Provide a project management interface with project listing and per-project detail pages | Must |
 | FR-7.2 | Group test cases by Project → Feature → Phase hierarchy | Must |
-| FR-7.3 | Support list and board (Kanban) views | Should |
-| FR-7.4 | Provide filtering and search across test cases | Must |
+| FR-7.3 | Support toggling grouping modes on a project page: by Feature, by Phase, Feature→Phase, Phase→Feature | Must |
+| FR-7.4 | Provide filtering and search across test cases within a project | Must |
 | FR-7.5 | Support comment and reply threads on each test case | Must |
 | FR-7.6 | Support bulk operations (move, delete, assign) | Should |
+| FR-7.7 | Support hiding/showing test cases at the Feature or Phase group level (visibility toggle) | Must |
+| FR-7.8 | Provide a test case overview page with name, description, comments, and a flow preview thumbnail | Must |
+| FR-7.9 | Clicking the flow preview on the test case overview page navigates to the flow editor | Must |
+| FR-7.10 | Support assigning one or more users to a test case | Must |
+| FR-7.11 | Support bulk assignment: select multiple test cases from the list, then assign to one or more users | Must |
+
+### FR-8: Extension Setup
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-8.1 | Provide a setup/onboarding page that guides users to download the browser extension | Must |
+| FR-8.2 | Display step-by-step instructions for loading the extension in Chrome/Edge (developer mode, load unpacked) | Must |
+| FR-8.3 | Guide the user to locate and copy the extension ID after loading | Must |
+| FR-8.4 | Provide an input field to enter the extension ID and persist it to settings | Must |
+| FR-8.5 | Include a connection test button to verify the extension is loaded and reachable | Must |
 
 ---
 

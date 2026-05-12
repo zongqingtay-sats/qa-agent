@@ -81,6 +81,43 @@ Open Test Run → View Summary → Inspect Steps → Export Report
 5. For failed steps, the offending block is highlighted in the flow view
 6. User clicks "Export" and selects format (JSON, DOCX, PDF)
 
+### 2.6 Project Management Flow
+```
+Projects List → Select Project → View Grouped Test Cases → Toggle Grouping → Manage Visibility → Open Overview
+```
+1. User navigates to the Projects page and sees a list of projects
+2. User clicks a project to open the Project Detail page
+3. Test cases are displayed grouped by feature (default grouping)
+4. User clicks grouping toggle buttons (Feature / Phase / Feature→Phase / Phase→Feature) to change the grouping
+5. User clicks the eye icon on a group header to hide/show test cases within that group
+6. User clicks a test case name to open the Test Case Overview page
+7. User reviews description, comments, and the flow preview thumbnail
+8. User clicks the flow preview to navigate to the full flow editor
+
+### 2.7 Test Case Assignment Flow
+```
+Select Test Cases → Click Assign → Pick Users → Confirm
+```
+1. User navigates to the test case list (project detail page or global list)
+2. User selects one or more test cases via checkboxes
+3. User clicks the "Assign" button in the batch action bar
+4. A dialog opens with a multi-select user picker
+5. User selects one or more users and confirms
+6. The selected users are assigned to all checked test cases
+7. Assignee avatars appear on each test case row
+
+### 2.8 Extension Setup Flow
+```
+Open Setup → Download Extension → Load in Browser → Copy ID → Configure & Test
+```
+1. User navigates to the Extension Setup page (via sidebar or first-visit prompt)
+2. User downloads the extension package
+3. User follows step-by-step instructions to load the extension in Chrome/Edge developer mode
+4. User locates and copies the extension ID from the browser extensions page
+5. User pastes the extension ID into the input field on the setup page
+6. User clicks "Test Connection" to verify the extension is reachable
+7. On success, setup is complete and user proceeds to create/run tests
+
 ---
 
 ## 3. Feature Specifications
@@ -362,13 +399,111 @@ Test Run Report
 - **Search** by name or description
 - **Actions**: Edit (opens flow editor), Run, Delete, Export
 
-#### 3.5.2 Production Scope (FR-7)
+#### 3.5.2 Production Scope — Project Management (FR-7)
 
-- **Project/Feature/Phase hierarchy** in left sidebar tree
-- **Board (Kanban) view** with columns for test case status
-- **Bulk operations**: move to project, assign, delete
-- **Comment/reply threads** on each test case detail view
-- **Activity feed** showing recent changes
+##### 3.5.2.1 Project Listing & Navigation
+
+- **Project listing page** shows all projects as cards or rows with name, description, test case count, and progress summary
+- Clicking a project opens the **Project Detail page**, which lists the test cases belonging to that project
+- Sidebar or breadcrumbs show the current project context
+
+##### 3.5.2.2 Test Case Grouping
+
+On the Project Detail page, a **grouping toggle bar** at the top allows the user to switch between grouping modes:
+
+| Mode | Button Label | Behavior |
+|------|-------------|----------|
+| By Feature | "Feature" | Test cases grouped under collapsible feature headers |
+| By Phase | "Phase" | Test cases grouped under collapsible phase headers |
+| Feature → Phase | "Feature → Phase" | Two-level hierarchy: feature sections containing phase sub-sections |
+| Phase → Feature | "Phase → Feature" | Two-level hierarchy: phase sections containing feature sub-sections |
+
+- Each grouping mode renders collapsible sections with headers showing the group name and test case count
+- Ungrouped test cases (no feature/phase assigned) appear under an "Unassigned" section
+- The active grouping mode is indicated by a highlighted/active button state
+- Grouping preference is persisted per user (local storage or user settings)
+
+##### 3.5.2.3 Test Case Visibility Toggle
+
+- Each group header (Feature or Phase) includes an **eye icon toggle** to show/hide the test cases within that group
+- When a group is hidden:
+  - Its test cases are collapsed and visually dimmed or fully hidden from the list
+  - The group header remains visible with a strikethrough or muted style, showing "N hidden"
+  - Hidden test cases are excluded from bulk actions (run, export) unless explicitly included
+- Visibility state is persisted per user per project
+- A "Show All / Hide All" toggle at the top resets visibility for all groups
+
+##### 3.5.2.4 Test Case Overview Page
+
+Each test case has a dedicated **Overview page** accessible by clicking the test case name from any list. The overview contains:
+
+| Section | Content |
+|---------|---------|
+| **Header** | Test case name (editable inline), status badge, assigned users avatars |
+| **Description** | Rich text description with edit capability |
+| **Details** | Preconditions, passing criteria, tags, project, feature, phase |
+| **Comments** | Threaded comment section with reply support (see §3.5.2.7) |
+| **Flow Preview** | A read-only miniature rendering of the test flow canvas. Clicking the preview navigates to the full flow editor page (`/test-cases/[id]/editor`) |
+| **Assignment** | List of assigned users with ability to add/remove |
+| **History** | Recent test run results for this test case (last 5 runs with status and date) |
+
+##### 3.5.2.5 User Assignment
+
+- Each test case can be **assigned to one or more users**
+- On the test case overview page, an "Assignees" section shows user avatars; clicking "+" opens a user picker dropdown
+- **Bulk assignment from the list view**:
+  1. User selects multiple test cases via checkboxes
+  2. A batch action bar appears with an "Assign" button
+  3. Clicking "Assign" opens a dialog with a multi-select user picker
+  4. Confirming assignment applies the selected users to all checked test cases
+- Assigned users are shown as avatars/initials in the test case list rows
+- Test cases can be filtered by assignee
+
+##### 3.5.2.6 Bulk Operations
+
+- **Batch action bar** appears when one or more test cases are selected via checkboxes
+- Available bulk actions: Run Selected, Assign, Move to Feature/Phase, Delete, Export
+- Bulk assign opens a user picker dialog (see §3.5.2.5)
+- Bulk move opens a feature/phase picker dialog
+
+##### 3.5.2.7 Comment Threads
+
+- Each test case overview page has a **Comments** section at the bottom
+- Comments support threaded replies (one level of nesting)
+- Each comment shows: author name/avatar, timestamp, message text
+- Users can edit or delete their own comments
+- Comments are ordered chronologically (newest at bottom)
+
+##### 3.5.2.8 Activity Feed
+
+- **Activity feed** showing recent changes across the project (test case created, updated, assigned, commented, run)
+
+### 3.6 Extension Setup Page (FR-8)
+
+The setup page provides a guided onboarding experience for users who need to install and configure the browser extension.
+
+#### 3.6.1 Page Layout
+
+The page is structured as a **step-by-step wizard** with the following steps:
+
+| Step | Title | Content |
+|------|-------|---------|
+| 1 | **Download Extension** | A download button/link to obtain the extension package (`.zip` or direct folder). Includes brief description of what the extension does. |
+| 2 | **Load Extension in Browser** | Step-by-step instructions with screenshots/illustrations for loading the extension: |
+| | | 1. Open Chrome/Edge and navigate to `chrome://extensions` (or `edge://extensions`) |
+| | | 2. Enable "Developer mode" toggle in the top-right corner |
+| | | 3. Click "Load unpacked" button |
+| | | 4. Select the extracted extension folder |
+| | | 5. Verify the extension appears in the extensions list |
+| 3 | **Copy Extension ID** | Instructions to locate the extension ID on the extensions page (shown below the extension name in developer mode). Highlight where the ID appears with an annotated screenshot. |
+| 4 | **Configure in Settings** | An embedded extension ID input field (same as the Settings page). User enters the ID and clicks "Save". A "Test Connection" button verifies the extension is reachable and shows a success/failure indicator. |
+
+#### 3.6.2 UX Details
+
+- Each step has a **completion indicator** (checkmark) that activates when the step is done (e.g., ID saved, connection tested)
+- The page is accessible from the sidebar navigation and also shown as a prompt when the extension is not connected (e.g., on first visit or when connection test fails)
+- A "Skip Setup" link allows experienced users to bypass the wizard
+- The download button should serve the extension files bundled from the `/extension` directory or link to an internal distribution URL
 
 ---
 
@@ -381,10 +516,34 @@ Test Run Report
 - Recent test cases list with status and last run info
 
 ### 4.2 Test Case List
-- Table with sortable columns: Name, Project, Status, Last Run Date, Tags
+- Table with sortable columns: Name, Project, Status, Last Run Date, Tags, Assignees
 - Top bar with search input, filter dropdowns, and "New Test Case" button
 - Checkbox column for batch selection
-- Batch action bar (Run Selected, Delete, Export)
+- Batch action bar (Run Selected, Assign, Delete, Export)
+
+### 4.2A Project Listing Page
+- Grid or list of project cards showing: project name, description, test case count, pass/fail summary
+- "Create Project" button
+- Search/filter bar for projects
+- Clicking a project navigates to the Project Detail page
+
+### 4.2B Project Detail Page
+- Breadcrumb: Projects > [Project Name]
+- **Grouping toggle bar** at the top with four buttons: Feature, Phase, Feature→Phase, Phase→Feature
+- Active grouping button is highlighted
+- Each group rendered as a collapsible section with header: group name, test case count, eye icon (visibility toggle)
+- Within each group: test case rows with columns: checkbox, Name, Status, Last Run, Assignees (avatars)
+- Batch action bar when checkboxes selected: Run, Assign, Move, Delete, Export
+- "Show All / Hide All" visibility toggle button
+- Hidden groups appear dimmed with "N hidden" label
+
+### 4.2C Test Case Overview Page
+- Header: test case name (editable), status badge, assignee avatars with "+" button to add
+- Description section (editable rich text)
+- Details card: preconditions, passing criteria, tags, project, feature, phase
+- **Flow Preview**: a read-only miniature canvas rendering of the test flow; clickable — navigates to `/test-cases/[id]/editor`
+- Comments section: threaded comments with reply, edit, delete, author avatar, timestamp
+- History section: last 5 test runs for this case with status badge and date
 
 ### 4.3 Visual Flow Editor
 - **Left panel**: Block palette organized by category (Control, Action, Validation, Capture)
@@ -421,7 +580,16 @@ Test Run Report
 - Connection status indicator (connected/disconnected) with "Test Connection" button
 - Backend API URL configuration
 
-### 4.8 AI Generation Page Enhancements
+### 4.8 Extension Setup Page
+- Step-by-step wizard layout with numbered steps and completion indicators
+- **Step 1 — Download**: Download button for the extension package with brief description
+- **Step 2 — Load Extension**: Numbered instructions with illustrations for enabling developer mode, clicking "Load unpacked", and selecting the extension folder
+- **Step 3 — Copy Extension ID**: Annotated guidance showing where to find the extension ID on the `chrome://extensions` page
+- **Step 4 — Configure**: Embedded extension ID input field, Save button, and "Test Connection" button with success/failure indicator
+- "Skip Setup" link for experienced users
+- Accessible from sidebar and shown as a prompt when extension is not connected
+
+### 4.9 AI Generation Page Enhancements
 - Three input tabs: Natural Language, Requirements Document, Source Code
 - **Target URL field** on all tabs with auto-format on blur (prepends `https://` if missing)
 - **Natural Language tab**: URL auto-inference from text input (debounced 600ms)

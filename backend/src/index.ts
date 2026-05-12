@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { appConfig } from './config';
 import { errorHandler } from './middleware/error-handler';
+import { authMiddleware } from './middleware/auth';
 import testCasesRouter from './routes/test-cases';
 import testRunsRouter from './routes/test-runs';
 import importRouter from './routes/import';
@@ -24,10 +25,13 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Health check
+// Health check (unauthenticated)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Auth middleware (applied to all routes below)
+app.use('/api', authMiddleware);
 
 // Routes
 app.use('/api/test-cases', testCasesRouter);

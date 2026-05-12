@@ -82,16 +82,23 @@ frontend/
 │   │   ├── test-cases/
 │   │   │   ├── page.tsx            # Test case list with search, filters, batch actions
 │   │   │   └── [id]/
+│   │   │       ├── page.tsx        # Test case overview (name, description, comments, flow preview)
 │   │   │       └── editor/
 │   │   │           └── page.tsx    # Visual flow editor with metadata panel
 │   │   ├── test-runs/
 │   │   │   ├── page.tsx            # Test run history with search, expandable rows
 │   │   │   └── [id]/
 │   │   │       └── page.tsx        # Test run detail with expandable steps, case info
+│   │   ├── projects/
+│   │   │   ├── page.tsx            # Project listing (cards/rows with summary)
+│   │   │   └── [id]/
+│   │   │       └── page.tsx        # Project detail with grouped test cases, grouping toggle, visibility toggle
 │   │   ├── import/
 │   │   │   └── page.tsx            # Import test cases from files
 │   │   ├── generate/
 │   │   │   └── page.tsx            # AI generate (natural language, document, source)
+│   │   ├── setup/
+│   │   │   └── page.tsx            # Extension setup wizard (download, load, configure)
 │   │   └── settings/
 │   │       └── page.tsx            # Extension ID config, connection test
 │   ├── components/
@@ -247,6 +254,62 @@ backend/
 |--------|----------|-------------|-------------|
 | POST | `/api/export/test-case/:id` | Export test case flow | `{ format: "json" \| "docx" \| "pdf" }` |
 | POST | `/api/export/test-run/:id` | Export test run results | `{ format: "json" \| "docx" \| "pdf" }` |
+
+#### Projects (Production — FR-7)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|-------------|
+| GET | `/api/projects` | List all projects | Query: `?search=&page=&limit=` |
+| GET | `/api/projects/:id` | Get project detail with features and phases | — |
+| POST | `/api/projects` | Create a new project | `{ name, description }` |
+| PUT | `/api/projects/:id` | Update project | `{ name, description }` |
+| DELETE | `/api/projects/:id` | Delete project and cascade | — |
+| GET | `/api/projects/:id/test-cases` | List test cases in a project | Query: `?groupBy=feature\|phase\|feature-phase\|phase-feature&search=&status=` |
+
+#### Features & Phases (Production — FR-7)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|-------------|
+| GET | `/api/projects/:id/features` | List features in a project | — |
+| POST | `/api/projects/:id/features` | Create a feature | `{ name }` |
+| PUT | `/api/features/:id` | Update feature | `{ name, sortOrder }` |
+| DELETE | `/api/features/:id` | Delete feature | — |
+| GET | `/api/projects/:id/phases` | List phases in a project | — |
+| POST | `/api/projects/:id/phases` | Create a phase | `{ name }` |
+| PUT | `/api/phases/:id` | Update phase | `{ name, sortOrder }` |
+| DELETE | `/api/phases/:id` | Delete phase | — |
+
+#### Test Case Assignments (Production — FR-7)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|-------------|
+| GET | `/api/test-cases/:id/assignees` | List assigned users for a test case | — |
+| POST | `/api/test-cases/:id/assignees` | Assign users to a test case | `{ userIds: string[] }` |
+| DELETE | `/api/test-cases/:id/assignees/:userId` | Remove an assignee | — |
+| POST | `/api/test-cases/bulk-assign` | Bulk assign users to multiple test cases | `{ testCaseIds: string[], userIds: string[] }` |
+
+#### Comments (Production — FR-7)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|-------------|
+| GET | `/api/test-cases/:id/comments` | List comments for a test case | — |
+| POST | `/api/test-cases/:id/comments` | Create a comment | `{ body, parentId? }` |
+| PUT | `/api/comments/:id` | Edit a comment | `{ body }` |
+| DELETE | `/api/comments/:id` | Delete a comment | — |
+
+#### Group Visibility (Production — FR-7)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|-------------|
+| GET | `/api/projects/:id/visibility` | Get visibility preferences for current user | — |
+| PUT | `/api/projects/:id/visibility` | Update visibility for a group | `{ groupType, groupId, isHidden }` |
+
+#### Users (Production — FR-5)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|-------------|
+| GET | `/api/users` | List users | Query: `?search=` |
+| GET | `/api/users/me` | Get current user | — |
 
 ---
 
@@ -460,9 +523,91 @@ CREATE TABLE step_results (
     executed_at     DATETIME2 DEFAULT GETDATE()
 );
 
--- Production-only tables (FR-5, FR-6, FR-7)
--- Users, Projects, Features, Phases, Comments, Permissions
--- (Defined during Production phase)
+-- Production-only tables (FR-5, FR-6, FR-7, FR-8)
+
+-- Users
+CREATE TABLE users (
+    id              NVARCHAR(36) PRIMARY KEY,     -- UUID
+    email           NVARCHAR(255) NOT NULL UNIQUE,
+    display_name    NVARCHAR(255) NOT NULL,
+    avatar_url      NVARCHAR(MAX),
+    role            NVARCHAR(20) DEFAULT 'tester', -- admin, manager, tester, viewer
+    created_at      DATETIME2 DEFAULT GETDATE()
+);
+
+-- Projects
+CREATE TABLE projects (
+    id              NVARCHAR(36) PRIMARY KEY,
+    name            NVARCHAR(255) NOT NULL,
+    description     NVARCHAR(MAX),
+    created_by      NVARCHAR(36) REFERENCES users(id),
+    created_at      DATETIME2 DEFAULT GETDATE(),
+    updated_at      DATETIME2 DEFAULT GETDATE()
+);
+
+-- Features
+CREATE TABLE features (
+    id              NVARCHAR(36) PRIMARY KEY,
+    project_id      NVARCHAR(36) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name            NVARCHAR(255) NOT NULL,
+    sort_order      INT DEFAULT 0,
+    created_at      DATETIME2 DEFAULT GETDATE()
+);
+
+-- Phases
+CREATE TABLE phases (
+    id              NVARCHAR(36) PRIMARY KEY,
+    project_id      NVARCHAR(36) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name            NVARCHAR(255) NOT NULL,
+    sort_order      INT DEFAULT 0,
+    created_at      DATETIME2 DEFAULT GETDATE()
+);
+
+-- Add project/feature/phase references to test_cases
+ALTER TABLE test_cases ADD project_id   NVARCHAR(36) REFERENCES projects(id);
+ALTER TABLE test_cases ADD feature_id   NVARCHAR(36) REFERENCES features(id);
+ALTER TABLE test_cases ADD phase_id     NVARCHAR(36) REFERENCES phases(id);
+
+-- Test Case Assignments (many-to-many: test_case ↔ user)
+CREATE TABLE test_case_assignments (
+    id              NVARCHAR(36) PRIMARY KEY,
+    test_case_id    NVARCHAR(36) NOT NULL REFERENCES test_cases(id) ON DELETE CASCADE,
+    user_id         NVARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_at     DATETIME2 DEFAULT GETDATE(),
+    assigned_by     NVARCHAR(36) REFERENCES users(id),
+    UNIQUE (test_case_id, user_id)
+);
+
+-- Comments (threaded, one level of nesting)
+CREATE TABLE comments (
+    id              NVARCHAR(36) PRIMARY KEY,
+    test_case_id    NVARCHAR(36) NOT NULL REFERENCES test_cases(id) ON DELETE CASCADE,
+    parent_id       NVARCHAR(36) REFERENCES comments(id),  -- NULL for top-level, set for replies
+    author_id       NVARCHAR(36) NOT NULL REFERENCES users(id),
+    body            NVARCHAR(MAX) NOT NULL,
+    created_at      DATETIME2 DEFAULT GETDATE(),
+    updated_at      DATETIME2 DEFAULT GETDATE()
+);
+
+-- Group Visibility Preferences (per user per project)
+CREATE TABLE group_visibility (
+    id              NVARCHAR(36) PRIMARY KEY,
+    user_id         NVARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id      NVARCHAR(36) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    group_type      NVARCHAR(20) NOT NULL,          -- 'feature' or 'phase'
+    group_id        NVARCHAR(36) NOT NULL,           -- feature_id or phase_id
+    is_hidden       BIT DEFAULT 0,
+    UNIQUE (user_id, project_id, group_type, group_id)
+);
+
+-- Project Permissions (RBAC per project)
+CREATE TABLE project_permissions (
+    id              NVARCHAR(36) PRIMARY KEY,
+    project_id      NVARCHAR(36) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id         NVARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role            NVARCHAR(20) NOT NULL,            -- admin, manager, tester, viewer
+    UNIQUE (project_id, user_id)
+);
 ```
 
 ### 5.2 PoC In-Memory Store
