@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
-const authEnabled = !!process.env.AZURE_AD_CLIENT_ID;
+const authEnabled = !!process.env.AUTH_MICROSOFT_ENTRA_ID_ID;
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -29,10 +29,12 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // Inject access token into API requests for backend proxy
-  if (req.auth?.accessToken && pathname.startsWith("/api/")) {
+  // Inject user info headers into API requests for backend proxy
+  if (req.auth?.user && pathname.startsWith("/api/")) {
     const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("Authorization", `Bearer ${req.auth.accessToken}`);
+    requestHeaders.set("x-user-id", req.auth.user.id || "");
+    requestHeaders.set("x-user-email", req.auth.user.email || "");
+    requestHeaders.set("x-user-name", req.auth.user.name || "");
     return NextResponse.next({
       request: { headers: requestHeaders },
     });

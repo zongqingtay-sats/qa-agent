@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
+  const [loading, setLoading] = useState(false);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
@@ -20,8 +23,13 @@ export default function LoginPage() {
           <Button
             className="w-full"
             size="lg"
-            onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
+            disabled={loading}
+            onClick={() => {
+              setLoading(true);
+              signIn("microsoft-entra-id", { callbackUrl: "/" });
+            }}
           >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Sign in with Microsoft
           </Button>
         </CardContent>
