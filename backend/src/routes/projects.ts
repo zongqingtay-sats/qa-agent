@@ -33,7 +33,7 @@ router.post('/', async (req: Request, res: Response) => {
   const project = await store.createProject({
     name,
     description: description || undefined,
-    createdBy: req.user?.email,
+    createdBy: req.user?.id,
   });
   res.status(201).json({ data: project });
 });
@@ -168,7 +168,7 @@ router.delete('/phases/:id', async (req: Request, res: Response) => {
 
 // GET /api/projects/:id/visibility
 router.get('/:id/visibility', async (req: Request, res: Response) => {
-  const userId = req.user?.id || req.user?.email || '';
+  const userId = req.user?.id || '';
   const records = await store.getGroupVisibility(userId, req.params.id as string);
   res.json({ data: records });
 });
@@ -179,7 +179,7 @@ router.put('/:id/visibility', async (req: Request, res: Response) => {
   if (!groupType || !groupId || isHidden === undefined) {
     throw new AppError('groupType, groupId, and isHidden are required');
   }
-  const userId = req.user?.id || req.user?.email || '';
+  const userId = req.user?.id || '';
   const record = await store.setGroupVisibility({
     userId,
     projectId: req.params.id as string,

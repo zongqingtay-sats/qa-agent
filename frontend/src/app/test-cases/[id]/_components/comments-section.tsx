@@ -11,8 +11,8 @@ import { toast } from "sonner";
 interface Comment {
   id: string;
   testCaseId: string;
-  userId: string;
-  userName?: string;
+  authorId: string;
+  authorName?: string;
   body: string;
   parentId?: string;
   createdAt: string;
@@ -185,9 +185,9 @@ function CommentItem({
       <div className="rounded-md border p-3">
         <div className="flex items-center gap-2 mb-1">
           <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-            {(comment.userName || comment.userId)?.[0]?.toUpperCase() || "?"}
+            {(comment.authorName || comment.authorId)?.[0]?.toUpperCase() || "?"}
           </div>
-          <span className="text-sm font-medium">{comment.userName || comment.userId}</span>
+          <span className="text-sm font-medium">{comment.authorName || comment.authorId}</span>
           <span className="text-xs text-muted-foreground">
             {new Date(comment.createdAt).toLocaleString()}
           </span>
@@ -242,9 +242,9 @@ function CommentItem({
             <div key={reply.id} className="rounded-md border p-3">
               <div className="flex items-center gap-2 mb-1">
                 <div className="h-5 w-5 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center">
-                  {(reply.userName || reply.userId)?.[0]?.toUpperCase() || "?"}
+                  {(reply.authorName || reply.authorId)?.[0]?.toUpperCase() || "?"}
                 </div>
-                <span className="text-sm font-medium">{reply.userName || reply.userId}</span>
+                <span className="text-sm font-medium">{reply.authorName || reply.authorId}</span>
                 <span className="text-xs text-muted-foreground">
                   {new Date(reply.createdAt).toLocaleString()}
                 </span>

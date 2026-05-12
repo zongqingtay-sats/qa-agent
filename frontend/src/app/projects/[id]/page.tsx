@@ -323,7 +323,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Assign Users</DialogTitle><DialogDescription>Enter user emails/IDs separated by commas.</DialogDescription></DialogHeader>
-                  <div className="py-2"><Label htmlFor="assign-users">Users</Label><Input id="assign-users" value={assignUserIds} onChange={(e) => setAssignUserIds(e.target.value)} placeholder="user1@email.com, user2@email.com" /></div>
+                  <div className="py-2"><Label htmlFor="assign-users">Users</Label><Input id="assign-users" value={assignUserIds} onChange={(e) => setAssignUserIds(e.target.value)} placeholder="user1-id, user2-id" /></div>
                   <DialogFooter><Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button><Button onClick={handleBulkAssign} disabled={!assignUserIds.trim()}>Assign</Button></DialogFooter>
                 </DialogContent>
               </Dialog>

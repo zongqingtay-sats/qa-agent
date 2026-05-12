@@ -21,7 +21,7 @@ router.post('/:id/comments', async (req: Request, res: Response) => {
   const comment = await store.createComment({
     testCaseId: testCase.id,
     parentId: parentId || undefined,
-    authorId: req.user?.id || req.user?.email || '',
+    authorId: req.user?.id || '',
     authorName: req.user?.name || undefined,
     body,
   });
@@ -66,7 +66,7 @@ router.post('/:id/assignees', async (req: Request, res: Response) => {
         testCaseId: testCase.id,
         userId,
         userName: userNames?.[i] || undefined,
-        assignedBy: req.user?.email,
+        assignedBy: req.user?.id,
       })
     )
   );
@@ -93,7 +93,7 @@ router.post('/bulk-assign', async (req: Request, res: Response) => {
           testCaseId: tcId,
           userId,
           userName: userNames?.[i] || undefined,
-          assignedBy: req.user?.email,
+          assignedBy: req.user?.id,
         })
       )
     )

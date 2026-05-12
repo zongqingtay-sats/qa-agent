@@ -62,7 +62,7 @@ router.post('/', async (req: Request, res: Response) => {
   const testRun = await store.createTestRun({
     testCaseId,
     status: 'running',
-    runBy: req.user?.email || req.user?.id || undefined,
+    runBy: req.user?.id || undefined,
     runByName: req.user?.name || undefined,
     totalSteps: 0,
     passedSteps: 0,

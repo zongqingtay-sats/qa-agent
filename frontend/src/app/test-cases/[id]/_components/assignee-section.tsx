@@ -67,7 +67,7 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
         {showAdd && (
           <div className="flex gap-2">
             <Input
-              placeholder="User email or ID"
+              placeholder="User ID"
               value={newUser}
               onChange={(e) => setNewUser(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAssign()}
