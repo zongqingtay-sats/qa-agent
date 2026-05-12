@@ -44,7 +44,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b px-2 py-3 overflow-hidden">
+      <SidebarHeader className="px-2 py-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-lg min-w-0 overflow-hidden">
             <FlaskConical className="h-6 w-6 text-primary shrink-0 pl-1" />

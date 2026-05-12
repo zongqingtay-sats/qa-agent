@@ -270,7 +270,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         actions={
           <div className="flex gap-2">
             <Dialog open={featureDialogOpen} onOpenChange={setFeatureDialogOpen}>
-              <DialogTrigger render={<Button variant="outline" size="sm" />}>
+              <DialogTrigger render={<Button variant="outline" />}>
                 <Layers className="h-4 w-4 mr-1" /> Add Feature
               </DialogTrigger>
               <DialogContent>
@@ -280,7 +280,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </DialogContent>
             </Dialog>
             <Dialog open={phaseDialogOpen} onOpenChange={setPhaseDialogOpen}>
-              <DialogTrigger render={<Button variant="outline" size="sm" />}>
+              <DialogTrigger render={<Button variant="outline" />}>
                 <Milestone className="h-4 w-4 mr-1" /> Add Phase
               </DialogTrigger>
               <DialogContent>
@@ -380,9 +380,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             const visibleItems = isHidden ? [] : group.items;
 
             return (
-              <Card key={group.key}>
+              <Card key={group.key} className="p-0 gap-0">
                 <div
-                  className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                  className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => toggleCollapse(group.key)}
                 >
                   {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -400,26 +400,26 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   </Button>
                 </div>
                 {!isCollapsed && !isHidden && (
-                  <CardContent className="pt-0">
+                  <CardContent className="pt-0 pb-3">
                     {group.subGroups && group.subGroups.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="pt-3 space-y-3">
                         {group.subGroups.map((sub) => {
                           const subHidden = hiddenGroups.has(sub.key);
                           const subCollapsed = collapsedGroups.has(sub.key);
                           return (
-                            <div key={sub.key} className="border rounded-md">
+                            <div key={sub.key} className="rounded-md ring-1 ring-foreground/10">
                               <div
                                 className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/30"
                                 onClick={() => toggleCollapse(sub.key)}
                               >
-                                {subCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                {subCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                 <span className="text-sm font-medium flex-1">{sub.label}</span>
                                 <Badge variant="secondary" className="text-xs">{sub.items.length}</Badge>
                                 <Button
-                                  variant="ghost" size="icon" className="h-6 w-6"
+                                  variant="ghost" size="icon" className="h-7 w-7"
                                   onClick={(e) => { e.stopPropagation(); toggleGroupVisibility(sub.groupType, sub.groupId); }}
                                 >
-                                  {subHidden ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5" />}
+                                  {subHidden ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4" />}
                                 </Button>
                               </div>
                               {!subCollapsed && !subHidden && (
@@ -452,7 +452,7 @@ function TestCaseRows({ items, selected, toggleSelect }: { items: any[]; selecte
       {items.map((tc) => (
         <div key={tc.id} className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/30">
           <Checkbox checked={selected.has(tc.id)} onCheckedChange={() => toggleSelect(tc.id)} />
-          <Link href={`/test-cases/${tc.id}`} className="flex-1 text-sm font-medium hover:underline truncate">
+          <Link href={`/test-cases/${tc.id}`} className="flex-1 text-sm font-medium truncate">
             {tc.name}
           </Link>
           <StatusBadge status={tc.status} size="sm" />
