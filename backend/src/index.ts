@@ -12,6 +12,7 @@ import exportRouter from './routes/export';
 import blobRouter from './routes/blob';
 import projectsRouter from './routes/projects';
 import testCaseDetailsRouter from './routes/test-case-details';
+import usersRouter from './routes/users';
 import sseRouter from './sse/router';
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/generate', generateRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/blob', blobRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/events', sseRouter);
 
 // Error handler (must be last)

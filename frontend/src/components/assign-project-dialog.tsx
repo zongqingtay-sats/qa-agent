@@ -160,7 +160,11 @@ export function AssignProjectDialog({
             <Label>Project</Label>
             <Select value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v ?? "")}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a project..." />
+                <SelectValue placeholder="Select a project...">
+                  {selectedProjectId === "__none__"
+                    ? "— None —"
+                    : projects.find((p) => p.id === selectedProjectId)?.name || "Select a project..."}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">— None —</SelectItem>
@@ -175,7 +179,7 @@ export function AssignProjectDialog({
           {selectedProjectId && selectedProjectId !== "__none__" && features.length > 0 && (
             <div className="space-y-1.5">
               <Label>Features</Label>
-              <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
+              <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
                 {features.map((f) => (
                   <label key={f.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                     <Checkbox
@@ -193,7 +197,7 @@ export function AssignProjectDialog({
           {selectedProjectId && selectedProjectId !== "__none__" && phases.length > 0 && (
             <div className="space-y-1.5">
               <Label>Phases</Label>
-              <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
+              <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
                 {phases.map((p) => (
                   <label key={p.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                     <Checkbox

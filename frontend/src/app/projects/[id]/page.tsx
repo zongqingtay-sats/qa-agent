@@ -29,9 +29,11 @@ import {
   Trash2,
   Layers,
   Milestone,
+  X,
 } from "lucide-react";
-import { projectsApi, testCasesApi, assignmentsApi } from "@/lib/api";
+import { projectsApi, testCasesApi, assignmentsApi, usersApi } from "@/lib/api";
 import { toast } from "sonner";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 
 type GroupingMode = "feature" | "phase" | "feature-phase" | "phase-feature";
 
@@ -64,7 +66,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignFPDialogOpen, setAssignFPDialogOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
-  const [assignUserIds, setAssignUserIds] = useState("");
+  const [assignSearchQuery, setAssignSearchQuery] = useState("");
+  const [assignSearchResults, setAssignSearchResults] = useState<{ id: string; name: string | null; email: string | null }[]>([]);
+  const [assignSelectedUsers, setAssignSelectedUsers] = useState<{ id: string; name: string | null; email: string | null }[]>([]);
   const [bulkFeatureIds, setBulkFeatureIds] = useState<Set<string>>(new Set());
   const [bulkPhaseIds, setBulkPhaseIds] = useState<Set<string>>(new Set());
 
@@ -92,10 +96,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         if (v.isHidden) hidden.add(`${v.groupType}:${v.groupId}`);
       }
       setHiddenGroups(hidden);
-    } catch {}
+    } catch { }
   }, [projectId]);
 
   useEffect(() => { loadProject(); loadVisibility(); }, [loadProject, loadVisibility]);
+
+  // Debounced user search for assign dialog
+  useEffect(() => {
+    if (!assignDialogOpen) return;
+    const timeout = setTimeout(async () => {
+      try { setAssignSearchResults((await usersApi.search(assignSearchQuery || undefined)).data); } catch { }
+    }, 200);
+    return () => clearTimeout(timeout);
+  }, [assignSearchQuery, assignDialogOpen]);
 
   useEffect(() => {
     const timeout = setTimeout(() => loadProject(), 300);
@@ -163,7 +176,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const isHidden = !newHidden.has(key);
     if (isHidden) newHidden.add(key); else newHidden.delete(key);
     setHiddenGroups(newHidden);
-    projectsApi.setVisibility(projectId, { groupType, groupId, isHidden }).catch(() => {});
+    projectsApi.setVisibility(projectId, { groupType, groupId, isHidden }).catch(() => { });
   }
 
   function toggleCollapse(key: string) {
@@ -209,13 +222,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }
 
   async function handleBulkAssign() {
-    const ids = assignUserIds.split(",").map((s) => s.trim()).filter(Boolean);
-    if (ids.length === 0 || selected.size === 0) return;
+    if (assignSelectedUsers.length === 0 || selected.size === 0) return;
     try {
-      await assignmentsApi.bulkAssign(Array.from(selected), ids);
+      await assignmentsApi.bulkAssign(
+        Array.from(selected),
+        assignSelectedUsers.map((u) => u.id),
+        assignSelectedUsers.map((u) => u.name || undefined) as string[],
+      );
       toast.success("Users assigned");
       setAssignDialogOpen(false);
-      setAssignUserIds("");
+      setAssignSelectedUsers([]);
+      setAssignSearchQuery("");
       setSelected(new Set());
       loadProject();
     } catch (e: any) { toast.error(e.message); }
@@ -317,14 +334,49 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           {selected.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-              <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+              <Dialog open={assignDialogOpen} onOpenChange={(open) => { setAssignDialogOpen(open); if (!open) { setAssignSelectedUsers([]); setAssignSearchQuery(""); } }}>
                 <DialogTrigger render={<Button variant="outline" size="sm" />}>
                   <Users className="h-4 w-4 mr-1" /> Assign
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader><DialogTitle>Assign Users</DialogTitle><DialogDescription>Enter user emails/IDs separated by commas.</DialogDescription></DialogHeader>
-                  <div className="py-2"><Label htmlFor="assign-users">Users</Label><Input id="assign-users" value={assignUserIds} onChange={(e) => setAssignUserIds(e.target.value)} placeholder="user1-id, user2-id" /></div>
-                  <DialogFooter><Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button><Button onClick={handleBulkAssign} disabled={!assignUserIds.trim()}>Assign</Button></DialogFooter>
+                  <DialogHeader><DialogTitle>Assign Users</DialogTitle><DialogDescription>Search and select users to assign to {selected.size} test case(s).</DialogDescription></DialogHeader>
+                  <div className="py-2 space-y-3">
+                    {assignSelectedUsers.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {assignSelectedUsers.map((u) => (
+                          <Badge key={u.id} variant="secondary" className="gap-1 pr-1">
+                            {u.name || u.email}
+                            <button type="button" className="ml-0.5 hover:text-destructive" onClick={() => setAssignSelectedUsers((prev) => prev.filter((p) => p.id !== u.id))}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <Command shouldFilter={false} className="rounded-md ring-1 ring-muted-foreground/10">
+                      <CommandInput placeholder="Search by name..." value={assignSearchQuery} onValueChange={setAssignSearchQuery} />
+                      <CommandList>
+                        {assignSearchResults.filter((u) => !assignSelectedUsers.some((s) => s.id === u.id)).length === 0 ? (
+                          <CommandEmpty>No users found</CommandEmpty>
+                        ) : (
+                          assignSearchResults
+                            .filter((u) => !assignSelectedUsers.some((s) => s.id === u.id))
+                            .map((u) => (
+                              <CommandItem key={u.id} onSelect={() => setAssignSelectedUsers((prev) => [...prev, u])}>
+                                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0">
+                                  {(u.name || u.email)?.[0]?.toUpperCase() || "?"}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm truncate">{u.name || "Unnamed"}</span>
+                                  {u.email && <span className="text-xs text-muted-foreground truncate">{u.email}</span>}
+                                </div>
+                              </CommandItem>
+                            ))
+                        )}
+                      </CommandList>
+                    </Command>
+                  </div>
+                  <DialogFooter><Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button><Button onClick={handleBulkAssign} disabled={assignSelectedUsers.length === 0}>Assign</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
               <Dialog open={assignFPDialogOpen} onOpenChange={(open) => { setAssignFPDialogOpen(open); if (!open) { setBulkFeatureIds(new Set()); setBulkPhaseIds(new Set()); } }}>
@@ -337,7 +389,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     {features.length > 0 && (
                       <div className="space-y-1.5">
                         <Label>Features</Label>
-                        <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
+                        <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
                           {features.map((f) => (
                             <label key={f.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                               <Checkbox checked={bulkFeatureIds.has(f.id)} onCheckedChange={() => { setBulkFeatureIds((prev) => { const n = new Set(prev); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); return n; }); }} />
@@ -350,7 +402,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     {phases.length > 0 && (
                       <div className="space-y-1.5">
                         <Label>Phases</Label>
-                        <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
+                        <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
                           {phases.map((p) => (
                             <label key={p.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                               <Checkbox checked={bulkPhaseIds.has(p.id)} onCheckedChange={() => { setBulkPhaseIds((prev) => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; }); }} />
@@ -455,10 +507,9 @@ function TestCaseRows({ items, selected, toggleSelect }: { items: any[]; selecte
           <Link href={`/test-cases/${tc.id}`} className="flex-1 text-sm font-medium truncate">
             {tc.name}
           </Link>
-          {tc.lastRunStatus && <StatusBadge status={tc.lastRunStatus} size="sm" />}
-          <StatusBadge status={tc.status} size="sm" />
+
           {tc.assignments && tc.assignments.length > 0 && (
-            <div className="flex -space-x-1">
+            <div className="flex -space-x-2">
               {tc.assignments.slice(0, 3).map((a: any, i: number) => (
                 <div key={i} className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center border-2 border-background" title={a.userName || a.userId}>
                   {(a.userName || a.userId)?.[0]?.toUpperCase() || "?"}
@@ -471,6 +522,8 @@ function TestCaseRows({ items, selected, toggleSelect }: { items: any[]; selecte
               )}
             </div>
           )}
+          {tc.lastRunStatus && <StatusBadge status={tc.lastRunStatus} size="sm" />}
+          <StatusBadge status={tc.status} size="sm" />
         </div>
       ))}
     </div>

@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Users, Plus, X } from "lucide-react";
-import { assignmentsApi } from "@/lib/api";
+import { assignmentsApi, usersApi } from "@/lib/api";
 import { toast } from "sonner";
 
 interface Assignment {
@@ -16,11 +17,19 @@ interface Assignment {
   assignedAt: string;
 }
 
+interface UserOption {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
+
 export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
   const [assignees, setAssignees] = useState<Assignment[]>([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [newUser, setNewUser] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -35,13 +44,28 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleAssign() {
-    const userId = newUser.trim();
-    if (!userId) return;
+  // Debounced user search
+  useEffect(() => {
+    if (!showAdd) return;
+    const timeout = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await usersApi.search(searchQuery || undefined);
+        setUsers(res.data);
+      } catch {
+        // silent
+      } finally {
+        setSearching(false);
+      }
+    }, 200);
+    return () => clearTimeout(timeout);
+  }, [searchQuery, showAdd]);
+
+  async function handleAssign(user: UserOption) {
     try {
-      await assignmentsApi.assign(testCaseId, [userId]);
-      setNewUser("");
+      await assignmentsApi.assign(testCaseId, [user.id], [user.name || undefined] as string[]);
       setShowAdd(false);
+      setSearchQuery("");
       load();
     } catch { toast.error("Failed to assign user"); }
   }
@@ -53,29 +77,51 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
     } catch { toast.error("Failed to remove assignee"); }
   }
 
+  const assignedIds = new Set(assignees.map((a) => a.userId));
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
           <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Assignees</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowAdd(!showAdd)}>
-            <Plus className="h-4 w-4" />
-          </Button>
+          <Popover open={showAdd} onOpenChange={setShowAdd}>
+            <PopoverTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
+              <Plus className="h-4 w-4" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-0">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder="Search by name..."
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                />
+                <CommandList>
+                  {searching ? (
+                    <div className="py-4 text-center text-sm text-muted-foreground">Searching...</div>
+                  ) : users.filter((u) => !assignedIds.has(u.id)).length === 0 ? (
+                    <CommandEmpty>No users found</CommandEmpty>
+                  ) : (
+                    users
+                      .filter((u) => !assignedIds.has(u.id))
+                      .map((u) => (
+                        <CommandItem key={u.id} onSelect={() => handleAssign(u)}>
+                          <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0">
+                            {(u.name || u.email)?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm truncate">{u.name || "Unnamed"}</span>
+                            {u.email && <span className="text-xs text-muted-foreground truncate">{u.email}</span>}
+                          </div>
+                        </CommandItem>
+                      ))
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {showAdd && (
-          <div className="flex gap-2">
-            <Input
-              placeholder="User ID"
-              value={newUser}
-              onChange={(e) => setNewUser(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAssign()}
-              className="text-sm"
-            />
-            <Button size="sm" onClick={handleAssign} disabled={!newUser.trim()}>Add</Button>
-          </div>
-        )}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : assignees.length === 0 ? (

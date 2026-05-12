@@ -177,3 +177,13 @@ export const assignmentsApi = {
   bulkAssign: (testCaseIds: string[], userIds: string[], userNames?: string[]) =>
     request<{ data: any[] }>('/test-cases/bulk-assign', { method: 'POST', body: JSON.stringify({ testCaseIds, userIds, userNames }) }),
 };
+
+// Users
+export const usersApi = {
+  search: (search?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    const qs = params.toString();
+    return request<{ data: { id: string; name: string | null; email: string | null; image: string | null }[] }>(`/users${qs ? `?${qs}` : ''}`);
+  },
+};

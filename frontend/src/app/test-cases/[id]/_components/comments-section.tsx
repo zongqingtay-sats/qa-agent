@@ -95,21 +95,6 @@ export function CommentsSection({ testCaseId }: { testCaseId: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* New comment */}
-        <div className="space-y-2">
-          <Textarea
-            placeholder="Add a comment..."
-            value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
-            rows={2}
-          />
-          <div className="flex justify-end">
-            <Button size="sm" onClick={handleCreate} disabled={!newBody.trim()}>
-              Comment
-            </Button>
-          </div>
-        </div>
-
         {/* Comments list */}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
@@ -139,6 +124,20 @@ export function CommentsSection({ testCaseId }: { testCaseId: string }) {
             ))}
           </div>
         )}
+        {/* New comment */}
+        <div className="space-y-2">
+          <Textarea
+            placeholder="Add a comment..."
+            value={newBody}
+            onChange={(e) => setNewBody(e.target.value)}
+            rows={2}
+          />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleCreate} disabled={!newBody.trim()}>
+              Comment
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
