@@ -13,6 +13,8 @@ import {
   FolderKanban,
   LogOut,
   User,
+  Users,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +38,11 @@ const navItems = [
   { title: "Test Runs", href: "/test-runs", icon: Play },
   { title: "Generate", href: "/generate", icon: Sparkles },
   { title: "Settings", href: "/settings", icon: Settings },
+];
+
+const adminItems = [
+  { title: "Users", href: "/admin/users", icon: Users },
+  { title: "Roles", href: "/admin/roles", icon: Shield },
 ];
 
 export function AppSidebar() {
@@ -63,6 +70,24 @@ export function AppSidebar() {
                 const isActive = item.href === "/"
                   ? pathname === "/"
                   : pathname.startsWith(item.href);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton render={<Link href={item.href} title={item.title} />} isActive={isActive}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton render={<Link href={item.href} title={item.title} />} isActive={isActive}>

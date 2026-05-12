@@ -187,3 +187,36 @@ export const usersApi = {
     return request<{ data: { id: string; name: string | null; email: string | null; image: string | null }[] }>(`/users${qs ? `?${qs}` : ''}`);
   },
 };
+
+// Admin — Roles & User Management
+export const adminApi = {
+  // Current user
+  me: () => request<{ data: { role: any; projectIds: string[] } }>('/admin/me'),
+
+  // Roles
+  listRoles: () => request<{ data: any[] }>('/admin/roles'),
+  getRole: (id: string) => request<{ data: any }>(`/admin/roles/${encodeURIComponent(id)}`),
+  createRole: (data: { name: string; description?: string; isAdmin?: boolean; projectPerms?: number; testcasePerms?: number; testrunPerms?: number; userPerms?: number; importPerms?: number; generatePerms?: number }) =>
+    request<{ data: any }>('/admin/roles', { method: 'POST', body: JSON.stringify(data) }),
+  updateRole: (id: string, data: Record<string, any>) =>
+    request<{ data: any }>(`/admin/roles/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteRole: (id: string) =>
+    request<{ message: string }>(`/admin/roles/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getPermissionBits: () =>
+    request<{ data: { bits: Record<string, number>; permissions: { name: string; resource: string; bit: number }[] } }>('/admin/roles/permissions'),
+
+  // Users with roles
+  listUsers: () => request<{ data: any[] }>('/admin/users'),
+  setUserRole: (userId: string, roleId: string) =>
+    request<{ data: any }>(`/admin/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: JSON.stringify({ roleId }) }),
+  removeUserRole: (userId: string) =>
+    request<{ data: any }>(`/admin/users/${encodeURIComponent(userId)}/role`, { method: 'DELETE' }),
+
+  // Project access
+  getProjectAccess: (projectId: string) =>
+    request<{ data: any[] }>(`/admin/projects/${encodeURIComponent(projectId)}/access`),
+  grantProjectAccess: (projectId: string, userId: string) =>
+    request<{ data: any }>(`/admin/projects/${encodeURIComponent(projectId)}/access`, { method: 'POST', body: JSON.stringify({ userId }) }),
+  revokeProjectAccess: (projectId: string, userId: string) =>
+    request<{ message: string }>(`/admin/projects/${encodeURIComponent(projectId)}/access/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+};

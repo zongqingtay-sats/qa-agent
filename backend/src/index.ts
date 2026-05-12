@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import { appConfig } from './config';
 import { errorHandler } from './middleware/error-handler';
 import { authMiddleware } from './middleware/auth';
-import { loadUserRole, seedDefaultRoles } from './rbac/middleware';
+import { loadUserRole } from './rbac/middleware';
 import testCasesRouter from './routes/test-cases';
 import testRunsRouter from './routes/test-runs';
 import importRouter from './routes/import';
@@ -55,10 +55,9 @@ app.use('/api/events', sseRouter);
 // Error handler (must be last)
 app.use(errorHandler);
 
-app.listen(appConfig.port, async () => {
+app.listen(appConfig.port, () => {
   console.log(`QA Agent API server running on port ${appConfig.port}`);
   console.log(`CORS origin: ${appConfig.corsOrigin}`);
-  await seedDefaultRoles();
 });
 
 export default app;
