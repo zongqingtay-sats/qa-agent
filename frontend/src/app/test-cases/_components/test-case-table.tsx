@@ -78,7 +78,7 @@ export function TestCaseTable({
             </TableRow>
           ) : (
             testCases.map((tc) => (
-              <TableRow key={tc.id} className="cursor-pointer" onClick={() => router.push(`/test-cases/${tc.id}/editor`)}>
+              <TableRow key={tc.id} className="cursor-pointer" onClick={() => router.push(`/test-cases/${tc.id}`)}>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selected.has(tc.id)} onCheckedChange={() => onToggleSelect(tc.id)} />
                 </TableCell>

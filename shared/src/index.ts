@@ -79,6 +79,9 @@ export interface TestCase {
   tags: string[];
   flowData: FlowData;
   status: TestCaseStatus;
+  projectId?: string;
+  featureIds: string[];
+  phaseIds: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -217,3 +220,63 @@ export interface ValidationWarning {
   blockId?: string;
   message: string;
 }
+
+// ----- Project Management -----
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  features?: Feature[];
+  phases?: Phase[];
+}
+
+export interface Feature {
+  id: string;
+  projectId: string;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface Phase {
+  id: string;
+  projectId: string;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  testCaseId: string;
+  parentId?: string;
+  authorId: string;
+  authorName?: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Assignment {
+  id: string;
+  testCaseId: string;
+  userId: string;
+  userName?: string;
+  assignedAt: string;
+  assignedBy?: string;
+}
+
+export interface GroupVisibility {
+  id: string;
+  userId: string;
+  projectId: string;
+  groupType: 'feature' | 'phase';
+  groupId: string;
+  isHidden: boolean;
+}
+
+export type GroupingMode = 'feature' | 'phase' | 'feature-phase' | 'phase-feature';

@@ -18,10 +18,16 @@ model TestCase {
   tags            String    @default("[]") @db.NVarChar(Max) // JSON array
   flowData        String    @db.NVarChar(Max) // JSON (nodes + edges)
   status          String    @default("draft") @db.NVarChar(20)
+  projectId       String?   @db.NVarChar(36)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  testRuns TestRun[]
+  project     Project?             @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  features    TestCaseFeature[]
+  phases      TestCasePhase[]
+  testRuns    TestRun[]
+  assignments TestCaseAssignment[]
+  comments    Comment[]
 
   @@map("test_cases")
 }
@@ -64,4 +70,115 @@ model StepResult {
   testRun TestRun @relation(fields: [testRunId], references: [id], onDelete: Cascade)
 
   @@map("step_results")
+}
+
+model Project {
+  id          String   @id @default(uuid()) @db.NVarChar(36)
+  name        String   @db.NVarChar(255)
+  description String?  @db.NVarChar(Max)
+  createdBy   String?  @db.NVarChar(255) // user email or ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  features        Feature[]
+  phases          Phase[]
+  testCases       TestCase[]
+  groupVisibility GroupVisibility[]
+
+  @@map("projects")
+}
+
+model Feature {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  projectId String   @db.NVarChar(36)
+  name      String   @db.NVarChar(255)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCases TestCaseFeature[]
+
+  @@map("features")
+}
+
+model Phase {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  projectId String   @db.NVarChar(36)
+  name      String   @db.NVarChar(255)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCases TestCasePhase[]
+
+  @@map("phases")
+}
+
+model TestCaseFeature {
+  id         String @id @default(uuid()) @db.NVarChar(36)
+  testCaseId String @db.NVarChar(36)
+  featureId  String @db.NVarChar(36)
+
+  testCase TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  feature  Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([testCaseId, featureId])
+  @@map("test_case_features")
+}
+
+model TestCasePhase {
+  id         String @id @default(uuid()) @db.NVarChar(36)
+  testCaseId String @db.NVarChar(36)
+  phaseId    String @db.NVarChar(36)
+
+  testCase TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  phase    Phase    @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@unique([testCaseId, phaseId])
+  @@map("test_case_phases")
+}
+
+model TestCaseAssignment {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  testCaseId String   @db.NVarChar(36)
+  userId     String   @db.NVarChar(255) // user email or ID
+  userName   String?  @db.NVarChar(255)
+  assignedAt DateTime @default(now())
+  assignedBy String?  @db.NVarChar(255)
+
+  testCase TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([testCaseId, userId])
+  @@map("test_case_assignments")
+}
+
+model Comment {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  testCaseId String   @db.NVarChar(36)
+  parentId   String?  @db.NVarChar(36)
+  authorId   String   @db.NVarChar(255) // user email or ID
+  authorName String?  @db.NVarChar(255)
+  body       String   @db.NVarChar(Max)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  testCase TestCase  @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model GroupVisibility {
+  id        String  @id @default(uuid()) @db.NVarChar(36)
+  userId    String  @db.NVarChar(255)
+  projectId String  @db.NVarChar(36)
+  groupType String  @db.NVarChar(20) // 'feature' or 'phase'
+  groupId   String  @db.NVarChar(36) // feature_id or phase_id
+  isHidden  Boolean @default(false)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId, groupType, groupId])
+  @@map("group_visibility")
 }

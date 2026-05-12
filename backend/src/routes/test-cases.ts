@@ -39,6 +39,9 @@ router.post('/', async (req: Request, res: Response) => {
     tags: tags || [],
     flowData: typeof flowData === 'string' ? flowData : JSON.stringify(flowData),
     status: 'draft',
+    projectId: req.body.projectId || undefined,
+    featureIds: req.body.featureIds || [],
+    phaseIds: req.body.phaseIds || [],
   });
 
   res.status(201).json({ data: testCase });
@@ -61,6 +64,9 @@ router.put('/:id', async (req: Request, res: Response) => {
   if (tags !== undefined) updates.tags = tags;
   if (flowData !== undefined) updates.flowData = typeof flowData === 'string' ? flowData : JSON.stringify(flowData);
   if (status !== undefined) updates.status = status;
+  if (req.body.projectId !== undefined) updates.projectId = req.body.projectId || undefined;
+  if (req.body.featureIds !== undefined) updates.featureIds = req.body.featureIds;
+  if (req.body.phaseIds !== undefined) updates.phaseIds = req.body.phaseIds;
 
   const updated = await store.updateTestCase(req.params.id as string, updates);
   res.json({ data: updated });

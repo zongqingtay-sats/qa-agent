@@ -125,3 +125,74 @@ export const exportApi = {
     return res.blob();
   },
 };
+
+// Projects
+export const projectsApi = {
+  list: (params?: { search?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    const qs = searchParams.toString();
+    return request<{ data: any[]; total: number }>(`/projects${qs ? `?${qs}` : ''}`);
+  },
+  get: (id: string) => request<{ data: any }>(`/projects/${encodeURIComponent(id)}`),
+  create: (data: { name: string; description?: string }) =>
+    request<{ data: any }>('/projects', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: { name?: string; description?: string }) =>
+    request<{ data: any }>(`/projects/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getTestCases: (id: string, params?: { search?: string; status?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.status) searchParams.set('status', params.status);
+    const qs = searchParams.toString();
+    return request<{ data: any[]; total: number }>(`/projects/${encodeURIComponent(id)}/test-cases${qs ? `?${qs}` : ''}`);
+  },
+  // Features
+  getFeatures: (projectId: string) =>
+    request<{ data: any[] }>(`/projects/${encodeURIComponent(projectId)}/features`),
+  createFeature: (projectId: string, data: { name: string; sortOrder?: number }) =>
+    request<{ data: any }>(`/projects/${encodeURIComponent(projectId)}/features`, { method: 'POST', body: JSON.stringify(data) }),
+  updateFeature: (id: string, data: { name?: string; sortOrder?: number }) =>
+    request<{ data: any }>(`/projects/features/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFeature: (id: string) =>
+    request<{ message: string }>(`/projects/features/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  // Phases
+  getPhases: (projectId: string) =>
+    request<{ data: any[] }>(`/projects/${encodeURIComponent(projectId)}/phases`),
+  createPhase: (projectId: string, data: { name: string; sortOrder?: number }) =>
+    request<{ data: any }>(`/projects/${encodeURIComponent(projectId)}/phases`, { method: 'POST', body: JSON.stringify(data) }),
+  updatePhase: (id: string, data: { name?: string; sortOrder?: number }) =>
+    request<{ data: any }>(`/projects/phases/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePhase: (id: string) =>
+    request<{ message: string }>(`/projects/phases/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  // Visibility
+  getVisibility: (projectId: string) =>
+    request<{ data: any[] }>(`/projects/${encodeURIComponent(projectId)}/visibility`),
+  setVisibility: (projectId: string, data: { groupType: string; groupId: string; isHidden: boolean }) =>
+    request<{ data: any }>(`/projects/${encodeURIComponent(projectId)}/visibility`, { method: 'PUT', body: JSON.stringify(data) }),
+};
+
+// Comments
+export const commentsApi = {
+  list: (testCaseId: string) =>
+    request<{ data: any[] }>(`/test-cases/${encodeURIComponent(testCaseId)}/comments`),
+  create: (testCaseId: string, data: { body: string; parentId?: string }) =>
+    request<{ data: any }>(`/test-cases/${encodeURIComponent(testCaseId)}/comments`, { method: 'POST', body: JSON.stringify(data) }),
+  update: (commentId: string, data: { body: string }) =>
+    request<{ data: any }>(`/test-cases/comments/${encodeURIComponent(commentId)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (commentId: string) =>
+    request<{ message: string }>(`/test-cases/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' }),
+};
+
+// Assignments
+export const assignmentsApi = {
+  list: (testCaseId: string) =>
+    request<{ data: any[] }>(`/test-cases/${encodeURIComponent(testCaseId)}/assignees`),
+  assign: (testCaseId: string, userIds: string[], userNames?: string[]) =>
+    request<{ data: any[] }>(`/test-cases/${encodeURIComponent(testCaseId)}/assignees`, { method: 'POST', body: JSON.stringify({ userIds, userNames }) }),
+  remove: (testCaseId: string, userId: string) =>
+    request<{ message: string }>(`/test-cases/${encodeURIComponent(testCaseId)}/assignees/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+  bulkAssign: (testCaseIds: string[], userIds: string[], userNames?: string[]) =>
+    request<{ data: any[] }>('/test-cases/bulk-assign', { method: 'POST', body: JSON.stringify({ testCaseIds, userIds, userNames }) }),
+};

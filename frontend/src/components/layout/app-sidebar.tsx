@@ -10,6 +10,7 @@ import {
   Sparkles,
   Settings,
   FlaskConical,
+  FolderKanban,
   LogOut,
   User,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import { Button } from "@/components/ui/button";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
+  { title: "Projects", href: "/projects", icon: FolderKanban },
   { title: "Test Cases", href: "/test-cases", icon: TestTube2 },
   { title: "Test Runs", href: "/test-runs", icon: Play },
   { title: "Generate", href: "/generate", icon: Sparkles },
