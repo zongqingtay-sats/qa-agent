@@ -15,6 +15,7 @@ import {
 import { testCasesApi, testRunsApi } from "@/lib/api";
 import { CommentsSection } from "./_components/comments-section";
 import { AssigneeSection } from "./_components/assignee-section";
+import { FlowPreview } from "./_components/flow-preview";
 import { AssignProjectDialog } from "@/components/assign-project-dialog";
 import { toast } from "sonner";
 
@@ -98,8 +99,8 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
               <CardHeader>
                 <CardTitle className="text-base flex items-center justify-between">
                   <span className="flex items-center gap-2"><FolderKanban className="h-4 w-4" /> Project</span>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAssignDialogOpen(true)}>
-                    Edit
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAssignDialogOpen(true)}>
+                    <Pencil className="h-4 w-4" />
                   </Button>
                 </CardTitle>
               </CardHeader>
@@ -135,6 +136,9 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             <AssigneeSection testCaseId={testCaseId} />
           </div>
     
+          {/* Flow Preview */}
+          <FlowPreview testCaseId={testCaseId} flowData={testCase.flowData} />
+
           {/* Run History */}
           <Card>
             <CardHeader>

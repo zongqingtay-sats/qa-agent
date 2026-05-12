@@ -80,7 +80,7 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
   const assignedIds = new Set(assignees.map((a) => a.userId));
 
   return (
-    <Card>
+    <Card className="flex-1">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
           <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Assignees</span>
