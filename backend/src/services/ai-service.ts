@@ -1,3 +1,4 @@
+import yaml from 'js-yaml';
 import { appConfig } from '../config';
 import CopilotClient from '../copilot/client';
 import { ChatMessage } from '../copilot/types';
@@ -30,7 +31,7 @@ function getClient(): CopilotClient | null {
 }
 
 const SYSTEM_PROMPT = `You are a QA test case generation assistant. You generate structured test cases for web applications.
-Always return valid JSON arrays of test cases. Each test case should have:
+Always return valid YAML arrays of test cases. Each test case should have:
 - name: descriptive name
 - description: what the test verifies
 - preconditions: any setup needed (optional)
@@ -50,10 +51,8 @@ When page HTML is provided, use it to:
 3. Use the actual button text and labels from the page
 4. Generate selectors that match the real DOM structure
 
-Return ONLY a JSON array, no markdown code fences, no explanation text.
-All string values must be plain literal strings. NEVER use JavaScript expressions like .repeat(), + concatenation, or template literals inside JSON values.
-For example, write "aaaaaaaaaa" instead of "a".repeat(10).
-The JSON array must be absolutely parseable by JSON.parse() without errors.`;
+Return ONLY a YAML array, no markdown code fences, no explanation text.
+All string values must be plain literal strings.`;
 
 function buildPrompt(mode: 'requirements' | 'natural-language' | 'source-code', input: string, options?: { targetUrl?: string; pageHtml?: string }): ChatMessage[] {
   const messages: ChatMessage[] = [
@@ -111,65 +110,13 @@ export async function generateTestCases(
   }
 
   // Parse the response - strip markdown fences if present
-  let jsonStr = content.trim();
-  if (jsonStr.startsWith('```')) {
-    jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  let yamlStr = content.trim();
+  if (yamlStr.startsWith('```')) {
+    yamlStr = yamlStr.replace(/^```(?:ya?ml)?\n?/, '').replace(/\n?```$/, '');
   }
 
-  // Sanitize JS expressions that the model may inject into JSON string values
-  jsonStr = sanitizeJsExpressions(jsonStr);
-
-  const testCases: GeneratedTestCase[] = JSON.parse(jsonStr);
+  const testCases = yaml.load(yamlStr) as GeneratedTestCase[];
   return testCases;
-}
-
-/**
- * Replace common JavaScript string expressions in JSON with their evaluated literal values.
- * The LLM sometimes outputs JS expressions instead of plain JSON strings.
- */
-function sanitizeJsExpressions(json: string): string {
-  // "str".repeat(n) → repeated string
-  json = json.replace(/"([^"]*)"\.repeat\((\d+)\)/g, (_, str, n) => {
-    const count = Math.min(Number(n), 1000);
-    return JSON.stringify(str.repeat(count));
-  });
-
-  // "str".padStart(n, "ch") / .padEnd(n, "ch")
-  json = json.replace(/"([^"]*)"\.pad(Start|End)\((\d+),\s*"([^"]*)"\)/g, (_, str, dir, n, ch) => {
-    const len = Math.min(Number(n), 1000);
-    return JSON.stringify(dir === 'Start' ? str.padStart(len, ch) : str.padEnd(len, ch));
-  });
-
-  // "str".toUpperCase() / .toLowerCase()
-  json = json.replace(/"([^"]*)"\.toUpperCase\(\)/g, (_, str) => JSON.stringify(str.toUpperCase()));
-  json = json.replace(/"([^"]*)"\.toLowerCase\(\)/g, (_, str) => JSON.stringify(str.toLowerCase()));
-
-  // "str".trim()
-  json = json.replace(/"([^"]*)"\.trim\(\)/g, (_, str) => JSON.stringify(str.trim()));
-
-  // "str".slice(start, end) / .substring(start, end)
-  json = json.replace(/"([^"]*)"\.(slice|substring)\((\d+),\s*(\d+)\)/g, (_, str, _method, s, e) =>
-    JSON.stringify(str.slice(Number(s), Number(e)))
-  );
-
-  // "str".replace("old", "new")
-  json = json.replace(/"([^"]*)"\.replace\("([^"]*)",\s*"([^"]*)"\)/g, (_, str, old, rep) =>
-    JSON.stringify(str.replace(old, rep))
-  );
-
-  // "str".concat("other")
-  json = json.replace(/"([^"]*)"\.concat\("([^"]*)"\)/g, (_, a, b) => JSON.stringify(a + b));
-
-  // Array(n).join("ch")
-  json = json.replace(/Array\((\d+)\)\.join\("([^"]*)"\)/g, (_, n, ch) => {
-    const count = Math.min(Number(n), 1000);
-    return JSON.stringify(Array(count).join(ch));
-  });
-
-  // "foo" + "bar" (string concatenation, run last to avoid interfering with above)
-  json = json.replace(/"([^"]*)"\s*\+\s*"([^"]*)"/g, (_, a, b) => JSON.stringify(a + b));
-
-  return json;
 }
 
 /**
@@ -205,26 +152,25 @@ Some test steps navigate to different pages or views. I have now scraped those a
 4. Keep the overall test intent and structure intact — only improve accuracy.
 
 Here are the current test cases:
-${JSON.stringify(testCases, null, 2)}
+${yaml.dump(testCases)}
 
 Here is the HTML of the additional pages that were navigated to:
 ${pagesBlock}
 
-Return the COMPLETE refined test cases as a JSON array (same format as input). Return ALL test cases, not just the modified ones.`,
+Return the COMPLETE refined test cases as a YAML array (same format as input). Return ALL test cases, not just the modified ones.`,
     },
   ];
 
   const content = await client.chat(messages, { temperature: 0.2, maxTokens: 8192 });
   if (!content) return testCases;
 
-  let jsonStr = content.trim();
-  if (jsonStr.startsWith('```')) {
-    jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  let yamlStr = content.trim();
+  if (yamlStr.startsWith('```')) {
+    yamlStr = yamlStr.replace(/^```(?:ya?ml)?\n?/, '').replace(/\n?```$/, '');
   }
-  jsonStr = sanitizeJsExpressions(jsonStr);
 
   try {
-    return JSON.parse(jsonStr);
+    return yaml.load(yamlStr) as GeneratedTestCase[];
   } catch {
     // If parsing fails, return original test cases
     return testCases;
