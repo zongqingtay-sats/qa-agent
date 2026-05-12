@@ -455,6 +455,7 @@ function TestCaseRows({ items, selected, toggleSelect }: { items: any[]; selecte
           <Link href={`/test-cases/${tc.id}`} className="flex-1 text-sm font-medium truncate">
             {tc.name}
           </Link>
+          {tc.lastRunStatus && <StatusBadge status={tc.lastRunStatus} size="sm" />}
           <StatusBadge status={tc.status} size="sm" />
           {tc.assignments && tc.assignments.length > 0 && (
             <div className="flex -space-x-1">

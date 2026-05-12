@@ -23,6 +23,8 @@ export interface TestRunRecord {
   id: string;
   testCaseId: string;
   status: 'running' | 'passed' | 'failed' | 'stopped';
+  runBy?: string;
+  runByName?: string;
   startedAt: string;
   completedAt?: string;
   durationMs?: number;

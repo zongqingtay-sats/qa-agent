@@ -20,7 +20,31 @@ router.get('/:id', async (req: Request, res: Response) => {
   if (!testCase) {
     throw new AppError('Test case not found', 404);
   }
-  res.json({ data: testCase });
+
+  // Enrich with project/feature/phase names
+  let projectName: string | undefined;
+  let featureNames: string[] | undefined;
+  let phaseNames: string[] | undefined;
+
+  if (testCase.projectId) {
+    const project = await store.getProject(testCase.projectId);
+    projectName = project?.name;
+
+    if (testCase.featureIds?.length) {
+      const features = await store.getFeaturesForProject(testCase.projectId);
+      featureNames = testCase.featureIds
+        .map((id) => features.find((f) => f.id === id)?.name)
+        .filter(Boolean) as string[];
+    }
+    if (testCase.phaseIds?.length) {
+      const phases = await store.getPhasesForProject(testCase.projectId);
+      phaseNames = testCase.phaseIds
+        .map((id) => phases.find((p) => p.id === id)?.name)
+        .filter(Boolean) as string[];
+    }
+  }
+
+  res.json({ data: { ...testCase, projectName, featureNames, phaseNames } });
 });
 
 // POST /api/test-cases

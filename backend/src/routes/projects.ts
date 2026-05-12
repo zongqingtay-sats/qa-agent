@@ -69,11 +69,15 @@ router.get('/:id/test-cases', async (req: Request, res: Response) => {
     status: status as string | undefined,
   });
 
-  // Enrich with assignments
+  // Enrich with assignments and last run status
   const enriched = await Promise.all(
     testCases.map(async (tc) => {
-      const assignments = await store.getAssignmentsForTestCase(tc.id);
-      return { ...tc, assignments };
+      const [assignments, runs] = await Promise.all([
+        store.getAssignmentsForTestCase(tc.id),
+        store.getAllTestRuns({ testCaseId: tc.id }),
+      ]);
+      const lastRun = runs.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0];
+      return { ...tc, assignments, lastRunStatus: lastRun?.status || null };
     })
   );
 

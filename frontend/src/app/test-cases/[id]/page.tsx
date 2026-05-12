@@ -119,6 +119,11 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
                           {new Date(run.startedAt || run.createdAt).toLocaleString()}
                         </span>
                       </div>
+                      {run.runByName && (
+                        <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center" title={run.runByName}>
+                          {run.runByName[0]?.toUpperCase() || "?"}
+                        </div>
+                      )}
                     </Link>
                   ))}
                   {runs.length > 5 && (

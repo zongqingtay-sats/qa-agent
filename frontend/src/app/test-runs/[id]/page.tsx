@@ -133,6 +133,14 @@ export default function TestRunDetailPage() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <RunSummaryCards status={run.status} passedSteps={run.passedSteps} totalSteps={run.totalSteps} durationMs={run.durationMs} startedAt={run.startedAt} />
+          {run.runByName && (
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                {run.runByName[0]?.toUpperCase() || "?"}
+              </div>
+              <span className="text-sm text-muted-foreground">Run by <span className="font-medium text-foreground">{run.runByName}</span></span>
+            </div>
+          )}
           <RunCaseInfo testCaseId={run.testCaseId} testCaseName={run.testCaseName} testCaseDescription={run.testCaseDescription} testCasePreconditions={run.testCasePreconditions} testCasePassingCriteria={run.testCasePassingCriteria} />
           <StepResultsTable steps={allSteps} />
         </div>

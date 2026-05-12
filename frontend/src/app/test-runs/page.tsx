@@ -151,15 +151,16 @@ export default function TestRunsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Steps</TableHead>
                 <TableHead>Duration</TableHead>
+                <TableHead>Run By</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
               ) : filteredRuns.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   {search.trim() ? "No test runs match your search." : "No test runs yet. Run a test case to see results here."}
                 </TableCell></TableRow>
               ) : (
@@ -179,6 +180,15 @@ export default function TestRunsPage() {
                         {run.failedSteps > 0 && <span className="text-red-600 ml-1">({run.failedSteps} failed)</span>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "—"}</TableCell>
+                      <TableCell>
+                        {run.runByName ? (
+                          <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center" title={run.runByName}>
+                            {run.runByName[0]?.toUpperCase() || "?"}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(run.startedAt).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -196,7 +206,7 @@ export default function TestRunsPage() {
                     </TableRow>
                     {expanded.has(run.id) && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={8} className="p-0">
+                        <TableCell colSpan={9} className="p-0">
                           <div className="px-6 py-4"><RunExpandedDetail detail={runDetails[run.id]} /></div>
                         </TableCell>
                       </TableRow>
