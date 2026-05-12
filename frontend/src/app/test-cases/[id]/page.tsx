@@ -6,11 +6,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Pencil,
   Clock,
   FolderKanban,
+  Tag,
 } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
 import { CommentsSection } from "./_components/comments-section";
@@ -26,6 +28,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const [runs, setRuns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [tagsInput, setTagsInput] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -34,6 +37,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
         testRunsApi.list({ testCaseId }),
       ]);
       setTestCase(tcRes.data);
+      setTagsInput((tcRes.data.tags || []).join(", "));
       setRuns(runsRes.data);
     } catch {
       toast.error("Failed to load test case");
@@ -56,6 +60,19 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const stepCount = testCase.steps?.length ?? 0;
   const recentRuns = runs.slice(0, 5);
 
+  const handleTagsCommit = async () => {
+    const newTags = tagsInput.split(",").map((t: string) => t.trim()).filter(Boolean);
+    const currentTags = testCase.tags || [];
+    if (JSON.stringify(newTags) === JSON.stringify(currentTags)) return;
+    try {
+      await testCasesApi.update(testCaseId, { tags: newTags });
+      setTestCase((prev: any) => ({ ...prev, tags: newTags }));
+    } catch {
+      toast.error("Failed to update tags");
+      setTagsInput(currentTags.join(", "));
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -77,19 +94,31 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             <CardHeader><CardTitle className="text-base">Details</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground w-20">Status</span>
+                <span className="text-muted-foreground text-xs font-semibold w-20">Status</span>
                 <StatusBadge status={testCase.status} />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground w-20">Steps</span>
+                <span className="text-muted-foreground text-xs font-semibold w-20">Steps</span>
                 <span className="text-sm">{stepCount} steps</span>
               </div>
               {testCase.description && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Description</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-xs font-semibold w-20">Description</span>
                   <p className="text-sm mt-1">{testCase.description}</p>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs font-semibold w-20">
+                  Tags
+                </span>
+                <Input
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                  onBlur={handleTagsCommit}
+                  placeholder="Add tags"
+                  className="text-sm mt-1 border-none"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -107,21 +136,21 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
               <CardContent className="space-y-2">
                 {testCase.projectId ? (
                   <>
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Project: </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs font-semibold w-20">Project </span>
                       <Link href={`/projects/${testCase.projectId}`} className="text-primary hover:underline">
                         {testCase.projectName || testCase.projectId}
                       </Link>
                     </div>
                     {testCase.featureIds?.length > 0 && (
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Features: </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs font-semibold w-20">Features </span>
                         {(testCase.featureNames || testCase.featureIds).join(", ")}
                       </div>
                     )}
                     {testCase.phaseIds?.length > 0 && (
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Phases: </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs font-semibold w-20">Phases </span>
                         {(testCase.phaseNames || testCase.phaseIds).join(", ")}
                       </div>
                     )}
@@ -135,7 +164,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             {/* Assignees */}
             <AssigneeSection testCaseId={testCaseId} />
           </div>
-    
+
           {/* Flow Preview */}
           <FlowPreview testCaseId={testCaseId} flowData={testCase.flowData} />
 

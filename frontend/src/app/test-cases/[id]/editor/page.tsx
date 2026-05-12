@@ -87,13 +87,6 @@ function FlowEditorInner() {
         onPreconditionsChange={editor.setTestCasePreconditions}
         passingCriteria={editor.testCasePassingCriteria}
         onPassingCriteriaChange={editor.setTestCasePassingCriteria}
-        tagsInput={editor.tagsInput}
-        onTagsInputChange={editor.setTagsInput}
-        onTagsCommit={() =>
-          editor.setTestCaseTags(
-            editor.tagsInput.split(",").map((t) => t.trim()).filter(Boolean)
-          )
-        }
       />
 
       {editor.lastRun && (

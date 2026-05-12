@@ -7,7 +7,6 @@
 
 "use client";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -23,10 +22,6 @@ interface MetadataPanelProps {
   onPreconditionsChange: (v: string) => void;
   passingCriteria: string;
   onPassingCriteriaChange: (v: string) => void;
-  tagsInput: string;
-  onTagsInputChange: (v: string) => void;
-  /** Called on blur to commit the comma-separated tags string. */
-  onTagsCommit: () => void;
 }
 
 /**
@@ -39,7 +34,6 @@ export function MetadataPanel({
   description, onDescriptionChange,
   preconditions, onPreconditionsChange,
   passingCriteria, onPassingCriteriaChange,
-  tagsInput, onTagsInputChange, onTagsCommit,
 }: MetadataPanelProps) {
   return (
     <div className="border-b">
@@ -82,17 +76,6 @@ export function MetadataPanel({
               rows={2}
               className="text-sm"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Tags</Label>
-            <Input
-              value={tagsInput}
-              onChange={(e) => onTagsInputChange(e.target.value)}
-              onBlur={onTagsCommit}
-              placeholder="e.g. login, smoke, regression"
-              className="text-sm"
-            />
-            <p className="text-xs text-muted-foreground">Comma-separated</p>
           </div>
         </div>
       )}
