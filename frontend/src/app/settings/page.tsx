@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import { getExtensionId, setExtensionId, pingExtension } from "@/lib/extension";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [extensionId, setExtensionIdState] = useState("");
   const [extensionStatus, setExtensionStatus] = useState<"unknown" | "checking" | "connected" | "disconnected">("unknown");
   const [theme, setThemeState] = useState<Theme>("system");
@@ -82,9 +84,10 @@ export default function SettingsPage() {
                   <Save className="h-4 w-4 mr-1" /> Save
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Find your extension ID at <code>chrome://extensions</code> or <code>edge://extensions</code> after loading the unpacked extension.
-              </p>
+              <Button variant="outline" onClick={() => router.push("/setup")}>
+                <Plug className="h-4 w-4 mr-2" />
+                Open Extension Setup Guide
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -104,17 +107,6 @@ export default function SettingsPage() {
               <Button variant="outline" onClick={() => checkExtension()} disabled={!extensionId || extensionStatus === "checking"}>
                 Test Connection
               </Button>
-            </div>
-
-            <div className="rounded-md border p-4 bg-muted/30 space-y-2">
-              <p className="text-sm font-medium">Setup Instructions</p>
-              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Open <code>chrome://extensions</code> or <code>edge://extensions</code></li>
-                <li>Enable <strong>Developer mode</strong> (top-right toggle)</li>
-                <li>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder</li>
-                <li>Copy the <strong>Extension ID</strong> shown under the extension name</li>
-                <li>Paste it in the field above and click Save</li>
-              </ol>
             </div>
           </CardContent>
         </Card>

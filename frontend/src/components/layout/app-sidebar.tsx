@@ -48,7 +48,6 @@ const navItems = [
   { title: "Test Cases", href: "/test-cases", icon: TestTube2 },
   { title: "Test Runs", href: "/test-runs", icon: Play },
   { title: "Generate", href: "/generate", icon: Sparkles },
-  { title: "Settings", href: "/settings", icon: Settings },
 ];
 
 const adminItems = [
@@ -113,7 +112,15 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       {session?.user && (
-        <SidebarFooter className="border-t px-2 py-3">
+        <SidebarFooter className="border-t px-2 py-3 space-y-2">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<Link href="/settings" title="Settings" />} isActive={pathname.startsWith("/settings")}>
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
             <Link href="/profile" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-80 transition-opacity" title="Profile">
               {session.user.name?.[0]?.toUpperCase() || <User className="h-4 w-4" />}

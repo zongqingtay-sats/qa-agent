@@ -35,6 +35,38 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Setup status (unauthenticated) — checks if initial configuration is done
+app.get('/api/setup/status', async (_req, res) => {
+  try {
+    const { getPrismaClient } = await import('./db/prisma');
+    const prisma = getPrismaClient();
+    const [userCount, roleCount, projectCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.role.count(),
+      prisma.project.count(),
+    ]);
+    const hasAdminRole = roleCount > 0 ? await prisma.role.findFirst({ where: { isAdmin: true } }) : null;
+    res.json({
+      database: true,
+      users: userCount,
+      roles: roleCount,
+      projects: projectCount,
+      hasAdminRole: !!hasAdminRole,
+      isConfigured: userCount > 0 && roleCount > 0 && !!hasAdminRole,
+    });
+  } catch (err: any) {
+    res.json({
+      database: false,
+      error: err.message || 'Database connection failed',
+      users: 0,
+      roles: 0,
+      projects: 0,
+      hasAdminRole: false,
+      isConfigured: false,
+    });
+  }
+});
+
 // Auth middleware (applied to all routes below)
 app.use('/api', authMiddleware);
 app.use('/api', loadUserRole);
