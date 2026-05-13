@@ -118,6 +118,29 @@ Open Setup → Download Extension → Load in Browser → Copy ID → Configure 
 6. User clicks "Test Connection" to verify the extension is reachable
 7. On success, setup is complete and user proceeds to create/run tests
 
+### 2.9 Admin Role Management Flow (Implemented Beyond Scope)
+```
+Navigate to Admin → View Roles → Create/Edit Role → Configure Bitmask Permissions → Save
+```
+1. Admin navigates to `/admin/roles` from the sidebar Administration section
+2. Admin sees a table of all roles with name, description, system/custom badge, and permission summary
+3. Admin clicks "New Role" to create a custom role, or the edit icon on an existing role
+4. A dialog opens with name, description, `isAdmin` toggle, and a permission matrix
+5. The permission matrix shows 6 resource groups (Projects, Test Cases, Test Runs, Users, Import, Generate), each with checkboxes for applicable permission bits (CREATE, READ, UPDATE, DELETE, EXPORT, RUN, GRANT_ACCESS, MANAGE)
+6. Bitmask values update in real-time as checkboxes are toggled
+7. Admin saves the role; system-defined roles (`isSystem`) cannot be deleted
+
+### 2.10 Admin User Role Assignment Flow (Implemented Beyond Scope)
+```
+Navigate to Admin → View Users → Assign Role → Save
+```
+1. Admin navigates to `/admin/users` from the sidebar Administration section
+2. Admin sees a table of all users with name, email, current role badge, and joined date
+3. Admin clicks the edit icon on a user row
+4. A dialog opens with a dropdown to select a role from the available roles
+5. Admin selects a role and clicks "Save" to assign it
+6. The user's role is updated and reflected in the table
+
 ---
 
 ## 3. Feature Specifications

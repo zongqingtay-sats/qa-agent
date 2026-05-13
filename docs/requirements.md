@@ -216,6 +216,23 @@ All PoC "Must" priority requirements (FR-1.1–1.6, FR-1.8, FR-2.1–2.4, FR-2.7
 | FR-8.4 | Provide an input field to enter the extension ID and persist it to settings | Must |
 | FR-8.5 | Include a connection test button to verify the extension is loaded and reachable | Must |
 
+### FR-9: Implemented Beyond Original Scope
+
+The following features were implemented but were not part of the original PoC or Production requirements. They extend the system's capabilities beyond what was initially specified.
+
+| ID | Feature | Description | Status |
+|----|---------|-------------|--------|
+| FR-9.1 | Bitmask permission system | 6 resource groups (project, testcase, testrun, user, import, generate) × 8 permission bits (CREATE, READ, UPDATE, DELETE, EXPORT, RUN, GRANT_ACCESS, MANAGE) instead of 4 fixed roles | ✅ Done |
+| FR-9.2 | Custom role CRUD | Admin UI to create, edit, and delete custom roles with granular bitmask permissions (`/admin/roles`) | ✅ Done |
+| FR-9.3 | Admin role management UI | Dedicated user management page for assigning roles to users (`/admin/users`) | ✅ Done |
+| FR-9.4 | `isAdmin` bypass flag on Role | Roles marked as `isAdmin` bypass all permission checks, ensuring admin access cannot be broken by renaming | ✅ Done |
+| FR-9.5 | `isSystem` flag on Role | System-defined roles (Admin, Manager, Tester, Viewer) cannot be deleted from the admin UI | ✅ Done |
+| FR-9.6 | Separate `ProjectAccess` model | Project access is managed via a dedicated `project_access` table decoupled from the role, with `grantedBy` audit field | ✅ Done |
+| FR-9.7 | Dev-mode admin bypass (`DEV_ADMIN_ROLE`) | When running without authentication (local dev), all requests receive full admin permissions automatically | ✅ Done |
+| FR-9.8 | Login page | Dedicated `/login` page for Azure Entra ID SSO authentication (spec assumed SSO redirect only) | ✅ Done |
+| FR-9.9 | NextAuth integration | Authentication uses NextAuth.js with Prisma adapter instead of MSAL directly, providing session/account/token management | ✅ Done |
+| FR-9.10 | Copilot utility scripts | Developer utility scripts for Copilot API integration testing (`backend/scripts/copilot/`) | ✅ Done |
+
 ---
 
 ## 5. Non-Functional Requirements

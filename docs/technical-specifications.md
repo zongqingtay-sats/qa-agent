@@ -99,8 +99,15 @@ frontend/
 │   │   │   └── page.tsx            # AI generate (natural language, document, source)
 │   │   ├── setup/
 │   │   │   └── page.tsx            # Extension setup wizard (download, load, configure)
-│   │   └── settings/
-│   │       └── page.tsx            # Extension ID config, connection test
+│   │   ├── settings/
+│   │   │   └── page.tsx            # Extension ID config, connection test
+│   │   ├── login/
+│   │   │   └── page.tsx            # Azure Entra ID SSO login page (beyond scope)
+│   │   └── admin/                  # Admin pages (beyond scope)
+│   │       ├── users/
+│   │       │   └── page.tsx        # User management — role assignment
+│   │       └── roles/
+│   │           └── page.tsx        # Role management — bitmask permission editor
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui components (button, card, table, etc.)
 │   │   ├── layout/
@@ -190,10 +197,15 @@ backend/
 │   │   └── index.ts                # Environment configuration
 │   ├── routes/
 │   │   ├── test-cases.ts           # /api/test-cases
+│   │   ├── test-case-details.ts    # /api/test-cases/:id/comments, assignees
 │   │   ├── test-runs.ts            # /api/test-runs
+│   │   ├── projects.ts             # /api/projects (with features, phases)
 │   │   ├── import.ts               # /api/import
 │   │   ├── generate.ts             # /api/generate
-│   │   └── export.ts               # /api/export
+│   │   ├── export.ts               # /api/export
+│   │   ├── users.ts                # /api/users
+│   │   ├── blob.ts                 # /api/blob (Azure Blob proxy)
+│   │   └── admin.ts                # /api/admin (roles CRUD, user-role, project access) — beyond scope
 │   ├── services/
 │   │   ├── ai-service.ts           # Copilot Chat API integration
 │   │   ├── import-service.ts       # Document parsing (docx, pdf, txt, json)
@@ -206,6 +218,15 @@ backend/
 │   ├── copilot/
 │   │   ├── client.ts               # Copilot API client
 │   │   └── types.ts                # Copilot type definitions
+│   ├── rbac/                       # Beyond scope — bitmask RBAC system
+│   │   ├── index.ts                # Barrel exports
+│   │   ├── types.ts                # Permission constants, bitmask helpers, RoleRecord interface
+│   │   └── middleware.ts           # loadUserRole, requirePermission, requireProjectAccess, seedDefaultRoles
+├── prisma/
+│   ├── schema.prisma               # Prisma schema (all models)
+│   ├── seed-roles.sql              # Default role seed data
+│   └── seed/
+│       └── create-user.sql         # Admin user seed script
 ├── scripts/
 │   └── copilot/                    # Copilot integration utility scripts
 ├── tsconfig.json
@@ -600,13 +621,84 @@ CREATE TABLE group_visibility (
     UNIQUE (user_id, project_id, group_type, group_id)
 );
 
--- Project Permissions (RBAC per project)
+-- Project Permissions (RBAC per project) — Original spec
 CREATE TABLE project_permissions (
     id              NVARCHAR(36) PRIMARY KEY,
     project_id      NVARCHAR(36) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id         NVARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role            NVARCHAR(20) NOT NULL,            -- admin, manager, tester, viewer
     UNIQUE (project_id, user_id)
+);
+
+-- ══════════════════════════════════════════════════════════════
+-- Beyond-Scope Tables (Actual Implementation)
+-- The following tables replace project_permissions with a more
+-- granular bitmask RBAC system and NextAuth session management.
+-- ══════════════════════════════════════════════════════════════
+
+-- Roles (bitmask permissions per resource group)
+CREATE TABLE roles (
+    id              NVARCHAR(36) PRIMARY KEY,
+    name            NVARCHAR(100) NOT NULL UNIQUE,
+    description     NVARCHAR(500),
+    is_admin        BIT DEFAULT 0,                    -- bypasses all permission checks
+    is_system       BIT DEFAULT 0,                    -- built-in roles cannot be deleted
+    project_perms   INT DEFAULT 0,                    -- bitmask: CREATE|READ|UPDATE|DELETE|GRANT_ACCESS
+    testcase_perms  INT DEFAULT 0,                    -- bitmask: CREATE|READ|UPDATE|DELETE|EXPORT
+    testrun_perms   INT DEFAULT 0,                    -- bitmask: CREATE|READ
+    user_perms      INT DEFAULT 0,                    -- bitmask: MANAGE
+    import_perms    INT DEFAULT 0,                    -- bitmask: CREATE
+    generate_perms  INT DEFAULT 0,                    -- bitmask: CREATE
+    created_at      DATETIME2 DEFAULT GETDATE(),
+    updated_at      DATETIME2 DEFAULT GETDATE()
+);
+
+-- User-Role assignment (one role per user)
+CREATE TABLE user_roles (
+    id              NVARCHAR(36) PRIMARY KEY,
+    user_id         NVARCHAR(450) NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    role_id         NVARCHAR(36) NOT NULL REFERENCES roles(id) ON DELETE NO ACTION
+);
+
+-- Project Access (decoupled from role, tracks who granted access)
+CREATE TABLE project_access (
+    id              NVARCHAR(36) PRIMARY KEY,
+    user_id         NVARCHAR(450) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id      NVARCHAR(36) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    granted_by      NVARCHAR(255),
+    granted_at      DATETIME2 DEFAULT GETDATE(),
+    UNIQUE (user_id, project_id)
+);
+
+-- NextAuth session management tables
+CREATE TABLE accounts (
+    id                  NVARCHAR(450) PRIMARY KEY,
+    user_id             NVARCHAR(450) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type                NVARCHAR(255) NOT NULL,
+    provider            NVARCHAR(255) NOT NULL,
+    provider_account_id NVARCHAR(255) NOT NULL,
+    refresh_token       NVARCHAR(MAX),
+    access_token        NVARCHAR(MAX),
+    expires_at          INT,
+    token_type          NVARCHAR(255),
+    scope               NVARCHAR(255),
+    id_token            NVARCHAR(MAX),
+    session_state       NVARCHAR(255),
+    UNIQUE (provider, provider_account_id)
+);
+
+CREATE TABLE sessions (
+    id              NVARCHAR(450) PRIMARY KEY,
+    session_token   NVARCHAR(255) NOT NULL UNIQUE,
+    user_id         NVARCHAR(450) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires         DATETIME2 NOT NULL
+);
+
+CREATE TABLE verification_tokens (
+    identifier      NVARCHAR(255) NOT NULL,
+    token           NVARCHAR(255) NOT NULL,
+    expires         DATETIME2 NOT NULL,
+    UNIQUE (identifier, token)
 );
 ```
 
@@ -767,10 +859,11 @@ function generatePdf(testRun: TestRunResult): Promise<Buffer> {
 ### 9.1 Azure Entra ID Integration
 
 - **Protocol:** OpenID Connect (OIDC) with Authorization Code Flow + PKCE
-- **Library:** `@azure/msal-node` (backend), `@azure/msal-browser` (frontend)
-- **Token handling:** JWT access tokens validated on every API request
+- **Library:** NextAuth.js with Prisma adapter (actual implementation; originally spec'd as `@azure/msal-node` / `@azure/msal-browser`)
+- **Token handling:** Session-based authentication via NextAuth; Prisma-managed `accounts`, `sessions`, `verification_tokens` tables
+- **Login page:** Dedicated `/login` page for Azure Entra ID SSO
 
-### 9.2 RBAC Model
+### 9.2 RBAC Model (Original Spec)
 
 | Role | Create Tests | Edit Tests | Run Tests | View Results | Manage Users |
 |------|-------------|-----------|-----------|-------------|-------------|
@@ -780,6 +873,75 @@ function generatePdf(testRun: TestRunResult): Promise<Buffer> {
 | Viewer | No | No | No | Yes | No |
 
 Permissions are scoped per project.
+
+### 9.3 RBAC Model (Actual Implementation — Beyond Scope)
+
+The implementation replaces the 4 fixed roles with a fully customizable bitmask permission system:
+
+#### 9.3.1 Permission Bitmask
+
+Permissions are stored as integer bitmasks across 6 resource columns on each `Role` record:
+
+| Bit | Value | Permission |
+|-----|-------|------------|
+| 0 | 1 | CREATE |
+| 1 | 2 | READ |
+| 2 | 4 | UPDATE |
+| 3 | 8 | DELETE |
+| 4 | 16 | EXPORT |
+| 5 | 32 | RUN |
+| 6 | 64 | GRANT_ACCESS |
+| 7 | 128 | MANAGE |
+
+**Resource columns:** `projectPerms`, `testcasePerms`, `testrunPerms`, `userPerms`, `importPerms`, `generatePerms`
+
+#### 9.3.2 Role Flags
+
+| Flag | Purpose |
+|------|---------|
+| `isAdmin` | Bypasses all permission checks — ensures admin access cannot be broken by renaming the role |
+| `isSystem` | Marks built-in roles (Admin, Manager, Tester, Viewer) as undeletable from the admin UI |
+
+#### 9.3.3 Default Seeded Roles
+
+| Role | isAdmin | projectPerms | testcasePerms | testrunPerms | userPerms | importPerms | generatePerms |
+|------|---------|-------------|--------------|-------------|----------|------------|--------------|
+| Admin | ✅ | 255 | 255 | 255 | 255 | 255 | 255 |
+| Manager | ❌ | 79 | 31 | 35 | 0 | 1 | 1 |
+| Tester | ❌ | 2 | 15 | 35 | 0 | 1 | 1 |
+| Viewer | ❌ | 2 | 2 | 2 | 0 | 0 | 0 |
+
+#### 9.3.4 Middleware
+
+- **`loadUserRole`** — Loads the user's `Role` record and computes `accessibleProjectIds` (undefined = unrestricted for admins, string[] for others)
+- **`requirePermission(key)`** — Checks the user's role bitmask for the required permission (e.g., `testcase:create`)
+- **`requireProjectAccess(key)`** — Checks both permission and project-level access
+- **`DEV_ADMIN_ROLE`** — In dev mode (no auth), all requests get full admin permissions automatically
+
+#### 9.3.5 Project Access
+
+Project access is managed via a separate `ProjectAccess` table (not per-project roles as originally spec'd). The project creator is auto-assigned access. Admins have unrestricted access to all projects.
+
+#### 9.3.6 Admin API Routes (`/api/admin/`)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/roles` | List all roles |
+| POST | `/api/admin/roles` | Create a custom role |
+| PUT | `/api/admin/roles/:id` | Update role permissions |
+| DELETE | `/api/admin/roles/:id` | Delete a custom role (system roles protected) |
+| GET | `/api/admin/users` | List users with roles |
+| PUT | `/api/admin/users/:userId/role` | Assign a role to a user |
+| DELETE | `/api/admin/users/:userId/role` | Remove user's role assignment |
+| GET | `/api/admin/projects/:projectId/access` | List project access |
+| POST | `/api/admin/projects/:projectId/access` | Grant project access |
+| DELETE | `/api/admin/projects/:projectId/access/:userId` | Revoke project access |
+| GET | `/api/admin/me` | Get current user's role and permissions |
+
+#### 9.3.7 Admin Frontend Pages
+
+- **`/admin/users`** — User management table with search, role badges, edit dialog with role select dropdown
+- **`/admin/roles`** — Role management table with permission matrix editor (checkboxes per resource × bit), create/edit/delete dialogs
 
 ---
 
