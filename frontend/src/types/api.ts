@@ -274,6 +274,9 @@ export interface CreateTestCaseBody {
   passingCriteria?: string;
   tags?: string[];
   flowData: { nodes: Record<string, unknown>[]; edges: Record<string, unknown>[] };
+  projectId?: string;
+  featureIds?: string[];
+  phaseIds?: string[];
 }
 
 export interface UpdateTestCaseBody {

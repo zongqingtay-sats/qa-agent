@@ -9,7 +9,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +29,11 @@ import { GenerationResultsTable } from "./_components/generation-results-table";
 
 export default function GeneratePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId") || undefined;
+  const featureId = searchParams.get("featureId") || undefined;
+  const phaseId = searchParams.get("phaseId") || undefined;
+
   const [generating, setGenerating] = useState(false);
   const [generatedCases, setGeneratedCases] = useState<GeneratedTestCase[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -177,10 +182,15 @@ export default function GeneratePage() {
           steps[0].target = targetUrl.trim();
         }
         const { nodes, edges } = buildFlowFromSteps(steps);
-        await testCasesApi.create({ name: tc.name, description: tc.description || "", preconditions: tc.preconditions, passingCriteria: tc.passingCriteria, tags: [], flowData: { nodes, edges } });
+        await testCasesApi.create({
+          name: tc.name, description: tc.description || "", preconditions: tc.preconditions, passingCriteria: tc.passingCriteria, tags: [], flowData: { nodes, edges },
+          projectId,
+          featureIds: featureId ? [featureId] : undefined,
+          phaseIds: phaseId ? [phaseId] : undefined,
+        });
       }
       toast.success(`Saved ${toSave.length} test case(s)`);
-      router.push("/test-cases");
+      router.push(projectId ? `/projects/${projectId}` : "/test-cases");
     } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
   }

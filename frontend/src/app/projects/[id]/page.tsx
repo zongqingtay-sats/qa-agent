@@ -14,7 +14,7 @@
 
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,12 +33,22 @@ import { buildGroups, type GroupingMode } from "./_lib/group-builder";
 import { ProjectUsersDialog } from "./_components/project-users-dialog";
 import { GroupSection } from "./_components/group-section";
 import { BatchActionsBar } from "./_components/batch-actions-bar";
+import { AddTestCaseDialog } from "./_components/add-test-case-dialog";
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const data = useProjectData(projectId);
   const actions = useProjectActions({ projectId, ...data });
   const groups = buildGroups(data.grouping, data.testCases, data.features, data.phases);
+
+  // Add test case dialog state
+  const [addTCDialogOpen, setAddTCDialogOpen] = useState(false);
+  const [addTCContext, setAddTCContext] = useState<{ groupType: "feature" | "phase"; groupId: string; groupLabel: string }>({ groupType: "feature", groupId: "", groupLabel: "" });
+
+  function handleAddTestCase(groupType: "feature" | "phase", groupId: string, groupLabel: string) {
+    setAddTCContext({ groupType, groupId, groupLabel });
+    setAddTCDialogOpen(true);
+  }
 
   if (!data.project) {
     return (<><PageHeader title="Loading..." /><div className="flex-1 p-4" /></>);
@@ -134,6 +144,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               toggleCollapse={actions.toggleCollapse} toggleGroupVisibility={actions.toggleGroupVisibility}
               toggleSelect={actions.toggleSelect} handleRenameGroup={actions.handleRenameGroup}
               setDeleteTarget={data.setDeleteTarget}
+              onAddTestCase={handleAddTestCase}
             />
           ))}
         </div>
@@ -177,6 +188,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Add test case dialog ── */}
+      <AddTestCaseDialog
+        open={addTCDialogOpen}
+        onOpenChange={setAddTCDialogOpen}
+        projectId={projectId}
+        groupType={addTCContext.groupType}
+        groupId={addTCContext.groupId}
+        groupLabel={addTCContext.groupLabel}
+        onAdded={data.loadProject}
+      />
     </>
   );
 }

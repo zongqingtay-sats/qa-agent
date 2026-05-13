@@ -12,7 +12,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Eye, EyeOff, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, Trash2, Plus } from "lucide-react";
 import { TestCaseRows } from "./test-case-rows";
 import type { GroupedSection } from "../_lib/group-builder";
 
@@ -32,6 +32,7 @@ export interface GroupSectionProps {
   toggleSelect: (id: string) => void;
   handleRenameGroup: (type: GroupType, id: string, name: string) => void;
   setDeleteTarget: (v: { type: GroupType; id: string; name: string } | null) => void;
+  onAddTestCase?: (groupType: GroupType, groupId: string, groupLabel: string) => void;
 }
 
 /**
@@ -42,6 +43,7 @@ export interface GroupSectionProps {
 export function GroupSection({
   group, hiddenGroups, collapsedGroups, selected, editingGroup, setEditingGroup,
   toggleCollapse, toggleGroupVisibility, toggleSelect, handleRenameGroup, setDeleteTarget,
+  onAddTestCase,
 }: GroupSectionProps) {
   const isHidden = hiddenGroups.has(group.key);
   const isCollapsed = collapsedGroups.has(group.key);
@@ -106,6 +108,13 @@ export function GroupSection({
                     {!subCollapsed && !subHidden && (
                       <div className="px-3 pb-2">
                         <TestCaseRows items={sub.items} selected={selected} toggleSelect={toggleSelect} />
+                        {onAddTestCase && sub.groupId !== "unassigned" && (
+                          <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground"
+                            onClick={() => onAddTestCase(sub.groupType, sub.groupId, sub.label)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" /> Add test case
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -113,7 +122,16 @@ export function GroupSection({
               })}
             </div>
           ) : (
-            <TestCaseRows items={visibleItems} selected={selected} toggleSelect={toggleSelect} />
+            <>
+              <TestCaseRows items={visibleItems} selected={selected} toggleSelect={toggleSelect} />
+              {onAddTestCase && group.groupId !== "unassigned" && (
+                <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground"
+                  onClick={() => onAddTestCase(group.groupType, group.groupId, group.label)}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add test case
+                </Button>
+              )}
+            </>
           )}
         </CardContent>
       )}
