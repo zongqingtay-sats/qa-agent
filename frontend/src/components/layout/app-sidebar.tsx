@@ -1,3 +1,14 @@
+/**
+ * Application sidebar with navigation links and user info.
+ *
+ * Uses Shadcn's collapsible `Sidebar` component. Shows main nav items
+ * (Dashboard, Projects, Test Cases, etc.) plus an administration
+ * section (Users, Roles). The footer displays the signed-in user and
+ * a sign-out button.
+ *
+ * @module app-sidebar
+ */
+
 "use client";
 
 import Link from "next/link";

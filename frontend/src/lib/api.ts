@@ -1,3 +1,14 @@
+/**
+ * Typed REST API client for the QA Agent backend.
+ *
+ * Exports namespaced objects (`testCasesApi`, `projectsApi`, `adminApi`,
+ * etc.) whose methods map 1-to-1 with backend endpoints.  All requests
+ * go through a shared `request()` helper that handles JSON serialisation,
+ * error parsing, and timeouts.
+ *
+ * @module api
+ */
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 import type {
@@ -7,6 +18,18 @@ import type {
   CreateTestCaseBody, UpdateTestCaseBody, UpdateTestRunBody,
 } from '@/types/api';
 
+/**
+ * Send a JSON request to the backend and parse the response.
+ *
+ * Automatically prepends {@link API_BASE}, injects `Content-Type`,
+ * applies a 120 s timeout, and throws on non-2xx responses.
+ *
+ * @typeParam T - Expected response body shape.
+ * @param url     - Path relative to {@link API_BASE}.
+ * @param options - Standard `fetch` options (method, body, headers…).
+ * @returns The parsed JSON response.
+ * @throws {Error} If the response is not OK or the request times out.
+ */
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120_000);

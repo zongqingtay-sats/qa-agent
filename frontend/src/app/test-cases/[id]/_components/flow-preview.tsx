@@ -1,3 +1,12 @@
+/**
+ * Read-only flow preview card for the test case detail page.
+ *
+ * Renders a compact list of flow blocks in execution order with
+ * an "Edit Flow" link to the full visual editor.
+ *
+ * @module flow-preview
+ */
+
 "use client";
 
 import Link from "next/link";

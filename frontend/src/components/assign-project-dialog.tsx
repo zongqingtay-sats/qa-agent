@@ -1,3 +1,13 @@
+/**
+ * Reusable dialog for assigning one or more test cases to a project,
+ * with optional feature and phase selection.
+ *
+ * Supports both single-test-case editing (pre-fills current values)
+ * and bulk assignment of multiple test cases.
+ *
+ * @module assign-project-dialog
+ */
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";

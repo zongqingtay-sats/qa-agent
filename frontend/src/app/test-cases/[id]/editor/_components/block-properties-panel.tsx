@@ -1,14 +1,21 @@
 /**
  * Properties panel for the currently selected flow block.
  *
- * Displayed on the right side of the editor canvas.  Shows type-specific
+ * Displayed on the right side of the editor canvas. Shows type-specific
  * fields (URL for Navigate, selector for Click, assertion config, etc.)
  * and common fields like label, description, and passing criteria.
+ *
+ * The CSS selector field with element-picker integration is provided by
+ * the `SelectorField` component in a separate module.
+ *
+ * @param props.node     - The selected ReactFlow node.
+ * @param props.onUpdate - Called with `(nodeId, newData)` on every field change.
+ * @param props.onDelete - Called with `(nodeId)` when the delete button is clicked.
  */
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Node } from "@xyflow/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -17,171 +24,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Crosshair, Loader2, ExternalLink, Globe } from "lucide-react";
 import { getBlockConfig } from "./block-config";
+import { SelectorField } from "./selector-field";
 import { formatUrl } from "@/app/generate/_lib/url-utils";
-import {
-  getExtensionId,
-  pickElementViaExtension,
-  listTabsViaExtension,
-  openTabViaExtension,
-  type BrowserTab,
-} from "@/lib/extension";
-import { toast } from "sonner";
 import type { BlockData } from "@/types/api";
 
 interface BlockPropertiesPanelProps {
-  /** The currently selected node, or `null` when nothing is selected. */
   node: Node | null;
-  /** Callback to update a node's data by id. */
   onUpdate: (id: string, data: BlockData & Record<string, unknown>) => void;
-  /** Callback to delete a node by id. */
   onDelete: (id: string) => void;
-}
-
-/**
- * Renders an editable property form for the selected flow block.
- *
- * When no block is selected a placeholder message is shown instead.
- *
- * @param props.node     - The selected ReactFlow node.
- * @param props.onUpdate - Called with `(nodeId, newData)` on every field change.
- * @param props.onDelete - Called with `(nodeId)` when the delete button is clicked.
- */
-
-/** Reusable CSS selector field with textarea + element picker dialog. */
-function SelectorField({ value, onChange, picking, setPicking, placeholder }: {
-  value: string; onChange: (v: string) => void;
-  picking: boolean; setPicking: (v: boolean) => void;
-  placeholder?: string;
-}) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [tabs, setTabs] = useState<BrowserTab[]>([]);
-  const [loadingTabs, setLoadingTabs] = useState(false);
-  const [manualUrl, setManualUrl] = useState("");
-  const [selectedTabId, setSelectedTabId] = useState<number | null>(null);
-
-  /** Open the dialog and fetch available tabs. */
-  async function openPicker() {
-    const extId = getExtensionId();
-    if (!extId) { toast.error("Connect the browser extension first (Settings page)"); return; }
-    setDialogOpen(true);
-    setLoadingTabs(true);
-    setManualUrl("");
-    setSelectedTabId(null);
-    try {
-      const result = await listTabsViaExtension(extId);
-      if (result.error) toast.error(result.error);
-      setTabs(result.tabs);
-    } finally { setLoadingTabs(false); }
-  }
-
-  /** Navigate to the chosen tab (or open a new one) then start picking. */
-  async function handleGo() {
-    const extId = getExtensionId();
-    if (!extId) return;
-
-    setDialogOpen(false);
-    setPicking(true);
-
-    try {
-      let tabId = selectedTabId ?? undefined;
-
-      // If user typed a manual URL, open a new tab for it
-      if (manualUrl.trim()) {
-        const url = formatUrl(manualUrl);
-        const res = await openTabViaExtension(extId, url);
-        if (res.error) { toast.error(res.error); return; }
-        tabId = res.tabId;
-      }
-
-      const result = await pickElementViaExtension(extId, tabId);
-      if (result.error) { toast.error(result.error); }
-      else if (result.selector) { onChange(result.selector); toast.success("Selector captured"); }
-    } finally { setPicking(false); }
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">CSS Selector</Label>
-      <div className="flex gap-1 items-start">
-        <Textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-mono text-xs flex-1 min-h-9 resize-y" rows={1} />
-        <Button
-          variant="outline"
-          size="icon"
-          className="shrink-0 h-9 w-9 mt-0"
-          disabled={picking}
-          title="Pick element from page"
-          onClick={openPicker}
-        >
-          {picking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
-        </Button>
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Target Page</DialogTitle>
-          </DialogHeader>
-
-          {/* Tab list */}
-          <div className="space-y-1 max-h-56 overflow-y-auto">
-            {loadingTabs ? (
-              <div className="flex items-center justify-center py-4 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading tabs…
-              </div>
-            ) : tabs.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">No browser tabs found.</p>
-            ) : (
-              tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => { setSelectedTabId(tab.id); setManualUrl(""); }}
-                  className={`cursor-pointer w-full flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
-                    selectedTabId === tab.id ? "bg-accent" : ""
-                  }`}
-                >
-                  {tab.favIconUrl ? (
-                    <img src={tab.favIconUrl} alt="" className="h-4 w-4 shrink-0" />
-                  ) : (
-                    <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{tab.title || "Untitled"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{tab.url}</p>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Manual URL */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Or enter a URL</Label>
-            <Input
-              value={manualUrl}
-              onChange={(e) => { setManualUrl(e.target.value); setSelectedTabId(null); }}
-              placeholder="https://example.com"
-            />
-          </div>
-
-          <Button
-            className="w-full"
-            disabled={!selectedTabId && !manualUrl.trim()}
-            onClick={handleGo}
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            {manualUrl.trim() ? "Open & Pick Element" : "Go to Tab & Pick Element"}
-          </Button>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
 }
 
 export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockPropertiesPanelProps) {
@@ -206,7 +57,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
   return (
     <ScrollArea className="w-72 border-l bg-muted/30">
       <div className="p-4 space-y-4">
-        {/* Header */}
+        {/* Header: block type icon and label */}
         <div>
           <h3 className="font-semibold text-sm flex items-center gap-2">
             {(() => {
@@ -222,13 +73,11 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
 
         <Separator />
 
-        {/* Common: Label */}
+        {/* Common fields — every block has a label and description */}
         <div className="space-y-1.5">
           <Label className="text-xs">Label</Label>
           <Input value={data.label || ""} onChange={(e) => update("label", e.target.value)} placeholder="Block label" />
         </div>
-
-        {/* Common: Description */}
         <div className="space-y-1.5">
           <Label className="text-xs">Description</Label>
           <Textarea value={data.description || ""} onChange={(e) => update("description", e.target.value)} placeholder="What does this step do?" rows={2} />
@@ -238,6 +87,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
 
         {/* ── Type-specific fields ── */}
 
+        {/* Navigate: URL input */}
         {blockType === "navigate" && (
           <div className="space-y-1.5">
             <Label className="text-xs">URL</Label>
@@ -245,10 +95,12 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </div>
         )}
 
+        {/* Click / Type / Select / Hover / Scroll: CSS selector */}
         {(blockType === "click" || blockType === "type" || blockType === "select" || blockType === "hover" || blockType === "scroll") && (
           <SelectorField value={data.selector || ""} onChange={(v) => update("selector", v)} picking={picking} setPicking={setPicking} placeholder='button.submit, #login-form, [data-testid="..."]' />
         )}
 
+        {/* Click: click type dropdown */}
         {blockType === "click" && (
           <div className="space-y-1.5">
             <Label className="text-xs">Click Type</Label>
@@ -263,6 +115,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </div>
         )}
 
+        {/* Type: text value */}
         {blockType === "type" && (
           <div className="space-y-1.5">
             <Label className="text-xs">Text Value</Label>
@@ -270,6 +123,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </div>
         )}
 
+        {/* Select: option value */}
         {blockType === "select" && (
           <div className="space-y-1.5">
             <Label className="text-xs">Option Value</Label>
@@ -277,6 +131,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </div>
         )}
 
+        {/* Scroll: direction + distance */}
         {blockType === "scroll" && (
           <>
             <div className="space-y-1.5">
@@ -298,6 +153,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </>
         )}
 
+        {/* Wait: wait type + timeout */}
         {blockType === "wait" && (
           <>
             <div className="space-y-1.5">
@@ -324,6 +180,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </>
         )}
 
+        {/* Assert: selector + assertion type + expected value */}
         {blockType === "assert" && (
           <>
             <SelectorField value={data.selector || ""} onChange={(v) => update("selector", v)} picking={picking} setPicking={setPicking} placeholder="Element to assert on" />
@@ -348,6 +205,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
           </>
         )}
 
+        {/* If-Else: condition selector + condition type */}
         {blockType === "if-else" && (
           <>
             <div className="space-y-1.5">
@@ -365,36 +223,13 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Condition Value</Label>
-              <Input value={data.conditionValue || ""} onChange={(e) => update("conditionValue", e.target.value)} />
-            </div>
+            {data.conditionType === "text-contains" || data.conditionType === "value-equals" ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Expected Value</Label>
+                <Input value={data.conditionValue || ""} onChange={(e) => update("conditionValue", e.target.value)} placeholder="Expected value" />
+              </div>
+            ) : null}
           </>
-        )}
-
-        {blockType === "screenshot" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs">Screenshot Label</Label>
-            <Input value={data.screenshotLabel || ""} onChange={(e) => update("screenshotLabel", e.target.value)} placeholder="Label for this screenshot" />
-          </div>
-        )}
-
-        {/* Common: Passing Criteria (all blocks except start/end) */}
-        {blockType !== "start" && blockType !== "end" && (
-          <>
-            <Separator />
-            <div className="space-y-1.5">
-              <Label className="text-xs">Passing Criteria</Label>
-              <Textarea value={data.passingCriteria || ""} onChange={(e) => update("passingCriteria", e.target.value)} placeholder="What determines if this step passes?" rows={2} />
-            </div>
-          </>
-        )}
-
-        <Separator />
-        {blockType !== "start" && (
-          <Button variant="destructive" className="w-full" onClick={() => onDelete(node.id)}>
-            Delete Block
-          </Button>
         )}
       </div>
     </ScrollArea>

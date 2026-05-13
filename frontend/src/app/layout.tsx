@@ -1,3 +1,10 @@
+/**
+ * Root layout for the Next.js application.
+ *
+ * Wraps every page in the sidebar navigation, session provider,
+ * theme initialiser, and the Sonner toast container.
+ */
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";

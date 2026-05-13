@@ -1,6 +1,19 @@
+/**
+ * Next.js middleware for authentication gating and header injection.
+ *
+ * - Redirects unauthenticated users to `/login`.
+ * - Redirects authenticated users away from the login page.
+ * - Injects `x-user-id`, `x-user-email`, `x-user-name` headers into
+ *   API requests so the backend can identify the caller.
+ * - Skips enforcement entirely when `AUTH_MICROSOFT_ENTRA_ID_ID` is unset.
+ *
+ * @module proxy
+ */
+
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
+/** Whether OAuth is configured; when false all routes are public. */
 const authEnabled = !!process.env.AUTH_MICROSOFT_ENTRA_ID_ID;
 
 export default auth((req) => {

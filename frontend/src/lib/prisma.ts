@@ -1,3 +1,12 @@
+/**
+ * Singleton Prisma client for server-side database access.
+ *
+ * Uses the MSSQL adapter and caches the instance on `globalThis`
+ * to avoid re-creating connections during Next.js hot-reloads.
+ *
+ * @module prisma
+ */
+
 import { PrismaClient } from '../generated/prisma/client';
 import { PrismaMssql } from '@prisma/adapter-mssql';
 

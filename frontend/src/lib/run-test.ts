@@ -1,3 +1,13 @@
+/**
+ * Test execution orchestrator.
+ *
+ * Coordinates running a single test case through the browser extension:
+ * creates a test run record, connects to the extension, streams step
+ * results to the backend in real time, and finalises the run on completion.
+ *
+ * @module run-test
+ */
+
 import { testCasesApi, testRunsApi } from "@/lib/api";
 import type { FlowData, FlowNode } from "@/types/api";
 import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";

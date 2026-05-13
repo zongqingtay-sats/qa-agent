@@ -1,3 +1,10 @@
+/**
+ * Projects list page.
+ *
+ * Displays all projects in a searchable card grid with create / delete
+ * actions.  Each card links to the project detail page.
+ */
+
 "use client";
 
 import Link from "next/link";

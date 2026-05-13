@@ -1,210 +1,90 @@
-// Browser extension communication helper
-// Communicates with the QA Agent browser extension via chrome.runtime messaging
+/**
+ * High-level browser extension helpers.
+ *
+ * Re-exports core messaging primitives from `./extension-messaging` and
+ * adds higher-level operations (page scraping, element picking, tab
+ * management) that build on top of `connectToExtension`.
+ *
+ * @module extension
+ */
 
-import type { FlowData } from "@/types/api";
+// Re-export core messaging API so consumers can import everything from "extension"
+export {
+  setExtensionId, getExtensionId, pingExtension,
+  connectToExtension, executeTestViaExtension, stopTestViaExtension,
+  type ExtensionCallbacks, type ExtensionConnection,
+} from "./extension-messaging";
 
-const EXTENSION_ID = typeof window !== 'undefined'
-  ? (localStorage.getItem('qa-agent-extension-id') || '')
-  : '';
+import { connectToExtension } from "./extension-messaging";
 
-export function setExtensionId(id: string) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('qa-agent-extension-id', id);
-  }
-}
+// ─── Scrape ──────────────────────────────────────────────────────────
 
-export function getExtensionId(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('qa-agent-extension-id') || '';
-  }
-  return '';
-}
-
-export async function pingExtension(extensionId?: string): Promise<boolean> {
-  const id = extensionId || getExtensionId();
-  if (!id || typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
-    return false;
-  }
-
-  return new Promise((resolve) => {
-    try {
-      chrome.runtime.sendMessage(id, { type: 'PING' }, (response: any) => {
-        if (chrome.runtime.lastError || !response) {
-          resolve(false);
-        } else {
-          resolve(response.type === 'PONG');
-        }
-      });
-    } catch {
-      resolve(false);
-    }
-  });
-}
-
-export function connectToExtension(
-  extensionId: string,
-  callbacks: {
-    onConnected?: () => void;
-    onStepStart?: (data: any) => void;
-    onStepComplete?: (data: any) => void;
-    onStepError?: (data: any) => void;
-    onTestComplete?: (data: any) => void;
-    onTestResumed?: (data: any) => void;
-    onDisconnect?: () => void;
-  }
-): { port: any; disconnect: () => void } | null {
-  if (typeof chrome === 'undefined' || !chrome.runtime?.connect) {
-    return null;
-  }
-
-  try {
-    const port = chrome.runtime.connect(extensionId);
-
-    port.onMessage.addListener((message: any) => {
-      switch (message.type) {
-        case 'CONNECTED':
-          callbacks.onConnected?.();
-          break;
-        case 'STEP_START':
-          callbacks.onStepStart?.(message);
-          break;
-        case 'STEP_COMPLETE':
-          callbacks.onStepComplete?.(message);
-          break;
-        case 'STEP_ERROR':
-          callbacks.onStepError?.(message);
-          break;
-        case 'TEST_COMPLETE':
-          callbacks.onTestComplete?.(message);
-          break;
-        case 'TEST_RESUMED':
-          callbacks.onTestResumed?.(message);
-          break;
-      }
-    });
-
-    port.onDisconnect.addListener(() => {
-      callbacks.onDisconnect?.();
-    });
-
-    // Send connect message
-    port.postMessage({ type: 'CONNECT' });
-
-    return {
-      port,
-      disconnect: () => {
-        try { port.disconnect(); } catch { /* ignore */ }
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
-export function executeTestViaExtension(
-  port: { postMessage: (msg: Record<string, unknown>) => void },
-  testFlow: FlowData,
-  testCaseId: string,
-  baseUrl: string,
-  testName?: string,
-  testRunId?: string
-) {
-  port.postMessage({
-    type: 'EXECUTE_TEST',
-    testFlow,
-    testCaseId,
-    baseUrl,
-    testName,
-    testRunId,
-  });
-}
-
-export function stopTestViaExtension(port: any) {
-  port.postMessage({ type: 'STOP_TEST' });
-}
-
+/**
+ * Scrape the DOM of a page at `url` via the extension.
+ *
+ * Opens a connection, sends SCRAPE_PAGE, and waits up to 30 s for the
+ * result before timing out.
+ *
+ * @param extensionId - Chrome extension ID.
+ * @param url         - The page URL to scrape.
+ * @returns An object with `html`, `title`, `url`, or `error`.
+ */
 export function scrapePageViaExtension(
   extensionId: string,
-  url: string
+  url: string,
 ): Promise<{ html?: string; title?: string; url?: string; error?: string }> {
   return new Promise((resolve) => {
     const connection = connectToExtension(extensionId, {
-      onConnected: () => {
-        connection?.port.postMessage({ type: 'SCRAPE_PAGE', url });
-      },
-      onDisconnect: () => {
-        resolve({ error: 'Disconnected before scrape completed' });
-      },
+      onConnected: () => { connection?.port.postMessage({ type: "SCRAPE_PAGE", url }); },
+      onDisconnect: () => { resolve({ error: "Disconnected before scrape completed" }); },
     });
+    if (!connection) { resolve({ error: "Could not connect to extension" }); return; }
 
-    if (!connection) {
-      resolve({ error: 'Could not connect to extension' });
-      return;
-    }
-
-    // Listen for the scrape result
     connection.port.onMessage.addListener((message: any) => {
-      if (message.type === 'SCRAPE_RESULT') {
+      if (message.type === "SCRAPE_RESULT") {
         connection.disconnect();
-        if (message.error) {
-          resolve({ error: message.error });
-        } else {
-          resolve({ html: message.html, title: message.title, url: message.url });
-        }
+        resolve(message.error ? { error: message.error } : { html: message.html, title: message.title, url: message.url });
       }
     });
-
-    // Timeout after 30 seconds
-    setTimeout(() => {
-      connection.disconnect();
-      resolve({ error: 'Scrape timed out' });
-    }, 30000);
+    setTimeout(() => { connection.disconnect(); resolve({ error: "Scrape timed out" }); }, 30000);
   });
 }
 
+// ─── Element picker ──────────────────────────────────────────────────
+
 /**
- * Activate the element picker on the active tab via the extension.
+ * Activate the element picker on the active (or specified) tab.
  *
- * Connects to the extension, sends PICK_ELEMENT, and waits for the
- * user to click an element.  Returns the captured CSS selector.
+ * Sends PICK_ELEMENT and waits up to 60 s for the user to click.
  *
- * @param extensionId - The Chrome extension ID.
- * @returns The picked selector, or empty string on cancel/error.
+ * @param extensionId - Chrome extension ID.
+ * @param tabId       - Optional tab ID to pick from.
+ * @returns The captured CSS selector, or empty string on failure.
  */
 export function pickElementViaExtension(
   extensionId: string,
-  tabId?: number
+  tabId?: number,
 ): Promise<{ selector: string; error?: string }> {
   return new Promise((resolve) => {
     const connection = connectToExtension(extensionId, {
-      onConnected: () => {
-        connection?.port.postMessage({ type: 'PICK_ELEMENT', tabId });
-      },
-      onDisconnect: () => {
-        resolve({ selector: '', error: 'Disconnected' });
-      },
+      onConnected: () => { connection?.port.postMessage({ type: "PICK_ELEMENT", tabId }); },
+      onDisconnect: () => { resolve({ selector: "", error: "Disconnected" }); },
     });
-
-    if (!connection) {
-      resolve({ selector: '', error: 'Could not connect to extension' });
-      return;
-    }
+    if (!connection) { resolve({ selector: "", error: "Could not connect to extension" }); return; }
 
     connection.port.onMessage.addListener((message: any) => {
-      if (message.type === 'PICK_ELEMENT_RESULT') {
+      if (message.type === "PICK_ELEMENT_RESULT") {
         connection.disconnect();
-        resolve({ selector: message.selector || '', error: message.error });
+        resolve({ selector: message.selector || "", error: message.error });
       }
     });
-
-    // Timeout after 60 seconds
-    setTimeout(() => {
-      connection.disconnect();
-      resolve({ selector: '', error: 'Element pick timed out' });
-    }, 60000);
+    setTimeout(() => { connection.disconnect(); resolve({ selector: "", error: "Element pick timed out" }); }, 60000);
   });
 }
 
+// ─── Tab management ──────────────────────────────────────────────────
+
+/** Represents a browser tab returned by the extension. */
 export interface BrowserTab {
   id: number;
   title: string;
@@ -215,65 +95,54 @@ export interface BrowserTab {
 
 /**
  * List open browser tabs via the extension.
+ *
+ * @param extensionId - Chrome extension ID.
+ * @returns An array of {@link BrowserTab} objects, or an error.
  */
 export function listTabsViaExtension(
-  extensionId: string
+  extensionId: string,
 ): Promise<{ tabs: BrowserTab[]; error?: string }> {
   return new Promise((resolve) => {
     const connection = connectToExtension(extensionId, {
-      onConnected: () => {
-        connection?.port.postMessage({ type: 'LIST_TABS' });
-      },
-      onDisconnect: () => {
-        resolve({ tabs: [], error: 'Disconnected' });
-      },
+      onConnected: () => { connection?.port.postMessage({ type: "LIST_TABS" }); },
+      onDisconnect: () => { resolve({ tabs: [], error: "Disconnected" }); },
     });
-
-    if (!connection) {
-      resolve({ tabs: [], error: 'Could not connect to extension' });
-      return;
-    }
+    if (!connection) { resolve({ tabs: [], error: "Could not connect to extension" }); return; }
 
     connection.port.onMessage.addListener((message: any) => {
-      if (message.type === 'LIST_TABS_RESULT') {
+      if (message.type === "LIST_TABS_RESULT") {
         connection.disconnect();
         resolve({ tabs: message.tabs || [], error: message.error });
       }
     });
-
-    setTimeout(() => { connection.disconnect(); resolve({ tabs: [], error: 'Timed out' }); }, 10000);
+    setTimeout(() => { connection.disconnect(); resolve({ tabs: [], error: "Timed out" }); }, 10000);
   });
 }
 
 /**
- * Open a new tab with the given URL via the extension.
+ * Open a new browser tab at `url` via the extension.
+ *
+ * @param extensionId - Chrome extension ID.
+ * @param url         - URL to open.
+ * @returns The new tab's ID, or an error.
  */
 export function openTabViaExtension(
   extensionId: string,
-  url: string
+  url: string,
 ): Promise<{ tabId?: number; error?: string }> {
   return new Promise((resolve) => {
     const connection = connectToExtension(extensionId, {
-      onConnected: () => {
-        connection?.port.postMessage({ type: 'OPEN_TAB', url });
-      },
-      onDisconnect: () => {
-        resolve({ error: 'Disconnected' });
-      },
+      onConnected: () => { connection?.port.postMessage({ type: "OPEN_TAB", url }); },
+      onDisconnect: () => { resolve({ error: "Disconnected" }); },
     });
-
-    if (!connection) {
-      resolve({ error: 'Could not connect to extension' });
-      return;
-    }
+    if (!connection) { resolve({ error: "Could not connect to extension" }); return; }
 
     connection.port.onMessage.addListener((message: any) => {
-      if (message.type === 'OPEN_TAB_RESULT') {
+      if (message.type === "OPEN_TAB_RESULT") {
         connection.disconnect();
         resolve({ tabId: message.tabId, error: message.error });
       }
     });
-
-    setTimeout(() => { connection.disconnect(); resolve({ error: 'Timed out' }); }, 15000);
+    setTimeout(() => { connection.disconnect(); resolve({ error: "Timed out" }); }, 15000);
   });
 }

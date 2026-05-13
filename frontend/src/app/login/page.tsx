@@ -1,3 +1,10 @@
+/**
+ * Login page.
+ *
+ * Renders a Microsoft sign-in button. When OAuth is not configured,
+ * redirects to the dashboard automatically.
+ */
+
 "use client";
 
 import { useState } from "react";

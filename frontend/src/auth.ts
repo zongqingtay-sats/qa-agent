@@ -1,3 +1,16 @@
+/**
+ * NextAuth.js configuration.
+ *
+ * Sets up Microsoft Entra ID (Azure AD) as the sole OAuth provider,
+ * backed by a Prisma adapter for session / account persistence.
+ * Sign-in is restricted to users whose email already exists in the DB.
+ *
+ * Exports `handlers` (for the API route), `auth` (middleware),
+ * and `signIn` / `signOut` helpers.
+ *
+ * @module auth
+ */
+
 import NextAuth from "next-auth";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { PrismaAdapter } from "@auth/prisma-adapter";

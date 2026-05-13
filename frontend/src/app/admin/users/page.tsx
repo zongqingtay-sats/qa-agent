@@ -1,18 +1,26 @@
+/**
+ * Admin page for managing users.
+ *
+ * Lists all users in a searchable table with role badges.
+ * Supports creating, editing (name / email / role), and deactivating users
+ * via dialog forms. The create/edit dialog is delegated to
+ * {@link UserFormDialog} in `_components/user-form-dialog`.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Shield, Search, Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
+import { UserFormDialog, type RoleOption } from "./_components/user-form-dialog";
 
 interface UserRow {
   id: string;
@@ -22,19 +30,13 @@ interface UserRow {
   role: { id: string; name: string; isAdmin: boolean } | null;
 }
 
-interface RoleOption {
-  id: string;
-  name: string;
-  isAdmin: boolean;
-}
-
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // Unified create/edit dialog state
+  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [dialogUser, setDialogUser] = useState<UserRow | null>(null);
@@ -55,35 +57,24 @@ export default function UsersPage() {
       const [usersRes, rolesRes] = await Promise.all([adminApi.listUsers(), adminApi.listRoles()]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load data");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { toast.error(err.message || "Failed to load data"); }
+    finally { setLoading(false); }
   }
 
   function openCreate() {
-    setDialogMode("create");
-    setDialogUser(null);
-    setDialogName("");
-    setDialogEmail("");
-    setDialogRoleId("");
+    setDialogMode("create"); setDialogUser(null);
+    setDialogName(""); setDialogEmail(""); setDialogRoleId("");
     setDialogOpen(true);
   }
 
   function openEdit(user: UserRow) {
-    setDialogMode("edit");
-    setDialogUser(user);
-    setDialogName(user.name || "");
-    setDialogEmail(user.email || "");
+    setDialogMode("edit"); setDialogUser(user);
+    setDialogName(user.name || ""); setDialogEmail(user.email || "");
     setDialogRoleId(user.role?.id || "__none__");
     setDialogOpen(true);
   }
 
-  function closeDialog() {
-    setDialogOpen(false);
-  }
-
+  /** Handle create or edit form submission. */
   async function handleDialogSubmit() {
     setDialogSaving(true);
     try {
@@ -101,72 +92,46 @@ export default function UsersPage() {
           name: dialogName.trim() || undefined,
           email: dialogEmail.trim() || undefined,
         });
-        if (dialogRoleId === "__none__") {
-          await adminApi.removeUserRole(dialogUser.id);
-        } else {
-          await adminApi.setUserRole(dialogUser.id, dialogRoleId);
-        }
+        if (dialogRoleId === "__none__") await adminApi.removeUserRole(dialogUser.id);
+        else await adminApi.setUserRole(dialogUser.id, dialogRoleId);
         toast.success(`User updated`);
       }
-      closeDialog();
+      setDialogOpen(false);
       loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save");
-    } finally {
-      setDialogSaving(false);
-    }
+    } catch (err: any) { toast.error(err.message || "Failed to save"); }
+    finally { setDialogSaving(false); }
   }
 
+  /** Deactivate the targeted user after confirmation. */
   async function handleDeleteUser() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
       await adminApi.deleteUser(deleteTarget.id);
       toast.success(`${deleteTarget.name || deleteTarget.email} has been deactivated`);
-      setDeleteTarget(null);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete user");
-    } finally {
-      setDeleting(false);
-    }
+      setDeleteTarget(null); loadData();
+    } catch (err: any) { toast.error(err.message || "Failed to delete user"); }
+    finally { setDeleting(false); }
   }
 
   const filtered = users.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return (
-      u.name?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q) ||
-      u.role?.name?.toLowerCase().includes(q)
-    );
+    return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.role?.name?.toLowerCase().includes(q);
   });
-
-  const selectedRoleName = !dialogRoleId || dialogRoleId === "__none__"
-    ? "No role (defaults to Reader)"
-    : (roles.find((r) => r.id === dialogRoleId)?.name ?? "Select a role");
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={<span className="flex items-center gap-2"><Users className="h-5 w-5" /> User Management</span>}
         description="Manage user role assignments"
-        actions={
-          <Button className="ml-auto" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1" /> Create
-          </Button>
-        }
+        actions={<Button className="ml-auto" onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> Create</Button>}
       />
       <div className="flex-1 overflow-auto p-4 space-y-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
+            <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
           </div>
           <Badge variant="secondary">{filtered.length} users</Badge>
         </div>
@@ -181,109 +146,58 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                  </TableRow>
-                ))
-              ) : filtered.length === 0 ? (
+              {loading ? Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                </TableRow>
+              )) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    No users found
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No users found</TableCell>
+                </TableRow>
+              ) : filtered.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
+                        {user.name?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      {user.name || "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
+                  <TableCell>
+                    {user.role ? (
+                      <Badge variant={user.role.isAdmin ? "default" : "secondary"}>
+                        {user.role.isAdmin && <Shield className="h-3 w-3 mr-1" />}{user.role.name}
+                      </Badge>
+                    ) : <Badge variant="outline">No role</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(user)} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filtered.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
-                          {user.name?.[0]?.toUpperCase() || "?"}
-                        </div>
-                        {user.name || "—"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
-                    <TableCell>
-                      {user.role ? (
-                        <Badge variant={user.role.isAdmin ? "default" : "secondary"}>
-                          {user.role.isAdmin && <Shield className="h-3 w-3 mr-1" />}
-                          {user.role.name}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">No role</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Edit">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(user)} title="Delete">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      {/* Create / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{dialogMode === "create" ? "Create User" : "Edit User"}</DialogTitle>
-            {dialogMode === "create" && (
-              <DialogDescription>Pre-register a user so they can sign in with their Microsoft account.</DialogDescription>
-            )}
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="dialog-name">Name</Label>
-              <Input id="dialog-name" placeholder="Full name" value={dialogName} onChange={(e) => setDialogName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dialog-email">Email <span className="text-destructive">*</span></Label>
-              <Input id="dialog-email" type="email" placeholder="user@example.com" value={dialogEmail} onChange={(e) => setDialogEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={dialogRoleId} onValueChange={(v) => setDialogRoleId(v || "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role">
-                    {selectedRoleName}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No role (defaults to Reader)</SelectItem>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name} {role.isAdmin && "⭐"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={dialogSaving}>Cancel</Button>
-            <Button onClick={handleDialogSubmit} disabled={dialogSaving}>
-              {dialogSaving ? "Saving..." : dialogMode === "create" ? "Create User" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UserFormDialog
+        open={dialogOpen} onOpenChange={setDialogOpen} mode={dialogMode}
+        name={dialogName} onNameChange={setDialogName}
+        email={dialogEmail} onEmailChange={setDialogEmail}
+        roleId={dialogRoleId} onRoleIdChange={setDialogRoleId}
+        roles={roles} saving={dialogSaving} onSubmit={handleDialogSubmit}
+      />
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      {/* Delete confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Deactivate User</DialogTitle>

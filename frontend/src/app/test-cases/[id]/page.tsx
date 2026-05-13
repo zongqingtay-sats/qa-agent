@@ -1,156 +1,45 @@
+/**
+ * Test case overview / detail page.
+ *
+ * Renders metadata, project assignment, assignees, flow preview,
+ * recent run history, and a comments sidebar.
+ *
+ * State and inline-edit logic live in `useTestCaseDetail`;
+ * the details card is rendered by `DetailsCard`.
+ */
+
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, use } from "react";
+import { use } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Pencil,
-  Clock,
-  FolderKanban,
-  Tag,
-  TestTube2,
-  Trash2,
-  Play,
-  MoreVertical,
-} from "lucide-react";
-import { testCasesApi, testRunsApi } from "@/lib/api";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Pencil, Clock, FolderKanban, TestTube2, Trash2, Play, MoreVertical } from "lucide-react";
+import { testCasesApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
-import type { TestCase, TestRunListItem } from "@/types/api";
 import { CommentsSection } from "./_components/comments-section";
 import { AssigneeSection } from "./_components/assignee-section";
 import { FlowPreview } from "./_components/flow-preview";
+import { DetailsCard } from "./_components/details-card";
 import { AssignProjectDialog } from "@/components/assign-project-dialog";
+import { useTestCaseDetail } from "./_hooks/use-test-case-detail";
 import { toast } from "sonner";
 
 export default function TestCaseOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: testCaseId } = use(params);
   const router = useRouter();
+  const d = useTestCaseDetail(testCaseId);
 
-  const [testCase, setTestCase] = useState<TestCase | null>(null);
-  const [runs, setRuns] = useState<TestRunListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [tagsInput, setTagsInput] = useState("");
-  const [testCaseName, setTestCaseName] = useState("");
-  const [descriptionInput, setDescriptionInput] = useState("");
-  const [preconditionsInput, setPreconditionsInput] = useState("");
-  const [passingCriteriaInput, setPassingCriteriaInput] = useState("");
-
-  const load = useCallback(async () => {
-    try {
-      const [tcRes, runsRes] = await Promise.all([
-        testCasesApi.get(testCaseId),
-        testRunsApi.list({ testCaseId }),
-      ]);
-      setTestCase(tcRes.data);
-      setTestCaseName(tcRes.data.name || "");
-      setDescriptionInput(tcRes.data.description || "");
-      setPreconditionsInput(tcRes.data.preconditions || "");
-      setPassingCriteriaInput(tcRes.data.passingCriteria || "");
-      setTagsInput((tcRes.data.tags || []).join(", "));
-      setRuns(runsRes.data);
-    } catch {
-      toast.error("Failed to load test case");
-    } finally {
-      setLoading(false);
-    }
-  }, [testCaseId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  if (loading || !testCase) {
-    return (
-      <>
-        <PageHeader title="Loading..." />
-        <div className="flex-1 p-4" />
-      </>
-    );
+  if (d.loading || !d.testCase) {
+    return (<><PageHeader title="Loading..." /><div className="flex-1 p-4" /></>);
   }
 
-  const recentRuns = runs.slice(0, 5);
-
-  const handleDescriptionCommit = async () => {
-    const trimmed = descriptionInput.trim();
-    if (trimmed === (testCase.description || "")) return;
-    try {
-      await testCasesApi.update(testCaseId, { description: trimmed || undefined });
-      setTestCase((prev) => prev ? ({ ...prev, description: trimmed || undefined }) : prev);
-    } catch {
-      toast.error("Failed to update description");
-      setDescriptionInput(testCase.description || "");
-    }
-  };
-
-  const handlePreconditionsCommit = async () => {
-    const trimmed = preconditionsInput.trim();
-    if (trimmed === (testCase.preconditions || "")) return;
-    try {
-      await testCasesApi.update(testCaseId, { preconditions: trimmed || undefined });
-      setTestCase((prev) => prev ? ({ ...prev, preconditions: trimmed || undefined }) : prev);
-    } catch {
-      toast.error("Failed to update preconditions");
-      setPreconditionsInput(testCase.preconditions || "");
-    }
-  };
-
-  const handlePassingCriteriaCommit = async () => {
-    const trimmed = passingCriteriaInput.trim();
-    if (trimmed === (testCase.passingCriteria || "")) return;
-    try {
-      await testCasesApi.update(testCaseId, { passingCriteria: trimmed || undefined });
-      setTestCase((prev) => prev ? ({ ...prev, passingCriteria: trimmed || undefined }) : prev);
-    } catch {
-      toast.error("Failed to update passing criteria");
-      setPassingCriteriaInput(testCase.passingCriteria || "");
-    }
-  };
-
-  const handleNameCommit = async () => {
-    const trimmed = testCaseName.trim();
-    if (!trimmed || trimmed === testCase.name) return;
-    try {
-      await testCasesApi.update(testCaseId, { name: trimmed });
-      setTestCase((prev) => prev ? ({ ...prev, name: trimmed }) : prev);
-    } catch {
-      toast.error("Failed to update name");
-      setTestCaseName(testCase.name);
-    }
-  };
-
-  const handleTagsCommit = async () => {
-    const newTags = tagsInput.split(",").map((t: string) => t.trim()).filter(Boolean);
-    const currentTags = testCase.tags || [];
-    if (JSON.stringify(newTags) === JSON.stringify(currentTags)) return;
-    try {
-      await testCasesApi.update(testCaseId, { tags: newTags });
-      setTestCase((prev) => prev ? ({ ...prev, tags: newTags }) : prev);
-    } catch {
-      toast.error("Failed to update tags");
-      setTagsInput(currentTags.join(", "));
-    }
-  };
+  const recentRuns = d.runs.slice(0, 5);
 
   return (
     <>
@@ -158,14 +47,9 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
         title={
           <span className="flex items-center gap-2">
             <TestTube2 className="h-5 w-5 shrink-0" />
-            <input
-              value={testCaseName}
-              onChange={(e) => setTestCaseName(e.target.value)}
-              onBlur={handleNameCommit}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setTestCaseName(testCase.name); (e.target as HTMLInputElement).blur(); } }}
-              className="bg-transparent border-none outline-none text-lg font-semibold w-full"
-              placeholder="Test case name..."
-            />
+            <input value={d.testCaseName} onChange={(e) => d.setTestCaseName(e.target.value)} onBlur={d.handleNameCommit}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { d.setTestCaseName(d.testCase!.name); (e.target as HTMLInputElement).blur(); } }}
+              className="bg-transparent border-none outline-none text-lg font-semibold w-full" placeholder="Test case name..." />
           </span>
         }
         actions={
@@ -173,22 +57,18 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             <Button variant="outline" nativeButton={false} render={<Link href={`/test-cases/${testCaseId}/editor`} />}>
               <Pencil className="h-4 w-4 mr-1" /> Edit Flow
             </Button>
-            <Button variant="outline" disabled={running} onClick={async () => {
-              setRunning(true);
-              try { await runTestCase(testCaseId); await load(); }
+            <Button variant="outline" disabled={d.running} onClick={async () => {
+              d.setRunning(true);
+              try { await runTestCase(testCaseId); await d.load(); }
               catch { toast.error("Failed to run test"); }
-              finally { setRunning(false); }
+              finally { d.setRunning(false); }
             }}>
-              <Play className="h-4 w-4 mr-1" /> {running ? "Running..." : "Run"}
+              <Play className="h-4 w-4 mr-1" /> {d.running ? "Running..." : "Run"}
             </Button>
             <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              } />
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>} />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={() => d.setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -196,145 +76,68 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
           </div>
         }
       />
+
       <div className="flex-1 p-4 grid gap-4 md:grid-cols-3">
-        {/* Main content - 2 cols */}
         <div className="md:col-span-2 space-y-4">
-          {/* Details card */}
-          <Card>
-            <CardHeader><CardTitle className="text-base">Details</CardTitle></CardHeader>
-            <CardContent className="flex gap-4">
-              <div className="space-y-3 flex-1">
-                <div>
-                  <p className="text-muted-foreground text-xs font-semibold mb-1">Description</p>
-                  <textarea
-                    value={descriptionInput}
-                    onChange={(e) => setDescriptionInput(e.target.value)}
-                    onBlur={handleDescriptionCommit}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setDescriptionInput(testCase.description || ""); (e.target as HTMLTextAreaElement).blur(); } }}
-                    placeholder="Add a description"
-                    rows={3}
-                    className="flex-1 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
-                  />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs font-semibold mb-1">Preconditions</p>
-                  <textarea
-                    value={preconditionsInput}
-                    onChange={(e) => setPreconditionsInput(e.target.value)}
-                    onBlur={handlePreconditionsCommit}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setPreconditionsInput(testCase.preconditions || ""); (e.target as HTMLTextAreaElement).blur(); } }}
-                    placeholder="Setup required before running..."
-                    rows={3}
-                    className="flex-1 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
-                  />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs font-semibold mb-1">Passing Criteria</p>
-                  <textarea
-                    value={passingCriteriaInput}
-                    onChange={(e) => setPassingCriteriaInput(e.target.value)}
-                    onBlur={handlePassingCriteriaCommit}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setPassingCriteriaInput(testCase.passingCriteria || ""); (e.target as HTMLTextAreaElement).blur(); } }}
-                    placeholder="What determines if this test passes?"
-                    rows={3}
-                    className="flex-1 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
-                  />
-                </div>
-              </div>
-              <div className="space-y-3 flex-1">
-                <div>
-                  <p className="text-muted-foreground text-xs font-semibold mb-1">ID</p>
-                  <Link href={`/test-cases/${testCaseId}/editor`} className="text-primary hover:underline font-mono text-xs">
-                    {testCaseId}
-                  </Link>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs font-semibold mb-1">Status</p>
-                  <StatusBadge status={testCase.status} />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs font-semibold mb-1">Tags</p>
-                  <input
-                    value={tagsInput}
-                    onChange={(e) => setTagsInput(e.target.value)}
-                    onBlur={handleTagsCommit}
-                    placeholder="Add tags"
-                    className="flex-1 text-sm bg-transparent border-none outline-none p-0"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <DetailsCard
+            testCaseId={testCaseId} status={d.testCase.status}
+            descriptionInput={d.descriptionInput} setDescriptionInput={d.setDescriptionInput}
+            handleDescriptionCommit={d.handleDescriptionCommit} originalDescription={d.testCase.description || ""}
+            preconditionsInput={d.preconditionsInput} setPreconditionsInput={d.setPreconditionsInput}
+            handlePreconditionsCommit={d.handlePreconditionsCommit} originalPreconditions={d.testCase.preconditions || ""}
+            passingCriteriaInput={d.passingCriteriaInput} setPassingCriteriaInput={d.setPassingCriteriaInput}
+            handlePassingCriteriaCommit={d.handlePassingCriteriaCommit} originalPassingCriteria={d.testCase.passingCriteria || ""}
+            tagsInput={d.tagsInput} setTagsInput={d.setTagsInput} handleTagsCommit={d.handleTagsCommit}
+          />
 
           <div className="flex gap-4">
-            {/* Project / Feature / Phase */}
             <Card className="flex-1">
               <CardHeader>
                 <CardTitle className="text-base flex items-center justify-between">
                   <span className="flex items-center gap-2"><FolderKanban className="h-4 w-4" /> Project</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAssignDialogOpen(true)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => d.setAssignDialogOpen(true)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {testCase.projectId ? (
+                {d.testCase.projectId ? (
                   <>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground text-xs font-semibold w-20">Project </span>
-                      <Link href={`/projects/${testCase.projectId}`} className="text-primary hover:underline">
-                        {testCase.projectName || testCase.projectId}
-                      </Link>
+                      <Link href={`/projects/${d.testCase.projectId}`} className="text-primary hover:underline">{d.testCase.projectName || d.testCase.projectId}</Link>
                     </div>
-                    {testCase.featureIds?.length > 0 && (
+                    {d.testCase.featureIds?.length > 0 && (
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground text-xs font-semibold w-20">Features </span>
-                        {(testCase.featureNames || testCase.featureIds).join(", ")}
+                        {(d.testCase.featureNames || d.testCase.featureIds).join(", ")}
                       </div>
                     )}
-                    {testCase.phaseIds?.length > 0 && (
+                    {d.testCase.phaseIds?.length > 0 && (
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground text-xs font-semibold w-20">Phases </span>
-                        {(testCase.phaseNames || testCase.phaseIds).join(", ")}
+                        {(d.testCase.phaseNames || d.testCase.phaseIds).join(", ")}
                       </div>
                     )}
                   </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Not assigned to a project</p>
-                )}
+                ) : <p className="text-sm text-muted-foreground">Not assigned to a project</p>}
               </CardContent>
             </Card>
-
-            {/* Assignees */}
             <AssigneeSection testCaseId={testCaseId} />
           </div>
 
-          {/* Flow Preview */}
-          <FlowPreview testCaseId={testCaseId} flowData={testCase.flowData} />
+          <FlowPreview testCaseId={testCaseId} flowData={d.testCase.flowData} />
 
-          {/* Run History */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Recent Runs
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4" /> Recent Runs</CardTitle></CardHeader>
             <CardContent>
-              {recentRuns.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No runs yet</p>
-              ) : (
+              {recentRuns.length === 0 ? <p className="text-sm text-muted-foreground">No runs yet</p> : (
                 <div className="space-y-2">
                   {recentRuns.map((run) => (
-                    <Link
-                      key={run.id}
-                      href={`/test-runs/${run.id}`}
-                      className="flex items-center justify-between p-2 rounded hover:bg-muted/50"
-                    >
+                    <Link key={run.id} href={`/test-runs/${run.id}`} className="flex items-center justify-between p-2 rounded hover:bg-muted/50">
                       <div className="flex items-center gap-2">
                         <StatusBadge status={run.status} size="sm" />
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(run.startedAt || run.createdAt || '').toLocaleString()}
-                        </span>
+                        <span className="text-sm text-muted-foreground">{new Date(run.startedAt || run.createdAt || "").toLocaleString()}</span>
                       </div>
                       {run.runByName && (
                         <div className="flex items-center gap-2">
@@ -346,59 +149,32 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
                       )}
                     </Link>
                   ))}
-                  {runs.length > 5 && (
-                    <Link href={`/test-runs?testCaseId=${testCaseId}`} className="text-sm text-primary hover:underline">
-                      View all {runs.length} runs →
-                    </Link>
-                  )}
+                  {d.runs.length > 5 && <Link href={`/test-runs?testCaseId=${testCaseId}`} className="text-sm text-primary hover:underline">View all {d.runs.length} runs →</Link>}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar - 1 col */}
-        <div className="space-y-4">
-          {/* Comments */}
-          <CommentsSection testCaseId={testCaseId} />
-        </div>
+        <div className="space-y-4"><CommentsSection testCaseId={testCaseId} /></div>
       </div>
 
-      <AssignProjectDialog
-        open={assignDialogOpen}
-        onOpenChange={setAssignDialogOpen}
-        testCaseIds={[testCaseId]}
-        currentProjectId={testCase.projectId}
-        currentFeatureIds={testCase.featureIds || []}
-        currentPhaseIds={testCase.phaseIds || []}
-        onAssigned={load}
-      />
+      <AssignProjectDialog open={d.assignDialogOpen} onOpenChange={d.setAssignDialogOpen}
+        testCaseIds={[testCaseId]} currentProjectId={d.testCase.projectId}
+        currentFeatureIds={d.testCase.featureIds || []} currentPhaseIds={d.testCase.phaseIds || []}
+        onAssigned={d.load} />
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={d.deleteDialogOpen} onOpenChange={d.setDeleteDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Test Case</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{testCase.name}&quot;? This action cannot be undone.
-            </DialogDescription>
+          <DialogHeader><DialogTitle>Delete Test Case</DialogTitle>
+            <DialogDescription>Are you sure you want to delete &quot;{d.testCase.name}&quot;? This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                try {
-                  await testCasesApi.delete(testCaseId);
-                  toast.success("Test case deleted");
-                  router.push("/test-cases");
-                } catch {
-                  toast.error("Failed to delete test case");
-                }
-                setDeleteDialogOpen(false);
-              }}
-            >
-              Delete
-            </Button>
+            <Button variant="outline" onClick={() => d.setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={async () => {
+              try { await testCasesApi.delete(testCaseId); toast.success("Deleted"); router.push("/test-cases"); }
+              catch { toast.error("Failed to delete"); }
+            }}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

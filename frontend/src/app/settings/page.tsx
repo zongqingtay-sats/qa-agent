@@ -1,3 +1,10 @@
+/**
+ * Settings page.
+ *
+ * Allows the user to configure the browser extension ID, choose a
+ * colour theme (light / dark / system), and view environment info.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";

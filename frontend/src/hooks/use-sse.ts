@@ -1,5 +1,16 @@
+/**
+ * React hook for subscribing to Server-Sent Events from the backend.
+ *
+ * Connects directly to the backend SSE endpoint (not through the
+ * Next.js proxy, which buffers responses and breaks streaming).
+ * Supports channel filtering and automatic reconnection on error.
+ *
+ * @module use-sse
+ */
+
 import { useEffect, useRef, useCallback } from "react";
 
+/** Parsed SSE event payload. */
 export type SSEEvent = {
   type: string;
   channel: string;

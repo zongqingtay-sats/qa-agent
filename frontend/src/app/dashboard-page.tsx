@@ -1,3 +1,10 @@
+/**
+ * Dashboard overview page.
+ *
+ * Displays summary statistics (total test cases, recent runs, pass rate)
+ * and quick-action cards for navigating to key areas of the application.
+ */
+
 "use client";
 
 import Link from "next/link";

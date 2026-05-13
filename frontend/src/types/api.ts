@@ -1,5 +1,16 @@
+/**
+ * Shared TypeScript types for the QA Agent frontend.
+ *
+ * Every interface here mirrors a backend API response shape or request
+ * body.  They serve as the single source of truth so that API calls,
+ * components, and hooks all share the same contracts.
+ *
+ * @module api
+ */
+
 // ── Domain types matching backend API responses ──
 
+/** Lifecycle status of a test case. */
 export type TestCaseStatus = 'draft' | 'active' | 'archived';
 export type TestRunStatus = 'running' | 'passed' | 'failed' | 'stopped';
 export type StepStatus = 'passed' | 'failed' | 'skipped' | 'running';

@@ -1,3 +1,10 @@
+/**
+ * Import page.
+ *
+ * Redirects to the generate page which subsumes the import
+ * functionality via the "Documents" tab.
+ */
+
 "use client";
 
 import { useEffect } from "react";

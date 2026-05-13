@@ -1,3 +1,12 @@
+/**
+ * Assignee management card for a test case.
+ *
+ * Lists currently assigned users with remove buttons and provides
+ * a command-based search to add new assignees.
+ *
+ * @module assignee-section
+ */
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";

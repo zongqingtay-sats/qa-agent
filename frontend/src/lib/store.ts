@@ -1,3 +1,12 @@
+/**
+ * Zustand stores for client-side state management.
+ *
+ * Currently provides `useExecutionStore` which tracks the real-time
+ * state of a test execution (status, current block, step results).
+ *
+ * @module store
+ */
+
 import { create } from 'zustand';
 
 // Re-export flow types from the central type definitions
@@ -21,8 +30,11 @@ export interface StepResult {
   durationMs?: number;
 }
 
+/** Full shape of the execution store (state + actions). */
 interface ExecutionState {
+  /** Current execution phase. */
   status: 'idle' | 'connecting' | 'running' | 'completed' | 'error';
+  /** ID of the flow block currently being executed. */
   currentBlockId: string | null;
   stepResults: StepResult[];
   extensionConnected: boolean;
@@ -36,6 +48,11 @@ interface ExecutionState {
   reset: () => void;
 }
 
+/**
+ * Zustand store tracking live test-execution state.
+ *
+ * Updated by the extension messaging callbacks in `run-test.ts`.
+ */
 export const useExecutionStore = create<ExecutionState>((set) => ({
   status: 'idle',
   currentBlockId: null,
