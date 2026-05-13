@@ -4,6 +4,7 @@ node_modules
 /frontend/.next
 /frontend/*.env*
 /frontend/tsconfig.tsbuildinfo
+/frontend/next-env.d.ts
 /frontend/src/generated/prisma
 
 /backend/node_modules
