@@ -166,15 +166,6 @@ export default function ProjectsPage() {
                     </CardContent>
                   </Card>
                 </Link>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: project.id, name: project.name }); }}
-                  title="Delete project"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
               </div>
             ))}
           </div>

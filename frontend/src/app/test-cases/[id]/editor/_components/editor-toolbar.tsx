@@ -99,7 +99,7 @@ export function EditorToolbar({
             {refining ? "Refining..." : "Refine with AI"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem variant="destructive" onClick={onDelete}>
             <Trash2 className="h-4 w-4 mr-2" /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>

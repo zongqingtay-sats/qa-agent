@@ -52,8 +52,8 @@ export function GroupSection({
   return (
     <Card className="p-0 gap-0">
       {/* Group header */}
-      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors">
-        <button type="button" className="flex items-center justify-center shrink-0" onClick={() => toggleCollapse(group.key)}>
+      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors cursor-pointer">
+        <button type="button" className="flex items-center justify-center shrink-0 cursor-pointer" onClick={() => toggleCollapse(group.key)}>
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <GroupLabel
@@ -89,7 +89,7 @@ export function GroupSection({
                 const subCollapsed = collapsedGroups.has(sub.key);
                 return (
                   <div key={sub.key} className="rounded-md ring-1 ring-foreground/10">
-                    <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30">
+                    <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50">
                       <button type="button" className="flex items-center justify-center shrink-0" onClick={() => toggleCollapse(sub.key)}>
                         {subCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </button>
@@ -109,7 +109,7 @@ export function GroupSection({
                       <div className="px-3 pb-2">
                         <TestCaseRows items={sub.items} selected={selected} toggleSelect={toggleSelect} />
                         {onAddTestCase && sub.groupId !== "unassigned" && (
-                          <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground"
+                          <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground justify-start"
                             onClick={() => onAddTestCase(sub.groupType, sub.groupId, sub.label)}
                           >
                             <Plus className="h-4 w-4 mr-1" /> Add test case
@@ -125,7 +125,7 @@ export function GroupSection({
             <>
               <TestCaseRows items={visibleItems} selected={selected} toggleSelect={toggleSelect} />
               {onAddTestCase && group.groupId !== "unassigned" && (
-                <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground"
+                <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground justify-start"
                   onClick={() => onAddTestCase(group.groupType, group.groupId, group.label)}
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add test case

@@ -123,7 +123,7 @@ export function TestRunTable({
                   </TableCell>
                 </TableRow>
                 {expanded.has(run.id) && (
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableRow className="bg-muted/30 hover:bg-muted/50">
                     <TableCell colSpan={9} className="p-0">
                       <div className="px-6 py-4"><RunExpandedDetail detail={runDetails[run.id]} /></div>
                     </TableCell>

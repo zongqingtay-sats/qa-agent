@@ -33,7 +33,7 @@ export function TestCaseRows({ items, selected, toggleSelect }: TestCaseRowsProp
       {items.map((tc) => (
         <div
           key={tc.id}
-          className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/30"
+          className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50"
         >
           <Checkbox
             checked={selected.has(tc.id)}

@@ -128,7 +128,7 @@ export function StepResultsTable({ steps }: StepResultsTableProps) {
 
                   {/* Expanded detail row */}
                   {isExpanded && !isUnexecuted && (
-                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableRow className="bg-muted/30 hover:bg-muted/50">
                       <TableCell colSpan={6} className="p-0">
                         <div className="px-6 py-4 space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">

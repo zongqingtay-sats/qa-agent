@@ -24,7 +24,10 @@ import {
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Search, Users, Trash2, Layers, Milestone, FolderKanban,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Search, Users, Trash2, Layers, Milestone, FolderKanban, MoreVertical,
 } from "lucide-react";
 
 import { useProjectData } from "./_hooks/use-project-data";
@@ -98,7 +101,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <DialogFooter><Button variant="outline" onClick={() => data.setPhaseDialogOpen(false)}>Cancel</Button><Button onClick={actions.handleCreatePhase} disabled={!data.newItemName.trim()}>Create</Button></DialogFooter>
               </DialogContent>
             </Dialog>
-            <Button variant="destructive" onClick={() => data.setDeleteProjectConfirm(true)}><Trash2 className="h-4 w-4 mr-1" /> Delete Project</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              } />
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem variant="destructive" onClick={() => data.setDeleteProjectConfirm(true)}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete Project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />

@@ -68,7 +68,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>} />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => d.setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem variant="destructive" onClick={() => d.setDeleteDialogOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-2" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>

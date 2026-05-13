@@ -44,7 +44,7 @@ export function LastRunPanel({ run, selectedNodeId }: LastRunPanelProps) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 px-4 py-2.5 w-full text-left hover:bg-muted/30 transition-colors cursor-pointer"
+        className="flex items-center gap-2 px-4 py-2.5 w-full text-left hover:bg-muted/50 transition-colors cursor-pointer"
       >
         {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
 

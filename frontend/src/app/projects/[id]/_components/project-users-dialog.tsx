@@ -86,7 +86,7 @@ export function ProjectUsersDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setUserSearchQuery(""); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg min-w-1/2">
         <DialogHeader>
           <DialogTitle>Project Users</DialogTitle>
           <DialogDescription>
@@ -101,7 +101,7 @@ export function ProjectUsersDialog({
               <p className="text-sm text-muted-foreground">No users with explicit access.</p>
             )}
             {projectAccess.map((u) => (
-              <div key={u.userId} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/40">
+              <div key={u.userId} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50">
                 <div
                   className={`h-7 w-7 rounded-full text-xs flex items-center justify-center shrink-0 ${!u.avatarBg ? "bg-primary text-primary-foreground" : ""}`}
                   style={u.avatarBg ? { backgroundColor: u.avatarBg, color: "#fff" } : undefined}
@@ -117,7 +117,9 @@ export function ProjectUsersDialog({
                   onValueChange={(v) => handleRoleChange(u.userId, v === "__global__" ? null : v)}
                 >
                   <SelectTrigger className="w-36 h-8 text-xs">
-                    <SelectValue />
+                    <SelectValue>
+                      {u.role ? u.role.name : <span className="text-muted-foreground">Global role</span>}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__global__">
