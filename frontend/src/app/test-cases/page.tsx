@@ -119,7 +119,7 @@ export default function TestCasesPage() {
           ],
         },
       });
-      router.push(`/test-cases/${res.data.id}/editor`);
+      router.push(`/test-cases/${res.data.id}`);
     } catch (err: any) { toast.error(err.message); }
   }
 

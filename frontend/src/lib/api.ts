@@ -211,6 +211,8 @@ export const adminApi = {
     request<{ data: any }>(`/admin/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: JSON.stringify({ roleId }) }),
   removeUserRole: (userId: string) =>
     request<{ data: any }>(`/admin/users/${encodeURIComponent(userId)}/role`, { method: 'DELETE' }),
+  deleteUser: (userId: string) =>
+    request<{ message: string }>(`/admin/users/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
 
   // Project access
   getProjectAccess: (projectId: string) =>

@@ -28,6 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email) return false;
         const existing = await prisma.user.findUnique({ where: { email } });
         if (!existing) return false;
+        if ((existing as any).status === 'deleted') return false;
       }
       return true;
     },

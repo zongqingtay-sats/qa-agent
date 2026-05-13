@@ -19,19 +19,19 @@
 
 -- Admin: full access, isAdmin bypasses all checks
 IF NOT EXISTS (SELECT 1 FROM [roles] WHERE [name] = N'Admin')
-  INSERT INTO [roles] (id, name, description, isAdmin, isSystem,
+  INSERT INTO [roles] (id, name, description, isAdmin, isSystem, status,
     projectPerms, testcasePerms, testrunPerms, userPerms, importPerms, generatePerms,
     createdAt, updatedAt)
-  VALUES (NEWID(), N'Admin', N'Full access to everything', 1, 1,
+  VALUES (NEWID(), N'Admin', N'Full access to everything', 1, 1, N'active',
     255, 255, 255, 255, 255, 255,
     GETUTCDATE(), GETUTCDATE());
 
 -- Project Manager: CRUD+export on test cases, read+update+grant on projects
 IF NOT EXISTS (SELECT 1 FROM [roles] WHERE [name] = N'Project Manager')
-  INSERT INTO [roles] (id, name, description, isAdmin, isSystem,
+  INSERT INTO [roles] (id, name, description, isAdmin, isSystem, status,
     projectPerms, testcasePerms, testrunPerms, userPerms, importPerms, generatePerms,
     createdAt, updatedAt)
-  VALUES (NEWID(), N'Project Manager', N'Full access within assigned projects; can grant access', 0, 1,
+  VALUES (NEWID(), N'Project Manager', N'Full access within assigned projects; can grant access', 0, 1, N'active',
     70,   -- projectPerms:  READ(2) + UPDATE(4) + GRANT_ACCESS(64)
     31,   -- testcasePerms: CREATE(1) + READ(2) + UPDATE(4) + DELETE(8) + EXPORT(16)
     3,    -- testrunPerms:  CREATE(1) + READ(2)
@@ -40,10 +40,10 @@ IF NOT EXISTS (SELECT 1 FROM [roles] WHERE [name] = N'Project Manager')
 
 -- QA Tester: read + run + export
 IF NOT EXISTS (SELECT 1 FROM [roles] WHERE [name] = N'QA Tester')
-  INSERT INTO [roles] (id, name, description, isAdmin, isSystem,
+  INSERT INTO [roles] (id, name, description, isAdmin, isSystem, status,
     projectPerms, testcasePerms, testrunPerms, userPerms, importPerms, generatePerms,
     createdAt, updatedAt)
-  VALUES (NEWID(), N'QA Tester', N'Read, run, export within assigned projects', 0, 1,
+  VALUES (NEWID(), N'QA Tester', N'Read, run, export within assigned projects', 0, 1, N'active',
     2,    -- projectPerms:  READ(2)
     18,   -- testcasePerms: READ(2) + EXPORT(16)
     3,    -- testrunPerms:  CREATE(1) + READ(2)
@@ -52,10 +52,10 @@ IF NOT EXISTS (SELECT 1 FROM [roles] WHERE [name] = N'QA Tester')
 
 -- Reader: read-only
 IF NOT EXISTS (SELECT 1 FROM [roles] WHERE [name] = N'Reader')
-  INSERT INTO [roles] (id, name, description, isAdmin, isSystem,
+  INSERT INTO [roles] (id, name, description, isAdmin, isSystem, status,
     projectPerms, testcasePerms, testrunPerms, userPerms, importPerms, generatePerms,
     createdAt, updatedAt)
-  VALUES (NEWID(), N'Reader', N'Read-only within assigned projects', 0, 1,
+  VALUES (NEWID(), N'Reader', N'Read-only within assigned projects', 0, 1, N'active',
     2,    -- projectPerms:  READ(2)
     2,    -- testcasePerms: READ(2)
     2,    -- testrunPerms:  READ(2)

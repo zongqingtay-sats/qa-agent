@@ -127,7 +127,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {recentCases.map((tc: any) => (
-                    <Link key={tc.id} href={`/test-cases/${tc.id}/editor`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
+                    <Link key={tc.id} href={`/test-cases/${tc.id}`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
                       <div>
                         <p className="text-sm font-medium">{tc.name}</p>
                         <p className="text-xs text-muted-foreground">{new Date(tc.updatedAt).toLocaleDateString()}</p>

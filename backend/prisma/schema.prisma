@@ -199,6 +199,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  status        String    @default("active") @db.NVarChar(20) // active | deleted
 
   accounts      Account[]
   sessions      Session[]
@@ -216,6 +217,7 @@ model Role {
   description    String? @db.NVarChar(500)
   isAdmin        Boolean @default(false)
   isSystem       Boolean @default(false) // built-in roles cannot be deleted
+  status         String  @default("active") @db.NVarChar(20) // active | deleted
   projectPerms   Int     @default(0)
   testcasePerms  Int     @default(0)
   testrunPerms   Int     @default(0)

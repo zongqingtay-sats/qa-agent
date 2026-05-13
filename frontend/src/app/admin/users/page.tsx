@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Shield, Search, UserCog } from "lucide-react";
+import { Users, Shield, Search, UserCog, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
 
@@ -37,6 +37,8 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -77,6 +79,21 @@ export default function UsersPage() {
     }
   }
 
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await adminApi.deleteUser(deleteTarget.id);
+      toast.success(`${deleteTarget.name || deleteTarget.email} has been deactivated`);
+      setDeleteTarget(null);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete user");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const filtered = users.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -107,75 +124,82 @@ export default function UsersPage() {
           <Badge variant="secondary">{filtered.length} users</Badge>
         </div>
 
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                      No users found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
-                            {user.name?.[0]?.toUpperCase() || "?"}
-                          </div>
-                          {user.name || "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
-                      <TableCell>
-                        {user.role ? (
-                          <Badge variant={user.role.isAdmin ? "default" : "secondary"}>
-                            {user.role.isAdmin && <Shield className="h-3 w-3 mr-1" />}
-                            {user.role.name}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">No role</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditUser(user);
-                            setSelectedRoleId(user.role?.id || "__none__");
-                          }}
-                        >
-                          <UserCog className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              ))
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  No users found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
+                        {user.name?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      {user.name || "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
+                  <TableCell>
+                    {user.role ? (
+                      <Badge variant={user.role.isAdmin ? "default" : "secondary"}>
+                        {user.role.isAdmin && <Shield className="h-3 w-3 mr-1" />}
+                        {user.role.name}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">No role</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon" onClick={() => {
+                          setEditUser(user);
+                          setSelectedRoleId(user.role?.id || "__none__");
+                        }}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteTarget(user)}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+
       </div>
 
       {/* Edit Role Dialog */}
@@ -210,6 +234,24 @@ export default function UsersPage() {
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
             <Button onClick={handleSaveRole} disabled={saving}>
               {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate <strong>{deleteTarget?.name || deleteTarget?.email}</strong>? They will no longer be able to sign in.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteUser} disabled={deleting}>
+              {deleting ? "Deactivating..." : "Deactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>

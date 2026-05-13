@@ -9,8 +9,8 @@ DECLARE @name NVARCHAR(255) = 'Admin User'
 
 -- Create the user if not exists
 IF NOT EXISTS (SELECT 1 FROM [users] WHERE [email] = @email)
-  INSERT INTO [users] (id, name, email, emailVerified, image)
-  VALUES (@userId, @name, @email, GETUTCDATE(), NULL)
+  INSERT INTO [users] (id, name, email, emailVerified, image, status)
+  VALUES (@userId, @name, @email, GETUTCDATE(), NULL, N'active')
 ELSE
   SET @userId = (SELECT id FROM [users] WHERE [email] = @email)
   

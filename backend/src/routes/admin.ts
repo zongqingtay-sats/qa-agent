@@ -19,7 +19,10 @@ router.get('/roles', async (_req: Request, res: Response) => {
     return;
   }
   const prisma = getPrismaClient();
-  const roles = await (prisma as any).role.findMany({ orderBy: { name: 'asc' } });
+  const roles = await (prisma as any).role.findMany({
+    where: { status: { not: 'deleted' } },
+    orderBy: { name: 'asc' },
+  });
   res.json({ data: roles });
 });
 
@@ -103,8 +106,12 @@ router.delete('/roles/:id', requirePermission('user:manage'), async (req: Reques
   const existing = await (prisma as any).role.findUnique({ where: { id: req.params.id as string } });
   if (!existing) throw new AppError('Role not found', 404);
   if (existing.isSystem) throw new AppError('Cannot delete a system role', 400);
+  if (existing.status === 'deleted') throw new AppError('Role is already deleted', 400);
 
-  await (prisma as any).role.delete({ where: { id: req.params.id as string } });
+  await (prisma as any).role.update({
+    where: { id: req.params.id as string },
+    data: { status: 'deleted' },
+  });
   res.json({ message: 'Deleted' });
 });
 
@@ -115,6 +122,7 @@ router.get('/users', requirePermission('user:manage'), async (_req: Request, res
   if (!appConfig.databaseUrl) { res.json({ data: [] }); return; }
   const prisma = getPrismaClient();
   const users = await (prisma as any).user.findMany({
+    where: { status: { not: 'deleted' } },
     select: {
       id: true, name: true, email: true, image: true,
       userRole: { select: { roleId: true, role: { select: { id: true, name: true, isAdmin: true } } } },
@@ -165,6 +173,27 @@ router.delete('/users/:userId/role', requirePermission('user:manage'), async (re
   const prisma = getPrismaClient();
   await (prisma as any).userRole.deleteMany({ where: { userId: req.params.userId as string } });
   res.json({ data: { userId: req.params.userId, role: null } });
+});
+
+// DELETE /api/admin/users/:userId — soft-delete a user (set status to 'deleted')
+router.delete('/users/:userId', requirePermission('user:manage'), async (req: Request, res: Response) => {
+  if (!appConfig.databaseUrl) throw new AppError('Database not configured', 500);
+  const userId = req.params.userId as string;
+
+  // Prevent self-deletion
+  if (req.user?.id === userId) throw new AppError('Cannot delete your own account', 400);
+
+  const prisma = getPrismaClient();
+  const user = await (prisma as any).user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError('User not found', 404);
+  if (user.status === 'deleted') throw new AppError('User is already deleted', 400);
+
+  await (prisma as any).user.update({
+    where: { id: userId },
+    data: { status: 'deleted' },
+  });
+
+  res.json({ message: 'User deactivated' });
 });
 
 // ── Project Access ───────────────────────────────────────────
