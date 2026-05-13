@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Search, Play, Trash2, Download, Sparkles, FolderKanban, TestTube2 } from "lucide-react";
 import { testCasesApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
@@ -27,6 +28,7 @@ export default function TestCasesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
 
   useEffect(() => { loadTestCases(); }, []);
 
@@ -54,8 +56,8 @@ export default function TestCasesPage() {
   // ── Single-item actions ──
 
   async function handleDelete(id: string) {
-    try { await testCasesApi.delete(id); toast.success("Test case deleted"); loadTestCases(); }
-    catch (err: any) { toast.error(err.message); }
+    const tc = testCases.find((t) => t.id === id);
+    setDeleteTarget({ ids: [id], label: tc?.name || "this test case" });
   }
 
   async function handleExport(id: string, format: "json" | "docx" | "pdf") {
@@ -92,12 +94,18 @@ export default function TestCasesPage() {
 
   async function handleDeleteSelected() {
     if (selected.size === 0) return;
+    setDeleteTarget({ ids: Array.from(selected), label: `${selected.size} test case(s)` });
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
     try {
-      for (const id of selected) await testCasesApi.delete(id);
-      toast.success(`Deleted ${selected.size} test case(s)`);
-      setSelected(new Set());
+      for (const id of deleteTarget.ids) await testCasesApi.delete(id);
+      toast.success(deleteTarget.ids.length === 1 ? "Test case deleted" : `Deleted ${deleteTarget.ids.length} test case(s)`);
+      setSelected((prev) => { const n = new Set(prev); deleteTarget.ids.forEach((id) => n.delete(id)); return n; });
       loadTestCases();
     } catch (err: any) { toast.error(err.message || "Failed to delete"); }
+    setDeleteTarget(null);
   }
 
   /** Create a new empty test case with the default flow scaffold. */
@@ -178,6 +186,21 @@ export default function TestCasesPage() {
         testCaseIds={Array.from(selected)}
         onAssigned={() => { setSelected(new Set()); loadTestCases(); }}
       />
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.ids.length === 1 ? "Test Case" : "Test Cases"}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {deleteTarget?.label}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

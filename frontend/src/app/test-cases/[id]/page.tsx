@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, use } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +10,31 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Pencil,
   Clock,
   FolderKanban,
   Tag,
   TestTube2,
+  Trash2,
+  Play,
+  MoreVertical,
 } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
+import { runTestCase } from "@/lib/run-test";
 import type { TestCase, TestRunListItem } from "@/types/api";
 import { CommentsSection } from "./_components/comments-section";
 import { AssigneeSection } from "./_components/assignee-section";
@@ -25,11 +44,14 @@ import { toast } from "sonner";
 
 export default function TestCaseOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: testCaseId } = use(params);
+  const router = useRouter();
 
   const [testCase, setTestCase] = useState<TestCase | null>(null);
   const [runs, setRuns] = useState<TestRunListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [running, setRunning] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
   const [testCaseName, setTestCaseName] = useState("");
   const [descriptionInput, setDescriptionInput] = useState("");
@@ -147,10 +169,30 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
           </span>
         }
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button variant="outline" nativeButton={false} render={<Link href={`/test-cases/${testCaseId}/editor`} />}>
               <Pencil className="h-4 w-4 mr-1" /> Edit Flow
             </Button>
+            <Button variant="outline" disabled={running} onClick={async () => {
+              setRunning(true);
+              try { await runTestCase(testCaseId); await load(); }
+              catch { toast.error("Failed to run test"); }
+              finally { setRunning(false); }
+            }}>
+              <Play className="h-4 w-4 mr-1" /> {running ? "Running..." : "Run"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
@@ -331,6 +373,35 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
         currentPhaseIds={testCase.phaseIds || []}
         onAssigned={load}
       />
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Test Case</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{testCase.name}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await testCasesApi.delete(testCaseId);
+                  toast.success("Test case deleted");
+                  router.push("/test-cases");
+                } catch {
+                  toast.error("Failed to delete test case");
+                }
+                setDeleteDialogOpen(false);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

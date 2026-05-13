@@ -9,6 +9,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -19,6 +20,8 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { nodeTypes } from "./_components/flow-block-node";
 import { BlockPalette } from "./_components/block-palette";
 import { BlockPropertiesPanel } from "./_components/block-properties-panel";
@@ -37,6 +40,7 @@ function FlowEditorInner() {
   const testCaseId = params.id as string;
 
   const editor = useFlowEditor(testCaseId);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   if (!editor.loaded) {
     return (
@@ -69,7 +73,7 @@ function FlowEditorInner() {
             onRefine={editor.handleRefine}
             onRun={editor.handleRun}
             onSave={editor.handleSave}
-            onDelete={editor.handleDelete}
+            onDelete={() => setDeleteDialogOpen(true)}
             onExport={editor.handleExport}
             onUndo={editor.handleUndo}
             onRedo={editor.handleRedo}
@@ -113,6 +117,21 @@ function FlowEditorInner() {
           onDelete={editor.deleteNode}
         />
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Test Case</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{editor.testCaseName}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setDeleteDialogOpen(false); editor.handleDelete(); }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
