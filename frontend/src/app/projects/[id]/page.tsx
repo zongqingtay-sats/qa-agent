@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, use } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,6 +49,7 @@ interface GroupedSection {
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
+  const router = useRouter();
 
   const [project, setProject] = useState<any>(null);
   const [testCases, setTestCases] = useState<any[]>([]);
@@ -71,6 +73,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [assignSelectedUsers, setAssignSelectedUsers] = useState<{ id: string; name: string | null; email: string | null }[]>([]);
   const [bulkFeatureIds, setBulkFeatureIds] = useState<Set<string>>(new Set());
   const [bulkPhaseIds, setBulkPhaseIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "feature" | "phase"; id: string; name: string } | null>(null);
+  const [deleteProjectConfirm, setDeleteProjectConfirm] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<{ type: "feature" | "phase"; id: string; name: string } | null>(null);
+  const [projectName, setProjectName] = useState("");
 
   const loadProject = useCallback(async () => {
     try {
@@ -82,6 +88,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       setTestCases(tcRes.data);
       setFeatures(projRes.data.features || []);
       setPhases(projRes.data.phases || []);
+      setProjectName(projRes.data.name || "");
     } catch {
       toast.error("Failed to load project");
     }
@@ -268,6 +275,52 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     } catch (e: any) { toast.error(e.message); }
   }
 
+  async function handleDeleteFeature(id: string) {
+    try {
+      await projectsApi.deleteFeature(id);
+      toast.success("Feature deleted");
+      setDeleteTarget(null);
+      loadProject();
+    } catch (e: any) { toast.error(e.message); }
+  }
+
+  async function handleDeletePhase(id: string) {
+    try {
+      await projectsApi.deletePhase(id);
+      toast.success("Phase deleted");
+      setDeleteTarget(null);
+      loadProject();
+    } catch (e: any) { toast.error(e.message); }
+  }
+
+  async function handleDeleteProject() {
+    try {
+      await projectsApi.delete(projectId);
+      toast.success("Project deleted");
+      router.push("/projects");
+    } catch (e: any) { toast.error(e.message); }
+  }
+
+  async function handleRenameProject() {
+    const trimmed = projectName.trim();
+    if (!trimmed || trimmed === project?.name) return;
+    try {
+      await projectsApi.update(projectId, { name: trimmed });
+      setProject((p: any) => ({ ...p, name: trimmed }));
+    } catch (e: any) { toast.error(e.message); setProjectName(project?.name || ""); }
+  }
+
+  async function handleRenameGroup(type: "feature" | "phase", id: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) { setEditingGroup(null); return; }
+    try {
+      if (type === "feature") await projectsApi.updateFeature(id, { name: trimmed });
+      else await projectsApi.updatePhase(id, { name: trimmed });
+      setEditingGroup(null);
+      loadProject();
+    } catch (e: any) { toast.error(e.message); }
+  }
+
   const groups = buildGroups();
 
   if (!project) {
@@ -282,7 +335,16 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <PageHeader
-        title={project.name}
+        title={
+          <input
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            onBlur={handleRenameProject}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setProjectName(project?.name || ""); (e.target as HTMLInputElement).blur(); } }}
+            className="bg-transparent border-none outline-none text-lg font-semibold w-full"
+            placeholder="Project name..."
+          />
+        }
         description={project.description || "Project detail"}
         actions={
           <div className="flex gap-2">
@@ -306,6 +368,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <DialogFooter><Button variant="outline" onClick={() => setPhaseDialogOpen(false)}>Cancel</Button><Button onClick={handleCreatePhase} disabled={!newItemName.trim()}>Create</Button></DialogFooter>
               </DialogContent>
             </Dialog>
+            <Button variant="destructive" onClick={() => setDeleteProjectConfirm(true)}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete Project
+            </Button>
           </div>
         }
       />
@@ -433,12 +498,28 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
             return (
               <Card key={group.key} className="p-0 gap-0">
-                <div
-                  className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => toggleCollapse(group.key)}
-                >
-                  {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  <span className="font-medium flex-1">{group.label}</span>
+                <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors">
+                  <button type="button" className="flex items-center justify-center shrink-0" onClick={() => toggleCollapse(group.key)}>
+                    {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {editingGroup?.id === group.groupId && editingGroup?.type === group.groupType ? (
+                    <input
+                      className="font-medium flex-1 bg-transparent border-b border-primary outline-none text-sm"
+                      value={editingGroup.name}
+                      onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                      onBlur={() => handleRenameGroup(editingGroup.type, editingGroup.id, editingGroup.name)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRenameGroup(editingGroup.type, editingGroup.id, editingGroup.name);
+                        if (e.key === "Escape") setEditingGroup(null);
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      className="font-medium flex-1 cursor-default"
+                      onDoubleClick={() => { if (group.groupId !== "unassigned") setEditingGroup({ type: group.groupType, id: group.groupId, name: group.label }); }}
+                    >{group.label}</span>
+                  )}
                   <Badge variant="secondary">{group.items.length}</Badge>
                   {isHidden && <span className="text-xs text-muted-foreground">{group.items.length} hidden</span>}
                   <Button
@@ -450,6 +531,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   >
                     {isHidden ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4" />}
                   </Button>
+                  {group.groupId !== "unassigned" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget({ type: group.groupType, id: group.groupId, name: group.label }); }}
+                      title={`Delete ${group.groupType}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
                 {!isCollapsed && !isHidden && (
                   <CardContent className="pt-0 pb-3">
@@ -460,12 +552,28 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           const subCollapsed = collapsedGroups.has(sub.key);
                           return (
                             <div key={sub.key} className="rounded-md ring-1 ring-foreground/10">
-                              <div
-                                className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/30"
-                                onClick={() => toggleCollapse(sub.key)}
-                              >
-                                {subCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                <span className="text-sm font-medium flex-1">{sub.label}</span>
+                              <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30">
+                                <button type="button" className="flex items-center justify-center shrink-0" onClick={() => toggleCollapse(sub.key)}>
+                                  {subCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                </button>
+                                {editingGroup?.id === sub.groupId && editingGroup?.type === sub.groupType ? (
+                                  <input
+                                    className="text-sm font-medium flex-1 bg-transparent border-b border-primary outline-none"
+                                    value={editingGroup.name}
+                                    onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                                    onBlur={() => handleRenameGroup(editingGroup.type, editingGroup.id, editingGroup.name)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleRenameGroup(editingGroup.type, editingGroup.id, editingGroup.name);
+                                      if (e.key === "Escape") setEditingGroup(null);
+                                    }}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span
+                                    className="text-sm font-medium flex-1 cursor-default"
+                                    onDoubleClick={() => { if (sub.groupId !== "unassigned") setEditingGroup({ type: sub.groupType, id: sub.groupId, name: sub.label }); }}
+                                  >{sub.label}</span>
+                                )}
                                 <Badge variant="secondary" className="text-xs">{sub.items.length}</Badge>
                                 <Button
                                   variant="ghost" size="icon" className="h-7 w-7"
@@ -493,6 +601,47 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           })}
         </div>
       </div>
+
+      {/* Delete feature/phase confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.type === "feature" ? "Feature" : "Phase"}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{deleteTarget?.name}&rdquo;? This will not delete any test cases.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!deleteTarget) return;
+                if (deleteTarget.type === "feature") handleDeleteFeature(deleteTarget.id);
+                else handleDeletePhase(deleteTarget.id);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete project confirmation */}
+      <Dialog open={deleteProjectConfirm} onOpenChange={setDeleteProjectConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{project?.name}&rdquo;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteProjectConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteProject}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

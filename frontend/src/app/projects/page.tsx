@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { FolderKanban, Plus, Search, ArrowRight, TestTube2 } from "lucide-react";
+import { FolderKanban, Plus, Search, ArrowRight, TestTube2, Trash2 } from "lucide-react";
 import { projectsApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -27,6 +27,8 @@ export default function ProjectsPage() {
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [creating, setCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -60,6 +62,21 @@ export default function ProjectsPage() {
       toast.error(e.message);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await projectsApi.delete(deleteTarget.id);
+      toast.success("Project deleted");
+      setDeleteTarget(null);
+      loadProjects();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -119,32 +136,61 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
-              <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <FolderKanban className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-base">{project.name}</CardTitle>
-                    </div>
-                    {project.description && (
-                      <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <TestTube2 className="h-3.5 w-3.5" />
-                        <span>View test cases</span>
+              <div key={project.id} className="relative group">
+                <Link href={`/projects/${project.id}`}>
+                  <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <FolderKanban className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-base">{project.name}</CardTitle>
                       </div>
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                      {project.description && (
+                        <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <TestTube2 className="h-3.5 w-3.5" />
+                          <span>View test cases</span>
+                        </div>
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: project.id, name: project.name }); }}
+                  title="Delete project"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Delete project confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{deleteTarget?.name}&rdquo;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
