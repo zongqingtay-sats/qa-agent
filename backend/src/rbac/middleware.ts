@@ -104,6 +104,7 @@ export function requirePermission(permission: string) {
 
 /**
  * Require a project-scoped permission.
+ * Uses the project-specific role if one is assigned, otherwise falls back to the global role.
  * isAdmin roles bypass the project-access check.
  */
 export function requireProjectAccess(
@@ -111,14 +112,10 @@ export function requireProjectAccess(
   resolveProjectId?: (req: Request) => Promise<string | undefined> | string | undefined,
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const role = req.roleRecord || FALLBACK_READER;
+    const globalRole = req.roleRecord || FALLBACK_READER;
 
-    if (!roleHasPermission(role, permission)) {
-      res.status(403).json({ error: 'Forbidden', message: `Missing permission: ${permission}` });
-      return;
-    }
-
-    if (role.isAdmin) return next();
+    // Admins bypass everything
+    if (globalRole.isAdmin) return next();
 
     let projectId: string | undefined;
     if (resolveProjectId) {
@@ -128,16 +125,35 @@ export function requireProjectAccess(
     }
 
     if (!projectId || !appConfig.databaseUrl || !req.user?.id) {
+      // No project context — use global role
+      if (!roleHasPermission(globalRole, permission)) {
+        res.status(403).json({ error: 'Forbidden', message: `Missing permission: ${permission}` });
+        return;
+      }
       return next();
     }
 
     try {
       const prisma = getPrismaClient();
-      const access = await prisma.projectAccess.findUnique({
+      const access = await (prisma as any).projectAccess.findUnique({
         where: { userId_projectId: { userId: req.user.id, projectId } },
+        include: { role: true },
       });
+
       if (!access) {
         res.status(403).json({ error: 'Forbidden', message: 'No access to this project' });
+        return;
+      }
+
+      // Use project-specific role if assigned, otherwise fall back to global role
+      const effectiveRole: RoleRecord = access.role
+        ? (access.role as RoleRecord)
+        : globalRole;
+
+      if (effectiveRole.isAdmin) return next();
+
+      if (!roleHasPermission(effectiveRole, permission)) {
+        res.status(403).json({ error: 'Forbidden', message: `Missing permission: ${permission}` });
         return;
       }
       return next();

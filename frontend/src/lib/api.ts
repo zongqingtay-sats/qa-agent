@@ -250,9 +250,11 @@ export const adminApi = {
 
   // Project access
   getProjectAccess: (projectId: string) =>
-    request<{ data: { userId: string; userName: string; projectId: string }[] }>(`/admin/projects/${encodeURIComponent(projectId)}/access`),
-  grantProjectAccess: (projectId: string, userId: string) =>
-    request<{ data: { userId: string; userName: string; projectId: string } }>(`/admin/projects/${encodeURIComponent(projectId)}/access`, { method: 'POST', body: JSON.stringify({ userId }) }),
+    request<{ data: { userId: string; name: string | null; email: string | null; image: string | null; role: { id: string; name: string; isAdmin: boolean } | null; grantedBy: string | null; grantedAt: string }[] }>(`/admin/projects/${encodeURIComponent(projectId)}/access`),
+  grantProjectAccess: (projectId: string, userId: string, roleId?: string) =>
+    request<{ data: { userId: string; projectId: string; roleId: string | null; grantedAt: string } }>(`/admin/projects/${encodeURIComponent(projectId)}/access`, { method: 'POST', body: JSON.stringify({ userId, roleId }) }),
   revokeProjectAccess: (projectId: string, userId: string) =>
     request<{ message: string }>(`/admin/projects/${encodeURIComponent(projectId)}/access/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+  setProjectRole: (projectId: string, userId: string, roleId: string | null) =>
+    request<{ data: { userId: string; projectId: string; roleId: string | null } }>(`/admin/projects/${encodeURIComponent(projectId)}/access/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: JSON.stringify({ roleId }) }),
 };

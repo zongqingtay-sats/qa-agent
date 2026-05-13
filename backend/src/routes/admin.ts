@@ -254,7 +254,10 @@ router.get(
     const prisma = getPrismaClient();
     const accessList = await (prisma as any).projectAccess.findMany({
       where: { projectId: req.params.projectId as string },
-      include: { user: { select: { id: true, name: true, email: true, image: true } } },
+      include: {
+        user: { select: { id: true, name: true, email: true, image: true } },
+        role: { select: { id: true, name: true, isAdmin: true } },
+      },
       orderBy: { grantedAt: 'desc' },
     });
     res.json({
@@ -263,6 +266,7 @@ router.get(
         name: a.user.name,
         email: a.user.email,
         image: a.user.image,
+        role: a.role ? { id: a.role.id, name: a.role.name, isAdmin: a.role.isAdmin } : null,
         grantedBy: a.grantedBy,
         grantedAt: a.grantedAt.toISOString(),
       })),
@@ -277,7 +281,7 @@ router.post(
   async (req: Request, res: Response) => {
     if (!appConfig.databaseUrl) throw new AppError('Database not configured', 500);
     const projectId = req.params.projectId as string;
-    const { userId } = req.body;
+    const { userId, roleId } = req.body;
     if (!userId) throw new AppError('userId is required');
 
     const prisma = getPrismaClient();
@@ -288,12 +292,46 @@ router.post(
     if (!user) throw new AppError('User not found', 404);
     if (!project) throw new AppError('Project not found', 404);
 
+    // Validate roleId if provided
+    if (roleId) {
+      const role = await (prisma as any).role.findUnique({ where: { id: roleId } });
+      if (!role) throw new AppError('Role not found', 404);
+    }
+
     const access = await (prisma as any).projectAccess.upsert({
       where: { userId_projectId: { userId, projectId } },
-      update: { grantedBy: req.user?.email || req.user?.id },
-      create: { userId, projectId, grantedBy: req.user?.email || req.user?.id },
+      update: { grantedBy: req.user?.email || req.user?.id, roleId: roleId || null },
+      create: { userId, projectId, grantedBy: req.user?.email || req.user?.id, roleId: roleId || null },
     });
-    res.status(201).json({ data: { userId, projectId, grantedAt: access.grantedAt.toISOString() } });
+    res.status(201).json({ data: { userId, projectId, roleId: access.roleId, grantedAt: access.grantedAt.toISOString() } });
+  }
+);
+
+// PUT /api/admin/projects/:projectId/access/:userId/role — update project-specific role
+router.put(
+  '/projects/:projectId/access/:userId/role',
+  requireProjectAccess('project:grant_access', (req) => req.params.projectId as string),
+  async (req: Request, res: Response) => {
+    if (!appConfig.databaseUrl) throw new AppError('Database not configured', 500);
+    const { projectId, userId } = req.params as { projectId: string; userId: string };
+    const { roleId } = req.body; // null to clear (revert to global role)
+
+    const prisma = getPrismaClient();
+    const access = await (prisma as any).projectAccess.findUnique({
+      where: { userId_projectId: { userId, projectId } },
+    });
+    if (!access) throw new AppError('User does not have access to this project', 404);
+
+    if (roleId) {
+      const role = await (prisma as any).role.findUnique({ where: { id: roleId } });
+      if (!role) throw new AppError('Role not found', 404);
+    }
+
+    const updated = await (prisma as any).projectAccess.update({
+      where: { userId_projectId: { userId, projectId } },
+      data: { roleId: roleId || null },
+    });
+    res.json({ data: { userId, projectId, roleId: updated.roleId } });
   }
 );
 
@@ -318,20 +356,23 @@ router.get('/me', async (req: Request, res: Response) => {
   const roleRecord = req.roleRecord;
 
   if (!appConfig.databaseUrl || !req.user?.id || req.user.id === 'anonymous') {
-    res.json({ data: { role: roleRecord, projectIds: [] } });
+    res.json({ data: { role: roleRecord, projectIds: [], projectRoles: [] } });
     return;
   }
 
   const prisma = getPrismaClient();
   const access = await (prisma as any).projectAccess.findMany({
     where: { userId: req.user.id },
-    select: { projectId: true },
+    include: { role: { select: { id: true, name: true, isAdmin: true } } },
   });
 
   res.json({
     data: {
       role: roleRecord,
       projectIds: access.map((a: any) => a.projectId),
+      projectRoles: access
+        .filter((a: any) => a.role)
+        .map((a: any) => ({ projectId: a.projectId, role: a.role })),
     },
   });
 });

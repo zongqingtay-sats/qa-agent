@@ -34,7 +34,7 @@ export function useProjectData(projectId: string) {
 
   // ── Project-level user access ──
   const [projectAccess, setProjectAccess] = useState<
-    { userId: string; userName: string; projectId: string }[]
+    { userId: string; name: string | null; email: string | null; image: string | null; role: { id: string; name: string; isAdmin: boolean } | null; grantedBy: string | null; grantedAt: string }[]
   >([]);
 
   // ── Dialog state ──
