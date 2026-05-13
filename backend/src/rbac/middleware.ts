@@ -62,7 +62,7 @@ export async function loadUserRole(req: Request, _res: Response, next: NextFunct
 
   try {
     const prisma = getPrismaClient();
-    const userRole = await (prisma as any).userRole.findUnique({
+    const userRole = await prisma.userRole.findUnique({
       where: { userId: req.user.id },
       include: { role: true },
     });
@@ -76,11 +76,11 @@ export async function loadUserRole(req: Request, _res: Response, next: NextFunct
     if (req.roleRecord.isAdmin) {
       req.accessibleProjectIds = undefined;
     } else {
-      const access = await (prisma as any).projectAccess.findMany({
+      const access = await prisma.projectAccess.findMany({
         where: { userId: req.user.id },
         select: { projectId: true },
       });
-      req.accessibleProjectIds = access.map((a: any) => a.projectId);
+      req.accessibleProjectIds = access.map(a => a.projectId);
     }
   } catch {
     req.roleRecord = FALLBACK_READER;
@@ -133,7 +133,7 @@ export function requireProjectAccess(
 
     try {
       const prisma = getPrismaClient();
-      const access = await (prisma as any).projectAccess.findUnique({
+      const access = await prisma.projectAccess.findUnique({
         where: { userId_projectId: { userId: req.user.id, projectId } },
       });
       if (!access) {
@@ -155,7 +155,7 @@ export async function seedDefaultRoles() {
   try {
     const prisma = getPrismaClient();
     for (const def of DEFAULT_ROLES) {
-      await (prisma as any).role.upsert({
+      await prisma.role.upsert({
         where: { name: def.name },
         update: {},  // don't overwrite if already customized
         create: def,
@@ -175,7 +175,7 @@ export async function resolveProjectFromTestCase(req: Request): Promise<string |
   if (!testCaseId) return undefined;
   try {
     const prisma = getPrismaClient();
-    const tc = await (prisma.testCase as any).findUnique({
+    const tc = await prisma.testCase.findUnique({
       where: { id: testCaseId },
       select: { projectId: true },
     });
@@ -189,7 +189,7 @@ export async function resolveProjectFromTestRun(req: Request): Promise<string | 
   if (!testRunId) return undefined;
   try {
     const prisma = getPrismaClient();
-    const run = await (prisma.testRun as any).findUnique({
+    const run = await prisma.testRun.findUnique({
       where: { id: testRunId },
       select: { testCase: { select: { projectId: true } } },
     });
