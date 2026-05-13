@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { TestTube2, Play, Upload, Sparkles, ArrowRight, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { TestTube2, Play, Upload, Sparkles, ArrowRight, CheckCircle2, XCircle, Clock, LayoutDashboard } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -39,7 +39,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Overview of your QA testing workspace" />
+      <PageHeader title={<span className="flex items-center gap-2"><LayoutDashboard className="h-5 w-5" /> Dashboard</span>} description="Overview of your QA testing workspace" />
       <div className="flex-1 p-4 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

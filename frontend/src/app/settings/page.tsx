@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Plug, CheckCircle, XCircle, Loader2, Sun, Moon, Monitor } from "lucide-react";
+import { Save, Plug, CheckCircle, XCircle, Loader2, Sun, Moon, Monitor, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { getExtensionId, setExtensionId, pingExtension } from "@/lib/extension";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -48,7 +48,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Configure the QA Agent application" />
+      <PageHeader title={<span className="flex items-center gap-2"><Settings className="h-5 w-5" /> Settings</span>} description="Configure the QA Agent application" />
       <div className="flex-1 p-4 space-y-4 max-w-2xl">
         <Card>
           <CardHeader>

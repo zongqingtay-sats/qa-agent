@@ -31,6 +31,7 @@ import {
   Layers,
   Milestone,
   X,
+  FolderKanban,
 } from "lucide-react";
 import { projectsApi, testCasesApi, assignmentsApi, usersApi } from "@/lib/api";
 import { toast } from "sonner";
@@ -336,14 +337,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         title={
-          <input
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            onBlur={handleRenameProject}
-            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setProjectName(project?.name || ""); (e.target as HTMLInputElement).blur(); } }}
-            className="bg-transparent border-none outline-none text-lg font-semibold w-full"
-            placeholder="Project name..."
-          />
+          <span className="flex items-center gap-2">
+            <FolderKanban className="h-5 w-5 shrink-0" />
+            <input
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              onBlur={handleRenameProject}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setProjectName(project?.name || ""); (e.target as HTMLInputElement).blur(); } }}
+              className="bg-transparent border-none outline-none text-lg font-semibold w-full"
+              placeholder="Project name..."
+            />
+          </span>
         }
         description={project.description || "Project detail"}
         actions={

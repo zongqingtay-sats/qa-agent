@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Play, Trash2, Download, Sparkles, FolderKanban } from "lucide-react";
+import { Plus, Search, Play, Trash2, Download, Sparkles, FolderKanban, TestTube2 } from "lucide-react";
 import { testCasesApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { toast } from "sonner";
@@ -126,7 +126,7 @@ export default function TestCasesPage() {
   return (
     <>
       <PageHeader
-        title="Test Cases"
+        title={<span className="flex items-center gap-2"><TestTube2 className="h-5 w-5" /> Test Cases</span>}
         description="Manage and run your test cases"
         actions={
           <>

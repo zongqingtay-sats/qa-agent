@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Download, RotateCcw, Search } from "lucide-react";
+import { Download, RotateCcw, Search, Play } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
@@ -114,7 +114,7 @@ export default function TestRunsPage() {
 
   return (
     <>
-      <PageHeader title="Test Runs" description="View execution history and results" />
+      <PageHeader title={<span className="flex items-center gap-2"><Play className="h-5 w-5" /> Test Runs</span>} description="View execution history and results" />
       <div className="flex-1 p-4 space-y-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

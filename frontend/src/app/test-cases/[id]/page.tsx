@@ -13,6 +13,7 @@ import {
   Clock,
   FolderKanban,
   Tag,
+  TestTube2,
 } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
 import { CommentsSection } from "./_components/comments-section";
@@ -29,6 +30,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
+  const [testCaseName, setTestCaseName] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +39,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
         testRunsApi.list({ testCaseId }),
       ]);
       setTestCase(tcRes.data);
+      setTestCaseName(tcRes.data.name || "");
       setTagsInput((tcRes.data.tags || []).join(", "));
       setRuns(runsRes.data);
     } catch {
@@ -60,6 +63,18 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const stepCount = testCase.steps?.length ?? 0;
   const recentRuns = runs.slice(0, 5);
 
+  const handleNameCommit = async () => {
+    const trimmed = testCaseName.trim();
+    if (!trimmed || trimmed === testCase.name) return;
+    try {
+      await testCasesApi.update(testCaseId, { name: trimmed });
+      setTestCase((prev: any) => ({ ...prev, name: trimmed }));
+    } catch {
+      toast.error("Failed to update name");
+      setTestCaseName(testCase.name);
+    }
+  };
+
   const handleTagsCommit = async () => {
     const newTags = tagsInput.split(",").map((t: string) => t.trim()).filter(Boolean);
     const currentTags = testCase.tags || [];
@@ -76,7 +91,19 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   return (
     <>
       <PageHeader
-        title={testCase.name}
+        title={
+          <span className="flex items-center gap-2">
+            <TestTube2 className="h-5 w-5 shrink-0" />
+            <input
+              value={testCaseName}
+              onChange={(e) => setTestCaseName(e.target.value)}
+              onBlur={handleNameCommit}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setTestCaseName(testCase.name); (e.target as HTMLInputElement).blur(); } }}
+              className="bg-transparent border-none outline-none text-lg font-semibold w-full"
+              placeholder="Test case name..."
+            />
+          </span>
+        }
         description={testCase.description || undefined}
         actions={
           <div className="flex gap-2">

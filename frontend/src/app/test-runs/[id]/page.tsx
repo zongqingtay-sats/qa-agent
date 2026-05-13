@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, RotateCcw } from "lucide-react";
+import { Download, RotateCcw, Play } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
@@ -115,7 +115,7 @@ export default function TestRunDetailPage() {
   return (
     <>
       <PageHeader
-        title={run.testCaseName || "Test Run"}
+        title={<span className="flex items-center gap-2"><Play className="h-5 w-5 shrink-0" />{run.testCaseName || "Test Run"}</span>}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handleRerun}><RotateCcw className="h-4 w-4 mr-1" /> Re-run</Button>
