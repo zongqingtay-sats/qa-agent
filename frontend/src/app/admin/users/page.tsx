@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Shield, Search, UserCog, Pencil, Trash2 } from "lucide-react";
+import { Users, Shield, Search, Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
 
@@ -34,23 +33,26 @@ export default function UsersPage() {
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [editUser, setEditUser] = useState<UserRow | null>(null);
-  const [selectedRoleId, setSelectedRoleId] = useState("");
-  const [saving, setSaving] = useState(false);
+
+  // Unified create/edit dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [dialogUser, setDialogUser] = useState<UserRow | null>(null);
+  const [dialogName, setDialogName] = useState("");
+  const [dialogEmail, setDialogEmail] = useState("");
+  const [dialogRoleId, setDialogRoleId] = useState("");
+  const [dialogSaving, setDialogSaving] = useState(false);
+
+  // Delete state
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
     try {
-      const [usersRes, rolesRes] = await Promise.all([
-        adminApi.listUsers(),
-        adminApi.listRoles(),
-      ]);
+      const [usersRes, rolesRes] = await Promise.all([adminApi.listUsers(), adminApi.listRoles()]);
       setUsers(usersRes.data);
       setRoles(rolesRes.data);
     } catch (err: any) {
@@ -60,22 +62,58 @@ export default function UsersPage() {
     }
   }
 
-  async function handleSaveRole() {
-    if (!editUser) return;
-    setSaving(true);
+  function openCreate() {
+    setDialogMode("create");
+    setDialogUser(null);
+    setDialogName("");
+    setDialogEmail("");
+    setDialogRoleId("");
+    setDialogOpen(true);
+  }
+
+  function openEdit(user: UserRow) {
+    setDialogMode("edit");
+    setDialogUser(user);
+    setDialogName(user.name || "");
+    setDialogEmail(user.email || "");
+    setDialogRoleId(user.role?.id || "__none__");
+    setDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+  }
+
+  async function handleDialogSubmit() {
+    setDialogSaving(true);
     try {
-      if (selectedRoleId === "__none__") {
-        await adminApi.removeUserRole(editUser.id);
+      if (dialogMode === "create") {
+        if (!dialogEmail.trim()) { toast.error("Email is required"); return; }
+        await adminApi.createUser({
+          name: dialogName.trim() || undefined,
+          email: dialogEmail.trim(),
+          roleId: dialogRoleId && dialogRoleId !== "__none__" ? dialogRoleId : undefined,
+        });
+        toast.success(`User ${dialogEmail.trim()} created`);
       } else {
-        await adminApi.setUserRole(editUser.id, selectedRoleId);
+        if (!dialogUser) return;
+        await adminApi.updateUser(dialogUser.id, {
+          name: dialogName.trim() || undefined,
+          email: dialogEmail.trim() || undefined,
+        });
+        if (dialogRoleId === "__none__") {
+          await adminApi.removeUserRole(dialogUser.id);
+        } else {
+          await adminApi.setUserRole(dialogUser.id, dialogRoleId);
+        }
+        toast.success(`User updated`);
       }
-      toast.success(`Role updated for ${editUser.name || editUser.email}`);
-      setEditUser(null);
+      closeDialog();
       loadData();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update role");
+      toast.error(err.message || "Failed to save");
     } finally {
-      setSaving(false);
+      setDialogSaving(false);
     }
   }
 
@@ -104,11 +142,20 @@ export default function UsersPage() {
     );
   });
 
+  const selectedRoleName = !dialogRoleId || dialogRoleId === "__none__"
+    ? "No role (defaults to Reader)"
+    : (roles.find((r) => r.id === dialogRoleId)?.name ?? "Select a role");
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={<span className="flex items-center gap-2"><Users className="h-5 w-5" /> User Management</span>}
         description="Manage user role assignments"
+        actions={
+          <Button className="ml-auto" onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1" /> Create
+          </Button>
+        }
       />
       <div className="flex-1 overflow-auto p-4 space-y-4">
         <div className="flex items-center gap-2">
@@ -173,22 +220,10 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon" onClick={() => {
-                            setEditUser(user);
-                            setSelectedRoleId(user.role?.id || "__none__");
-                          }}
-                          title="Edit"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Edit">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteTarget(user)}
-                          title="Delete"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(user)} title="Delete">
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -201,25 +236,30 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Edit Role Dialog */}
-      <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Role</DialogTitle>
+            <DialogTitle>{dialogMode === "create" ? "Create User" : "Edit User"}</DialogTitle>
+            {dialogMode === "create" && (
+              <DialogDescription>Pre-register a user so they can sign in with their Microsoft account.</DialogDescription>
+            )}
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-sm text-muted-foreground">User</Label>
-              <p className="font-medium">{editUser?.name || editUser?.email}</p>
+            <div className="space-y-2">
+              <Label htmlFor="dialog-name">Name</Label>
+              <Input id="dialog-name" placeholder="Full name" value={dialogName} onChange={(e) => setDialogName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dialog-email">Email <span className="text-destructive">*</span></Label>
+              <Input id="dialog-email" type="email" placeholder="user@example.com" value={dialogEmail} onChange={(e) => setDialogEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select value={selectedRoleId} onValueChange={(v) => setSelectedRoleId(v || "")}>
+              <Select value={dialogRoleId} onValueChange={(v) => setDialogRoleId(v || "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a role">
-                    {selectedRoleId === "__none__"
-                      ? "No role (defaults to Reader)"
-                      : (roles.find((r) => r.id === selectedRoleId)?.name ?? "Select a role")}
+                    {selectedRoleName}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -234,9 +274,9 @@ export default function UsersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
-            <Button onClick={handleSaveRole} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+            <Button variant="outline" onClick={closeDialog} disabled={dialogSaving}>Cancel</Button>
+            <Button onClick={handleDialogSubmit} disabled={dialogSaving}>
+              {dialogSaving ? "Saving..." : dialogMode === "create" ? "Create User" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

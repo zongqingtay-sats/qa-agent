@@ -207,6 +207,10 @@ export const adminApi = {
 
   // Users with roles
   listUsers: () => request<{ data: any[] }>('/admin/users'),
+  createUser: (data: { name?: string; email: string; roleId?: string }) =>
+    request<{ data: any }>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (userId: string, data: { name?: string; email?: string }) =>
+    request<{ data: any }>(`/admin/users/${encodeURIComponent(userId)}`, { method: 'PUT', body: JSON.stringify(data) }),
   setUserRole: (userId: string, roleId: string) =>
     request<{ data: any }>(`/admin/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: JSON.stringify({ roleId }) }),
   removeUserRole: (userId: string) =>

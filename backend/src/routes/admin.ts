@@ -117,6 +117,30 @@ router.delete('/roles/:id', requirePermission('user:manage'), async (req: Reques
 
 // ── User Role Assignment ─────────────────────────────────────
 
+// POST /api/admin/users — create a new user (pre-register allowlist entry)
+router.post('/users', requirePermission('user:manage'), async (req: Request, res: Response) => {
+  if (!appConfig.databaseUrl) throw new AppError('Database not configured', 500);
+  const { name, email, roleId } = req.body;
+  if (!email) throw new AppError('email is required');
+
+  const prisma = getPrismaClient();
+  const existing = await (prisma as any).user.findUnique({ where: { email } });
+  if (existing) throw new AppError('A user with this email already exists', 409);
+
+  const user = await (prisma as any).user.create({
+    data: { name: name || null, email, status: 'active' },
+  });
+
+  if (roleId) {
+    const role = await (prisma as any).role.findUnique({ where: { id: roleId } });
+    if (role) {
+      await (prisma as any).userRole.create({ data: { userId: user.id, roleId } });
+    }
+  }
+
+  res.status(201).json({ data: { id: user.id, name: user.name, email: user.email, status: user.status } });
+});
+
 // GET /api/admin/users — list all users with their role
 router.get('/users', requirePermission('user:manage'), async (_req: Request, res: Response) => {
   if (!appConfig.databaseUrl) { res.json({ data: [] }); return; }
@@ -141,6 +165,29 @@ router.get('/users', requirePermission('user:manage'), async (_req: Request, res
   }));
 
   res.json({ data });
+});
+
+// PUT /api/admin/users/:userId — update name and/or email
+router.put('/users/:userId', requirePermission('user:manage'), async (req: Request, res: Response) => {
+  if (!appConfig.databaseUrl) throw new AppError('Database not configured', 500);
+  const userId = req.params.userId as string;
+  const { name, email } = req.body;
+
+  const prisma = getPrismaClient();
+  const user = await (prisma as any).user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError('User not found', 404);
+
+  if (email && email !== user.email) {
+    const conflict = await (prisma as any).user.findUnique({ where: { email } });
+    if (conflict) throw new AppError('A user with this email already exists', 409);
+  }
+
+  const updates: Record<string, any> = {};
+  if (name !== undefined) updates.name = name || null;
+  if (email !== undefined) updates.email = email;
+
+  const updated = await (prisma as any).user.update({ where: { id: userId }, data: updates });
+  res.json({ data: { id: updated.id, name: updated.name, email: updated.email } });
 });
 
 // PUT /api/admin/users/:userId/role — assign a role to a user by roleId
