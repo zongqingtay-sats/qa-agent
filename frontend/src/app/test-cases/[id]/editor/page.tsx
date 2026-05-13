@@ -23,7 +23,6 @@ import { nodeTypes } from "./_components/flow-block-node";
 import { BlockPalette } from "./_components/block-palette";
 import { BlockPropertiesPanel } from "./_components/block-properties-panel";
 import { EditorToolbar } from "./_components/editor-toolbar";
-import { MetadataPanel } from "./_components/metadata-panel";
 import { LastRunPanel } from "./_components/last-run-panel";
 import { useFlowEditor } from "./_hooks/use-flow-editor";
 
@@ -76,17 +75,6 @@ function FlowEditorInner() {
             onRedo={editor.handleRedo}
           />
         }
-      />
-
-      <MetadataPanel
-        open={editor.showMetadata}
-        onToggle={() => editor.setShowMetadata(!editor.showMetadata)}
-        description={editor.testCaseDescription}
-        onDescriptionChange={editor.setTestCaseDescription}
-        preconditions={editor.testCasePreconditions}
-        onPreconditionsChange={editor.setTestCasePreconditions}
-        passingCriteria={editor.testCasePassingCriteria}
-        onPassingCriteriaChange={editor.setTestCasePassingCriteria}
       />
 
       {editor.lastRun && (

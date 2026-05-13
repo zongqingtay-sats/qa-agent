@@ -53,7 +53,6 @@ export function useFlowEditor(testCaseId: string) {
   const [tagsInput, setTagsInput] = useState("");
 
   // ── UI flags ──
-  const [showMetadata, setShowMetadata] = useState(false);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -658,12 +657,8 @@ export function useFlowEditor(testCaseId: string) {
     handleCopy, handleCut, handlePaste,
     // Metadata
     testCaseName, setTestCaseName,
-    testCaseDescription, setTestCaseDescription,
-    testCasePreconditions, setTestCasePreconditions,
-    testCasePassingCriteria, setTestCasePassingCriteria,
     testCaseTags, setTestCaseTags,
     tagsInput, setTagsInput,
-    showMetadata, setShowMetadata,
     // UI flags
     loaded, saving, running, refining, hasChanges,
     // Last run

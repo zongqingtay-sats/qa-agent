@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
-import { Users, Plus, X } from "lucide-react";
+import { Users, X, Pencil } from "lucide-react";
 import { assignmentsApi, usersApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -86,7 +86,7 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
           <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Assignees</span>
           <Popover open={showAdd} onOpenChange={setShowAdd}>
             <PopoverTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
-              <Plus className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-64 p-0">
               <Command shouldFilter={false}>

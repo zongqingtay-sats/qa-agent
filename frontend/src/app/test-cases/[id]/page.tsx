@@ -31,6 +31,9 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
   const [testCaseName, setTestCaseName] = useState("");
+  const [descriptionInput, setDescriptionInput] = useState("");
+  const [preconditionsInput, setPreconditionsInput] = useState("");
+  const [passingCriteriaInput, setPassingCriteriaInput] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -40,6 +43,9 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
       ]);
       setTestCase(tcRes.data);
       setTestCaseName(tcRes.data.name || "");
+      setDescriptionInput(tcRes.data.description || "");
+      setPreconditionsInput(tcRes.data.preconditions || "");
+      setPassingCriteriaInput(tcRes.data.passingCriteria || "");
       setTagsInput((tcRes.data.tags || []).join(", "));
       setRuns(runsRes.data);
     } catch {
@@ -60,8 +66,43 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const stepCount = testCase.steps?.length ?? 0;
   const recentRuns = runs.slice(0, 5);
+
+  const handleDescriptionCommit = async () => {
+    const trimmed = descriptionInput.trim();
+    if (trimmed === (testCase.description || "")) return;
+    try {
+      await testCasesApi.update(testCaseId, { description: trimmed || undefined });
+      setTestCase((prev: any) => ({ ...prev, description: trimmed || null }));
+    } catch {
+      toast.error("Failed to update description");
+      setDescriptionInput(testCase.description || "");
+    }
+  };
+
+  const handlePreconditionsCommit = async () => {
+    const trimmed = preconditionsInput.trim();
+    if (trimmed === (testCase.preconditions || "")) return;
+    try {
+      await testCasesApi.update(testCaseId, { preconditions: trimmed || undefined });
+      setTestCase((prev: any) => ({ ...prev, preconditions: trimmed || null }));
+    } catch {
+      toast.error("Failed to update preconditions");
+      setPreconditionsInput(testCase.preconditions || "");
+    }
+  };
+
+  const handlePassingCriteriaCommit = async () => {
+    const trimmed = passingCriteriaInput.trim();
+    if (trimmed === (testCase.passingCriteria || "")) return;
+    try {
+      await testCasesApi.update(testCaseId, { passingCriteria: trimmed || undefined });
+      setTestCase((prev: any) => ({ ...prev, passingCriteria: trimmed || null }));
+    } catch {
+      toast.error("Failed to update passing criteria");
+      setPassingCriteriaInput(testCase.passingCriteria || "");
+    }
+  };
 
   const handleNameCommit = async () => {
     const trimmed = testCaseName.trim();
@@ -104,7 +145,6 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             />
           </span>
         }
-        description={testCase.description || undefined}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" nativeButton={false} render={<Link href={`/test-cases/${testCaseId}/editor`} />}>
@@ -119,32 +159,66 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
           {/* Details card */}
           <Card>
             <CardHeader><CardTitle className="text-base">Details</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs font-semibold w-20">Status</span>
-                <StatusBadge status={testCase.status} />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs font-semibold w-20">Steps</span>
-                <span className="text-sm">{stepCount} steps</span>
-              </div>
-              {testCase.description && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-xs font-semibold w-20">Description</span>
-                  <p className="text-sm mt-1">{testCase.description}</p>
+            <CardContent className="flex gap-3">
+              <div className="space-y-3 flex-1">
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Description</p>
+                  <textarea
+                    value={descriptionInput}
+                    onChange={(e) => setDescriptionInput(e.target.value)}
+                    onBlur={handleDescriptionCommit}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setDescriptionInput(testCase.description || ""); (e.target as HTMLTextAreaElement).blur(); } }}
+                    placeholder="Add a description"
+                    rows={3}
+                    className="flex-1 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
+                  />
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs font-semibold w-20">
-                  Tags
-                </span>
-                <Input
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  onBlur={handleTagsCommit}
-                  placeholder="Add tags"
-                  className="text-sm mt-1 border-none"
-                />
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Preconditions</p>
+                  <textarea
+                    value={preconditionsInput}
+                    onChange={(e) => setPreconditionsInput(e.target.value)}
+                    onBlur={handlePreconditionsCommit}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setPreconditionsInput(testCase.preconditions || ""); (e.target as HTMLTextAreaElement).blur(); } }}
+                    placeholder="Setup required before running..."
+                    rows={3}
+                    className="flex-1 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
+                  />
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Passing Criteria</p>
+                  <textarea
+                    value={passingCriteriaInput}
+                    onChange={(e) => setPassingCriteriaInput(e.target.value)}
+                    onBlur={handlePassingCriteriaCommit}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setPassingCriteriaInput(testCase.passingCriteria || ""); (e.target as HTMLTextAreaElement).blur(); } }}
+                    placeholder="What determines if this test passes?"
+                    rows={3}
+                    className="flex-1 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
+                  />
+                </div>
+              </div>
+              <div className="space-y-3 flex-1">
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">ID</p>
+                  <Link href={`/test-cases/${testCaseId}/editor`} className="text-primary hover:underline font-mono text-xs">
+                    {testCaseId}
+                  </Link>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Status</p>
+                  <StatusBadge status={testCase.status} />
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs font-semibold mb-1">Tags</p>
+                  <input
+                    value={tagsInput}
+                    onChange={(e) => setTagsInput(e.target.value)}
+                    onBlur={handleTagsCommit}
+                    placeholder="Add tags"
+                    className="flex-1 text-sm bg-transparent border-none outline-none p-0"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -220,8 +294,11 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
                         </span>
                       </div>
                       {run.runByName && (
-                        <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center" title={run.runByName}>
-                          {run.runByName[0]?.toUpperCase() || "?"}
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0" title={run.runByName}>
+                            {run.runByName[0]?.toUpperCase() || "?"}
+                          </div>
+                          <span className="text-sm text-muted-foreground">{run.runByName}</span>
                         </div>
                       )}
                     </Link>

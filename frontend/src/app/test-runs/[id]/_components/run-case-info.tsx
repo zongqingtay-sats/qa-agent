@@ -39,7 +39,7 @@ export function RunCaseInfo({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Case Info</CardTitle>
-          <Link href={`/test-cases/${testCaseId}/editor`}>
+          <Link href={`/test-cases/${testCaseId}`}>
             <Button variant="outline">
               <ExternalLink className="h-3.5 w-3.5 mr-1" /> View Test Case
             </Button>
@@ -54,7 +54,7 @@ export function RunCaseInfo({
           </div>
           <div>
             <p className="text-muted-foreground text-xs font-semibold mb-1">Case ID</p>
-            <Link href={`/test-cases/${testCaseId}/editor`} className="text-primary hover:underline font-mono text-xs">
+            <Link href={`/test-cases/${testCaseId}`} className="text-primary hover:underline font-mono text-xs">
               {testCaseId}
             </Link>
           </div>
@@ -62,18 +62,6 @@ export function RunCaseInfo({
             <div className="md:col-span-2">
               <p className="text-muted-foreground text-xs font-semibold mb-1">Description</p>
               <p className="text-muted-foreground">{testCaseDescription}</p>
-            </div>
-          )}
-          {testCasePreconditions && (
-            <div className="md:col-span-2">
-              <p className="text-muted-foreground text-xs font-semibold mb-1">Preconditions</p>
-              <p className="text-muted-foreground">{testCasePreconditions}</p>
-            </div>
-          )}
-          {testCasePassingCriteria && (
-            <div className="md:col-span-2">
-              <p className="text-muted-foreground text-xs font-semibold mb-1">Passing Criteria</p>
-              <p className="text-muted-foreground">{testCasePassingCriteria}</p>
             </div>
           )}
         </div>
