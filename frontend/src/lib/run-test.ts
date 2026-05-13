@@ -1,4 +1,5 @@
 import { testCasesApi, testRunsApi } from "@/lib/api";
+import type { FlowData, FlowNode } from "@/types/api";
 import { getExtensionId, connectToExtension, executeTestViaExtension } from "@/lib/extension";
 import { toast } from "sonner";
 
@@ -8,7 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
  * Push a single step result to the backend so the test-run detail page
  * can update in real time via SSE.
  */
-async function saveStepResult(testRunId: string, stepOrder: number, data: any) {
+async function saveStepResult(testRunId: string, stepOrder: number, data: Record<string, unknown>) {
   try {
     await fetch(`${API_BASE}/test-runs/${encodeURIComponent(testRunId)}/steps`, {
       method: 'POST',
@@ -48,7 +49,7 @@ export async function runTestCase(testCaseId: string): Promise<void> {
   const tcRes = await testCasesApi.get(testCaseId);
   const testCase = tcRes.data;
 
-  let flowData: any;
+  let flowData: FlowData;
   try {
     flowData = typeof testCase.flowData === 'string' ? JSON.parse(testCase.flowData) : testCase.flowData;
   } catch {
@@ -61,16 +62,16 @@ export async function runTestCase(testCaseId: string): Promise<void> {
 
   // The first Navigate block in the flow handles the target URL navigation.
   // We pass a placeholder baseUrl for relative URL resolution in the extension.
-  const startNode = (flowData.nodes || []).find((n: any) => n.data?.blockType === 'start');
-  const firstNav = (flowData.nodes || []).find((n: any) => n.data?.blockType === 'navigate');
+  const startNode = (flowData.nodes || []).find((n: FlowNode) => n.data?.blockType === 'start');
+  const firstNav = (flowData.nodes || []).find((n: FlowNode) => n.data?.blockType === 'navigate');
   const baseUrl = firstNav?.data?.url || startNode?.data?.baseUrl || 'about:blank';
 
   await new Promise<void>((resolve) => {
-    const stepResults: any[] = [];
+    const stepResults: Record<string, unknown>[] = [];
     const startTime = Date.now();
     let stepCounter = 0;
 
-    const saveResults = async (status: string) => {
+    const saveResults = async (status: 'passed' | 'failed' | 'stopped') => {
       const durationMs = Date.now() - startTime;
       const nonRetrySteps = stepResults.filter(s => !s.retry);
       const passedSteps = nonRetrySteps.filter(s => s.status === 'passed').length;

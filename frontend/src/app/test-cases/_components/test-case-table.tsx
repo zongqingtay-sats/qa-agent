@@ -15,10 +15,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Play, Trash2, Download } from "lucide-react";
+import type { TestCase } from "@/types/api";
 
 interface TestCaseTableProps {
   /** The list of test cases to display. */
-  testCases: any[];
+  testCases: TestCase[];
   /** Whether data is still loading. */
   loading: boolean;
   /** Set of currently selected test case IDs. */

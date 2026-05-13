@@ -7,6 +7,8 @@
  * so the UI can show a complete picture of what happened.
  */
 
+import type { FlowData, FlowNode, FlowEdge, StepResult } from "@/types/api";
+
 /** Shape of a single expected step derived from flow data via BFS. */
 export interface ExpectedStep {
   blockId: string;
@@ -23,19 +25,19 @@ export interface ExpectedStep {
  * @param flowData - The raw `flowData` field (string or object).
  * @returns Ordered array of expected steps, or `[]` if parsing fails.
  */
-export function deriveExpectedSteps(flowData: any): ExpectedStep[] {
+export function deriveExpectedSteps(flowData: string | FlowData): ExpectedStep[] {
   try {
-    const flow = typeof flowData === "string" ? JSON.parse(flowData) : flowData;
+    const flow: FlowData = typeof flowData === "string" ? JSON.parse(flowData) : flowData;
     if (!flow?.nodes || !flow?.edges) return [];
 
-    const nodeMap = new Map(flow.nodes.map((n: any) => [n.id, n]));
+    const nodeMap = new Map(flow.nodes.map((n: FlowNode) => [n.id, n]));
     const adjacency = new Map<string, string[]>();
-    flow.edges.forEach((e: any) => {
+    flow.edges.forEach((e: FlowEdge) => {
       if (!adjacency.has(e.source)) adjacency.set(e.source, []);
       adjacency.get(e.source)!.push(e.target);
     });
 
-    const startNode = flow.nodes.find((n: any) => n.data?.blockType === "start");
+    const startNode = flow.nodes.find((n: FlowNode) => n.data?.blockType === "start");
     if (!startNode) return [];
 
     const steps: ExpectedStep[] = [];
@@ -47,7 +49,7 @@ export function deriveExpectedSteps(flowData: any): ExpectedStep[] {
       if (visited.has(id)) continue;
       visited.add(id);
 
-      const node = nodeMap.get(id) as any;
+      const node = nodeMap.get(id) as FlowNode | undefined;
       if (node) {
         const d = node.data || {};
         if (d.blockType !== "start" && d.blockType !== "end") {
@@ -84,10 +86,10 @@ export function deriveExpectedSteps(flowData: any): ExpectedStep[] {
  * @param expectedSteps  - Ordered expected steps from `deriveExpectedSteps`.
  * @returns A merged array combining both sources.
  */
-export function mergeSteps(executedSteps: any[], expectedSteps: ExpectedStep[]): any[] {
+export function mergeSteps(executedSteps: StepResult[], expectedSteps: ExpectedStep[]): (StepResult & { _unexecuted?: boolean })[] {
   if (expectedSteps.length === 0) return executedSteps;
 
-  const merged: any[] = [];
+  const merged: (StepResult & { _unexecuted?: boolean })[] = [];
   const usedIds = new Set<string>();
 
   expectedSteps.forEach((expected, idx) => {
@@ -95,7 +97,7 @@ export function mergeSteps(executedSteps: any[], expectedSteps: ExpectedStep[]):
 
     // Find all executed results for this step (including retries)
     const matches = executedSteps.filter(
-      (s: any) => s.blockId === expected.blockId || (!s.blockId && s.stepOrder === stepOrder)
+      (s) => s.blockId === expected.blockId || (!s.blockId && s.stepOrder === stepOrder)
     );
 
     if (matches.length === 0) {
@@ -108,9 +110,9 @@ export function mergeSteps(executedSteps: any[], expectedSteps: ExpectedStep[]):
         target: expected.target,
         status: "skipped",
         _unexecuted: true,
-      });
+      } as StepResult & { _unexecuted: true });
     } else {
-      matches.forEach((m: any) => {
+      matches.forEach((m) => {
         usedIds.add(m.id || `${m.stepOrder}-${m.retry}`);
         merged.push({ ...m, stepOrder: m.stepOrder || stepOrder });
       });
@@ -118,7 +120,7 @@ export function mergeSteps(executedSteps: any[], expectedSteps: ExpectedStep[]):
   });
 
   // Append orphan executed steps that didn't match any expected step
-  executedSteps.forEach((s: any) => {
+  executedSteps.forEach((s) => {
     const id = s.id || `${s.stepOrder}-${s.retry}`;
     if (!usedIds.has(id)) merged.push(s);
   });

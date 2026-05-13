@@ -10,10 +10,11 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { TestRunDetail, StepResult } from "@/types/api";
 
 interface RunExpandedDetailProps {
   /** Full run detail, or `undefined` while loading. */
-  detail: any | undefined;
+  detail: TestRunDetail | undefined;
 }
 
 /**
@@ -59,7 +60,7 @@ export function RunExpandedDetail({ detail }: RunExpandedDetailProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {detail.stepResults.map((step: any, idx: number) => (
+              {detail.stepResults.map((step: StepResult, idx: number) => (
                 <TableRow key={step.id || idx}>
                   <TableCell className="text-xs">{step.stepOrder ?? idx + 1}</TableCell>
                   <TableCell className="text-xs font-mono">{step.blockType}</TableCell>

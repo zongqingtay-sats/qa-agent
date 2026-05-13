@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Shield, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
+import type { Role } from "@/types/api";
 
 // Bitmask constants (must match backend)
 const P = {
@@ -64,12 +65,12 @@ const emptyRole: RoleData = {
 };
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<(RoleData & { id: string })[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleData>(emptyRole);
   const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<(RoleData & { id: string }) | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
 
   useEffect(() => { loadRoles(); }, []);
 
@@ -90,8 +91,8 @@ export default function RolesPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(role: RoleData & { id: string }) {
-    setEditRole({ ...role });
+  function openEdit(role: Role) {
+    setEditRole({ ...role, description: role.description ?? "" });
     setDialogOpen(true);
   }
 

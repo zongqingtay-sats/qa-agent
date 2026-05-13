@@ -16,8 +16,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, RotateCcw, Play } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
+import type { TestRunDetail, StepResult } from "@/types/api";
 import { runTestCase } from "@/lib/run-test";
-import { useSSE } from "@/hooks/use-sse";
+import { useSSE, type SSEEvent } from "@/hooks/use-sse";
 import { toast } from "sonner";
 
 import { deriveExpectedSteps, mergeSteps } from "./_lib/merge-steps";
@@ -28,7 +29,7 @@ import { StepResultsTable } from "./_components/step-results-table";
 export default function TestRunDetailPage() {
   const params = useParams();
   const runId = params.id as string;
-  const [run, setRun] = useState<any>(null);
+  const [run, setRun] = useState<TestRunDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadRun(); }, [runId]);
@@ -43,15 +44,16 @@ export default function TestRunDetailPage() {
 
   useSSE({
     channels: ["test-runs"],
-    onEvent: useCallback((event: any) => {
-      if (event.data?.id !== runId) return;
+    onEvent: useCallback((event: SSEEvent) => {
+      const data = event.data as unknown as TestRunDetail & { step?: StepResult };
+      if (data?.id !== runId) return;
 
       if (event.type === "test-run:updated") {
-        setRun((prev: any) => (prev ? { ...prev, ...event.data } : event.data));
+        setRun((prev) => (prev ? { ...prev, ...data } : data as TestRunDetail));
       } else if (event.type === "test-run:step") {
-        const step = event.data.step;
+        const step = data.step;
         if (!step) return;
-        setRun((prev: any) => {
+        setRun((prev) => {
           if (!prev) return prev;
           const existing = prev.stepResults || [];
           const updated = [...existing];
@@ -62,8 +64,8 @@ export default function TestRunDetailPage() {
           } else {
             // Non-retry: upsert by id or stepOrder
             const idx = step.id
-              ? existing.findIndex((s: any) => s.id === step.id)
-              : existing.findIndex((s: any) => s.stepOrder === step.stepOrder && !s.retry);
+              ? existing.findIndex((s: StepResult) => s.id === step.id)
+              : existing.findIndex((s: StepResult) => s.stepOrder === step.stepOrder && !s.retry);
             if (idx >= 0) updated[idx] = { ...updated[idx], ...step };
             else updated.push(step);
           }
@@ -71,9 +73,9 @@ export default function TestRunDetailPage() {
           return {
             ...prev,
             stepResults: updated,
-            totalSteps: event.data.totalSteps ?? prev.totalSteps,
-            passedSteps: event.data.passedSteps ?? prev.passedSteps,
-            failedSteps: event.data.failedSteps ?? prev.failedSteps,
+            totalSteps: data.totalSteps ?? prev.totalSteps,
+            passedSteps: data.passedSteps ?? prev.passedSteps,
+            failedSteps: data.failedSteps ?? prev.failedSteps,
           };
         });
       }
@@ -109,7 +111,7 @@ export default function TestRunDetailPage() {
 
   // ── Derive merged step list ──
 
-  const expectedSteps = deriveExpectedSteps(run.flowData);
+  const expectedSteps = run.flowData ? deriveExpectedSteps(run.flowData) : [];
   const allSteps = mergeSteps(run.stepResults || [], expectedSteps);
 
   return (
@@ -132,7 +134,7 @@ export default function TestRunDetailPage() {
       />
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          <RunSummaryCards status={run.status} passedSteps={run.passedSteps} totalSteps={run.totalSteps} durationMs={run.durationMs} startedAt={run.startedAt} />
+          <RunSummaryCards status={run.status} passedSteps={run.passedSteps} totalSteps={run.totalSteps} durationMs={run.durationMs ?? null} startedAt={run.startedAt} />
           {run.runByName && (
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">

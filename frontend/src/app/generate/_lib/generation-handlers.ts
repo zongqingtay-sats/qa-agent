@@ -8,6 +8,7 @@
 
 import { toast } from "sonner";
 import { generateApi } from "@/lib/api";
+import type { GeneratedTestCase } from "@/types/api";
 import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
 
 /**
@@ -21,10 +22,10 @@ import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
  *          or no additional pages were found.
  */
 export async function refineWithNavigationPages(
-  cases: any[],
+  cases: GeneratedTestCase[],
   baseUrl: string | undefined,
   setScraping: (v: boolean) => void
-): Promise<any[]> {
+): Promise<GeneratedTestCase[]> {
   const extensionId = getExtensionId();
   if (!extensionId) return cases;
 

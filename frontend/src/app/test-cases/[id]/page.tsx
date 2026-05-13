@@ -16,6 +16,7 @@ import {
   TestTube2,
 } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
+import type { TestCase, TestRunListItem } from "@/types/api";
 import { CommentsSection } from "./_components/comments-section";
 import { AssigneeSection } from "./_components/assignee-section";
 import { FlowPreview } from "./_components/flow-preview";
@@ -25,8 +26,8 @@ import { toast } from "sonner";
 export default function TestCaseOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: testCaseId } = use(params);
 
-  const [testCase, setTestCase] = useState<any>(null);
-  const [runs, setRuns] = useState<any[]>([]);
+  const [testCase, setTestCase] = useState<TestCase | null>(null);
+  const [runs, setRuns] = useState<TestRunListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
@@ -73,7 +74,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
     if (trimmed === (testCase.description || "")) return;
     try {
       await testCasesApi.update(testCaseId, { description: trimmed || undefined });
-      setTestCase((prev: any) => ({ ...prev, description: trimmed || null }));
+      setTestCase((prev) => prev ? ({ ...prev, description: trimmed || undefined }) : prev);
     } catch {
       toast.error("Failed to update description");
       setDescriptionInput(testCase.description || "");
@@ -85,7 +86,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
     if (trimmed === (testCase.preconditions || "")) return;
     try {
       await testCasesApi.update(testCaseId, { preconditions: trimmed || undefined });
-      setTestCase((prev: any) => ({ ...prev, preconditions: trimmed || null }));
+      setTestCase((prev) => prev ? ({ ...prev, preconditions: trimmed || undefined }) : prev);
     } catch {
       toast.error("Failed to update preconditions");
       setPreconditionsInput(testCase.preconditions || "");
@@ -97,7 +98,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
     if (trimmed === (testCase.passingCriteria || "")) return;
     try {
       await testCasesApi.update(testCaseId, { passingCriteria: trimmed || undefined });
-      setTestCase((prev: any) => ({ ...prev, passingCriteria: trimmed || null }));
+      setTestCase((prev) => prev ? ({ ...prev, passingCriteria: trimmed || undefined }) : prev);
     } catch {
       toast.error("Failed to update passing criteria");
       setPassingCriteriaInput(testCase.passingCriteria || "");
@@ -109,7 +110,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
     if (!trimmed || trimmed === testCase.name) return;
     try {
       await testCasesApi.update(testCaseId, { name: trimmed });
-      setTestCase((prev: any) => ({ ...prev, name: trimmed }));
+      setTestCase((prev) => prev ? ({ ...prev, name: trimmed }) : prev);
     } catch {
       toast.error("Failed to update name");
       setTestCaseName(testCase.name);
@@ -122,7 +123,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
     if (JSON.stringify(newTags) === JSON.stringify(currentTags)) return;
     try {
       await testCasesApi.update(testCaseId, { tags: newTags });
-      setTestCase((prev: any) => ({ ...prev, tags: newTags }));
+      setTestCase((prev) => prev ? ({ ...prev, tags: newTags }) : prev);
     } catch {
       toast.error("Failed to update tags");
       setTagsInput(currentTags.join(", "));
@@ -159,7 +160,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
           {/* Details card */}
           <Card>
             <CardHeader><CardTitle className="text-base">Details</CardTitle></CardHeader>
-            <CardContent className="flex gap-3">
+            <CardContent className="flex gap-4">
               <div className="space-y-3 flex-1">
                 <div>
                   <p className="text-muted-foreground text-xs font-semibold mb-1">Description</p>
@@ -290,7 +291,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
                       <div className="flex items-center gap-2">
                         <StatusBadge status={run.status} size="sm" />
                         <span className="text-sm text-muted-foreground">
-                          {new Date(run.startedAt || run.createdAt).toLocaleString()}
+                          {new Date(run.startedAt || run.createdAt || '').toLocaleString()}
                         </span>
                       </div>
                       {run.runByName && (

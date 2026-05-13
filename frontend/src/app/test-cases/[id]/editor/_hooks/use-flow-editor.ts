@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 
 import { testCasesApi, exportApi, generateApi, testRunsApi } from "@/lib/api";
+import type { StepResult, FlowNode, BlockData } from "@/types/api";
 import { runTestCase } from "@/lib/run-test";
 import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
 import { buildFlowFromSteps } from "@/lib/flow-utils";
@@ -63,7 +64,7 @@ export function useFlowEditor(testCaseId: string) {
     id: string;
     status: string;
     startedAt: string;
-    stepResults: any[];
+    stepResults: StepResult[];
   } | null>(null);
 
   // ── Undo / Redo history ──
@@ -238,7 +239,7 @@ export function useFlowEditor(testCaseId: string) {
 
         if (flowData.nodes?.length > 0) {
           setNodes(
-            flowData.nodes.map((n: any) => ({
+            flowData.nodes.map((n: FlowNode) => ({
               ...n,
               type: n.type || blockTypeToNodeType(n.data?.blockType || "actionNode"),
             }))
@@ -270,7 +271,7 @@ export function useFlowEditor(testCaseId: string) {
         const latestRun = runs.data?.[0];
         if (latestRun?.id) {
           const runDetail = await testRunsApi.get(latestRun.id);
-          const steps: any[] = runDetail.data?.stepResults || [];
+          const steps: StepResult[] = runDetail.data?.stepResults || [];
           setLastRun({
             id: latestRun.id,
             status: runDetail.data?.status || latestRun.status,
@@ -284,7 +285,7 @@ export function useFlowEditor(testCaseId: string) {
               nds.map((n) => {
                 const step = [...steps]
                   .reverse()
-                  .find((s: any) => s.blockId === n.id && !s.retry);
+                  .find((s: StepResult) => s.blockId === n.id && !s.retry);
                 if (step) {
                   return { ...n, data: { ...n.data, executionStatus: step.status } };
                 }
@@ -389,7 +390,7 @@ export function useFlowEditor(testCaseId: string) {
     [setEdges]
   );
 
-  const onNodeClick = useCallback((_: any, node: Node) => setSelectedNode(node), []);
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => setSelectedNode(node), []);
   const onPaneClick = useCallback(() => setSelectedNode(null), []);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -421,7 +422,7 @@ export function useFlowEditor(testCaseId: string) {
   // ── Node mutation helpers ──
 
   /** Replace a node's data payload. */
-  function updateNodeData(id: string, data: any) {
+  function updateNodeData(id: string, data: BlockData & Record<string, unknown>) {
     setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data } : n)));
     if (selectedNode?.id === id) {
       setSelectedNode((prev) => (prev ? { ...prev, data } : null));
@@ -569,7 +570,7 @@ export function useFlowEditor(testCaseId: string) {
         const latestRun = runs.data?.[0];
         if (latestRun?.id) {
           const runDetail = await testRunsApi.get(latestRun.id);
-          const steps: any[] = runDetail.data?.stepResults || [];
+          const steps: StepResult[] = runDetail.data?.stepResults || [];
 
           // Store run data for the inline result panel
           setLastRun({
@@ -581,13 +582,13 @@ export function useFlowEditor(testCaseId: string) {
 
           if (steps.length > 0) {
             let failedNodeToSelect: Node | null = null;
-            const failedStep = steps.find((s: any) => s.status === "failed" && !s.retry);
+            const failedStep = steps.find((s: StepResult) => s.status === "failed" && !s.retry);
 
             setNodes((nds) => {
               const updated = nds.map((n) => {
                 const step = [...steps]
                   .reverse()
-                  .find((s: any) => s.blockId === n.id && !s.retry);
+                  .find((s: StepResult) => s.blockId === n.id && !s.retry);
                 if (step) {
                   // Track the first failed node for auto-selection
                   if (step.status === "failed" && !failedNodeToSelect) {

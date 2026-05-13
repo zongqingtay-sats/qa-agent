@@ -13,13 +13,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { StepResult } from "@/types/api";
 
 interface LastRunPanelProps {
   run: {
     id: string;
     status: string;
     startedAt: string;
-    stepResults: any[];
+    stepResults: StepResult[];
   };
   /** The currently selected node ID (to show its step result). */
   selectedNodeId?: string;
@@ -30,7 +31,7 @@ export function LastRunPanel({ run, selectedNodeId }: LastRunPanelProps) {
 
   // Find error message from the first failed step
   const failedStep = run.stepResults.find((s) => s.status === "failed" && !s.retry);
-  const errorMessage = failedStep?.errorMessage || failedStep?.error;
+  const errorMessage = failedStep?.errorMessage;
 
   // Find step result for the currently selected node
   const selectedStep = selectedNodeId
@@ -94,7 +95,7 @@ export function LastRunPanel({ run, selectedNodeId }: LastRunPanelProps) {
                   {selectedStep.errorMessage && (
                     <p className="text-xs text-red-600">Error: {selectedStep.errorMessage}</p>
                   )}
-                  {selectedStep.durationMs > 0 && (
+                  {selectedStep.durationMs != null && selectedStep.durationMs > 0 && (
                     <p className="text-xs text-muted-foreground">Duration: {selectedStep.durationMs}ms</p>
                   )}
                 </div>

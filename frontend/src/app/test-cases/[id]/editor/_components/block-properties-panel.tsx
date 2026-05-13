@@ -30,12 +30,13 @@ import {
   type BrowserTab,
 } from "@/lib/extension";
 import { toast } from "sonner";
+import type { BlockData } from "@/types/api";
 
 interface BlockPropertiesPanelProps {
   /** The currently selected node, or `null` when nothing is selected. */
   node: Node | null;
   /** Callback to update a node's data by id. */
-  onUpdate: (id: string, data: any) => void;
+  onUpdate: (id: string, data: BlockData & Record<string, unknown>) => void;
   /** Callback to delete a node by id. */
   onDelete: (id: string) => void;
 }
@@ -194,11 +195,11 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
     );
   }
 
-  const data = node.data as any;
+  const data = node.data as BlockData & Record<string, unknown>;
   const blockType = data.blockType;
 
   /** Shorthand to update a single data field. */
-  function update(field: string, value: any) {
+  function update(field: string, value: string | number | boolean | null | undefined) {
     onUpdate(node!.id, { ...data, [field]: value });
   }
 

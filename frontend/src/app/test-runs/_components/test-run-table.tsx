@@ -16,10 +16,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import { RunExpandedDetail } from "./run-expanded-detail";
+import type { TestRunListItem, TestRunDetail } from "@/types/api";
 
 interface TestRunTableProps {
   /** The list of test runs to display. */
-  testRuns: any[];
+  testRuns: TestRunListItem[];
   /** Whether data is still loading. */
   loading: boolean;
   /** Whether the list is filtered (for empty-state messaging). */
@@ -29,7 +30,7 @@ interface TestRunTableProps {
   /** Set of currently expanded test run IDs. */
   expanded: Set<string>;
   /** Lazy-loaded detail data keyed by run ID. */
-  runDetails: Record<string, any>;
+  runDetails: Record<string, TestRunDetail>;
   /** Toggle one row's selection. */
   onToggleSelect: (id: string) => void;
   /** Toggle all rows. */
@@ -37,7 +38,7 @@ interface TestRunTableProps {
   /** Toggle expansion for a row. */
   onToggleExpand: (id: string) => void;
   /** Re-run a test run. */
-  onRetry: (run: any) => void;
+  onRetry: (run: TestRunListItem) => void;
   /** Export a single test run. */
   onExport: (id: string, format: "json" | "docx" | "pdf") => void;
 }

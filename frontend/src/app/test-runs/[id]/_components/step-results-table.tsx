@@ -16,10 +16,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, CircleDashed, Image as ImageIcon, RefreshCw } from "lucide-react";
+import type { StepResult } from "@/types/api";
 
 interface StepResultsTableProps {
   /** Merged step list (executed + unexecuted placeholders). */
-  steps: any[];
+  steps: (StepResult & { _unexecuted?: boolean })[];
 }
 
 /**

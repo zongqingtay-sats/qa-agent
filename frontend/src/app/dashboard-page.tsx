@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TestTube2, Play, Upload, Sparkles, ArrowRight, CheckCircle2, XCircle, Clock, LayoutDashboard } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
+import type { TestCase, TestRunListItem } from "@/types/api";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ testCases: 0, testRuns: 0, passed: 0, failed: 0 });
-  const [recentRuns, setRecentRuns] = useState<any[]>([]);
-  const [recentCases, setRecentCases] = useState<any[]>([]);
+  const [recentRuns, setRecentRuns] = useState<TestRunListItem[]>([]);
+  const [recentCases, setRecentCases] = useState<TestCase[]>([]);
 
   useEffect(() => {
     loadData();
@@ -29,8 +30,8 @@ export default function DashboardPage() {
       setStats({
         testCases: casesRes.total,
         testRuns: runsRes.total,
-        passed: runsRes.data.filter((r: any) => r.status === 'passed').length,
-        failed: runsRes.data.filter((r: any) => r.status === 'failed').length,
+        passed: runsRes.data.filter((r) => r.status === 'passed').length,
+        failed: runsRes.data.filter((r) => r.status === 'failed').length,
       });
     } catch {
       // API not available yet, show empty state
@@ -126,7 +127,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">No test cases yet. Import or generate some to get started.</p>
               ) : (
                 <div className="space-y-3">
-                  {recentCases.map((tc: any) => (
+                  {recentCases.map((tc) => (
                     <Link key={tc.id} href={`/test-cases/${tc.id}`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
                       <div>
                         <p className="text-sm font-medium">{tc.name}</p>
@@ -152,7 +153,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">No test runs yet. Run a test case to see results here.</p>
               ) : (
                 <div className="space-y-3">
-                  {recentRuns.map((run: any) => (
+                  {recentRuns.map((run) => (
                     <Link key={run.id} href={`/test-runs/${run.id}`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
                       <div>
                         <p className="text-sm font-medium">{run.testCaseName}</p>

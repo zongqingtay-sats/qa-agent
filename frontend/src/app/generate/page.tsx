@@ -17,6 +17,7 @@ import { Sparkles, FileText, Code } from "lucide-react";
 import { toast } from "sonner";
 
 import { generateApi, importApi, testCasesApi } from "@/lib/api";
+import type { GeneratedTestCase } from "@/types/api";
 import { getExtensionId, scrapePageViaExtension } from "@/lib/extension";
 import { buildFlowFromSteps } from "@/lib/flow-utils";
 import { inferUrlFromText, formatUrl } from "./_lib/url-utils";
@@ -29,7 +30,7 @@ import { GenerationResultsTable } from "./_components/generation-results-table";
 export default function GeneratePage() {
   const router = useRouter();
   const [generating, setGenerating] = useState(false);
-  const [generatedCases, setGeneratedCases] = useState<any[]>([]);
+  const [generatedCases, setGeneratedCases] = useState<GeneratedTestCase[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [textInput, setTextInput] = useState("");
@@ -95,14 +96,14 @@ export default function GeneratePage() {
       const res = await generateApi.fromText(textInput, { targetUrl: targetUrl.trim() || undefined, pageHtml });
       let cases = res.data.testCases || [];
       setGeneratedCases(cases);
-      setSelected(new Set(cases.map((_: any, i: number) => i)));
+      setSelected(new Set(cases.map((_: GeneratedTestCase, i: number) => i)));
       toast.success(`Generated ${cases.length} test case(s)`);
 
       if (targetUrl.trim()) {
         const refined = await refineWithNavigationPages(cases, targetUrl.trim(), setScraping);
         if (refined !== cases) {
           setGeneratedCases(refined);
-          setSelected(new Set(refined.map((_: any, i: number) => i)));
+          setSelected(new Set(refined.map((_: GeneratedTestCase, i: number) => i)));
         }
       }
     } catch (err: any) {
@@ -124,7 +125,7 @@ export default function GeneratePage() {
         ? (await importApi.parse(file)).data.testCases || []
         : (await generateApi.fromRequirements(file)).data.testCases || [];
       setGeneratedCases(cases);
-      setSelected(new Set(cases.map((_: any, i: number) => i)));
+      setSelected(new Set(cases.map((_: GeneratedTestCase, i: number) => i)));
       toast.success(`${isJson ? "Imported" : "Generated"} ${cases.length} test case(s) from ${file.name}`);
     } catch (err: any) { toast.error(err.message); }
     finally { setGenerating(false); }
@@ -138,9 +139,8 @@ export default function GeneratePage() {
     try {
       const cases = (await generateApi.fromSource(files)).data.testCases || [];
       setGeneratedCases(cases);
-      setSelected(new Set(cases.map((_: any, i: number) => i)));
-      toast.success(`Generated ${cases.length} test case(s) from ${files.length} file(s)`);
-    } catch (err: any) { toast.error(err.message); }
+      setSelected(new Set(cases.map((_: GeneratedTestCase, i: number) => i)));
+      toast.success(`Generated ${cases.length} test case(s) from ${files.length} file(s)`);    } catch (err: any) { toast.error(err.message); }
     finally { setGenerating(false); }
   }, []);
 

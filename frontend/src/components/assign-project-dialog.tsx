@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { projectsApi, testCasesApi } from "@/lib/api";
+import type { Feature, Phase, UpdateTestCaseBody } from "@/types/api";
 import { toast } from "sonner";
 
 interface AssignProjectDialogProps {
@@ -86,11 +87,11 @@ export function AssignProjectDialog({
       setPhases(pRes.data);
       // Remove selections that don't belong to this project
       setSelectedFeatureIds((prev) => {
-        const validIds = new Set(fRes.data.map((f: any) => f.id));
+        const validIds = new Set(fRes.data.map((f: Feature) => f.id));
         return new Set([...prev].filter((id) => validIds.has(id)));
       });
       setSelectedPhaseIds((prev) => {
-        const validIds = new Set(pRes.data.map((p: any) => p.id));
+        const validIds = new Set(pRes.data.map((p: Phase) => p.id));
         return new Set([...prev].filter((id) => validIds.has(id)));
       });
     }).catch(() => {});
@@ -117,8 +118,8 @@ export function AssignProjectDialog({
     setSaving(true);
     try {
       const projectId = selectedProjectId && selectedProjectId !== "__none__" ? selectedProjectId : null;
-      const updates: any = {
-        projectId,
+      const updates: UpdateTestCaseBody = {
+        projectId: projectId || undefined,
         featureIds: projectId ? Array.from(selectedFeatureIds) : [],
         phaseIds: projectId ? Array.from(selectedPhaseIds) : [],
       };

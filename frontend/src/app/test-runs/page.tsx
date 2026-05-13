@@ -15,17 +15,18 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, RotateCcw, Search, Play } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
+import type { TestRunListItem, TestRunDetail } from "@/types/api";
 import { runTestCase } from "@/lib/run-test";
-import { useSSE } from "@/hooks/use-sse";
+import { useSSE, type SSEEvent } from "@/hooks/use-sse";
 import { toast } from "sonner";
 import { TestRunTable } from "./_components/test-run-table";
 
 export default function TestRunsPage() {
-  const [testRuns, setTestRuns] = useState<any[]>([]);
+  const [testRuns, setTestRuns] = useState<TestRunListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [runDetails, setRunDetails] = useState<Record<string, any>>({});
+  const [runDetails, setRunDetails] = useState<Record<string, TestRunDetail>>({});
   const [search, setSearch] = useState("");
 
   useEffect(() => { loadTestRuns(); }, []);
@@ -40,16 +41,17 @@ export default function TestRunsPage() {
 
   useSSE({
     channels: ["test-runs"],
-    onEvent: useCallback((event: any) => {
+    onEvent: useCallback((event: SSEEvent) => {
+      const data = event.data as unknown as TestRunListItem & { step?: unknown };
       if (event.type === "test-run:created") {
-        setTestRuns((prev) => [event.data, ...prev]);
+        setTestRuns((prev) => [data, ...prev]);
       } else if (event.type === "test-run:updated") {
-        setTestRuns((prev) => prev.map((r) => (r.id === event.data.id ? { ...r, ...event.data } : r)));
+        setTestRuns((prev) => prev.map((r) => (r.id === data.id ? { ...r, ...data } : r)));
       } else if (event.type === "test-run:step") {
         setTestRuns((prev) =>
           prev.map((r) =>
-            r.id === event.data.id
-              ? { ...r, totalSteps: event.data.totalSteps, passedSteps: event.data.passedSteps, failedSteps: event.data.failedSteps }
+            r.id === data.id
+              ? { ...r, totalSteps: data.totalSteps, passedSteps: data.passedSteps, failedSteps: data.failedSteps }
               : r
           )
         );
@@ -82,7 +84,7 @@ export default function TestRunsPage() {
     for (const id of selected) await handleExport(id, format);
   }
 
-  async function handleRetry(run: any) {
+  async function handleRetry(run: TestRunListItem) {
     try { await runTestCase(run.testCaseId); }
     catch (err: any) { toast.error(err.message || "Failed to re-run test"); }
   }

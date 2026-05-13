@@ -13,10 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Check, Loader2 } from "lucide-react";
+import type { GeneratedTestCase } from "@/types/api";
 
 interface GenerationResultsTableProps {
   /** The list of generated test cases. */
-  cases: any[];
+  cases: GeneratedTestCase[];
   /** Set of selected indices. */
   selected: Set<number>;
   /** Toggle a single row's selection. */

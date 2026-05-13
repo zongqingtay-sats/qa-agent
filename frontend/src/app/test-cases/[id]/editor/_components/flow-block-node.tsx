@@ -10,6 +10,7 @@
 
 import { Handle, Position, type NodeTypes } from "@xyflow/react";
 import { getBlockConfig } from "./block-config";
+import type { BlockData } from "@/types/api";
 
 /**
  * Generic flow-block node renderer.
@@ -18,7 +19,7 @@ import { getBlockConfig } from "./block-config";
  *                   `description`, `selector`, and `executionStatus`.
  * @param selected - Whether the node is currently selected in the canvas.
  */
-export function FlowBlockNode({ data, selected }: { data: any; selected: boolean }) {
+export function FlowBlockNode({ data, selected }: { data: BlockData & { executionStatus?: string }; selected: boolean }) {
   const config = getBlockConfig(data.blockType);
   if (!config) return null;
 

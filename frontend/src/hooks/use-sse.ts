@@ -1,9 +1,9 @@
 import { useEffect, useRef, useCallback } from "react";
 
-type SSEEvent = {
+export type SSEEvent = {
   type: string;
   channel: string;
-  data: any;
+  data: Record<string, unknown>;
 };
 
 type SSEOptions = {

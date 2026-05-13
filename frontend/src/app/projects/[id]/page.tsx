@@ -34,6 +34,7 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { projectsApi, testCasesApi, assignmentsApi, usersApi } from "@/lib/api";
+import type { ProjectDetail, ProjectTestCase, Feature, Phase, GroupVisibility, Assignment } from "@/types/api";
 import { toast } from "sonner";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 
@@ -44,24 +45,24 @@ interface GroupedSection {
   label: string;
   groupType: "feature" | "phase";
   groupId: string;
-  items: any[];
-  subGroups?: { key: string; label: string; groupType: "feature" | "phase"; groupId: string; items: any[] }[];
+  items: ProjectTestCase[];
+  subGroups?: { key: string; label: string; groupType: "feature" | "phase"; groupId: string; items: ProjectTestCase[] }[];
 }
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const router = useRouter();
 
-  const [project, setProject] = useState<any>(null);
-  const [testCases, setTestCases] = useState<any[]>([]);
-  const [features, setFeatures] = useState<any[]>([]);
-  const [phases, setPhases] = useState<any[]>([]);
+  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const [testCases, setTestCases] = useState<ProjectTestCase[]>([]);
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [phases, setPhases] = useState<Phase[]>([]);
   const [grouping, setGrouping] = useState<GroupingMode>("feature");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [visibility, setVisibility] = useState<any[]>([]);
+  const [visibility, setVisibility] = useState<GroupVisibility[]>([]);
 
   // Dialogs
   const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
@@ -138,7 +139,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     return buildTwoLevel("phase", phases, (tc) => tc.phaseIds || [], "feature", features, (tc) => tc.featureIds || []);
   }
 
-  function buildSingleLevel(type: "feature" | "phase", groups: any[], getGroupIds: (tc: any) => string[]): GroupedSection[] {
+  function buildSingleLevel(type: "feature" | "phase", groups: (Feature | Phase)[], getGroupIds: (tc: ProjectTestCase) => string[]): GroupedSection[] {
     const sections: GroupedSection[] = groups.map((g) => ({
       key: `${type}:${g.id}`,
       label: g.name,
@@ -154,8 +155,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }
 
   function buildTwoLevel(
-    outerType: "feature" | "phase", outerGroups: any[], getOuterIds: (tc: any) => string[],
-    innerType: "feature" | "phase", innerGroups: any[], getInnerIds: (tc: any) => string[],
+    outerType: "feature" | "phase", outerGroups: (Feature | Phase)[], getOuterIds: (tc: ProjectTestCase) => string[],
+    innerType: "feature" | "phase", innerGroups: (Feature | Phase)[], getInnerIds: (tc: ProjectTestCase) => string[],
   ): GroupedSection[] {
     return outerGroups.map((outer) => {
       const outerItems = testCases.filter((tc) => getOuterIds(tc).includes(outer.id));
@@ -307,7 +308,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     if (!trimmed || trimmed === project?.name) return;
     try {
       await projectsApi.update(projectId, { name: trimmed });
-      setProject((p: any) => ({ ...p, name: trimmed }));
+      setProject((p) => p ? ({ ...p, name: trimmed }) : p);
     } catch (e: any) { toast.error(e.message); setProjectName(project?.name || ""); }
   }
 
@@ -650,7 +651,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   );
 }
 
-function TestCaseRows({ items, selected, toggleSelect }: { items: any[]; selected: Set<string>; toggleSelect: (id: string) => void }) {
+function TestCaseRows({ items, selected, toggleSelect }: { items: ProjectTestCase[]; selected: Set<string>; toggleSelect: (id: string) => void }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground py-2">No test cases</p>;
   return (
     <div className="space-y-1">
@@ -663,7 +664,7 @@ function TestCaseRows({ items, selected, toggleSelect }: { items: any[]; selecte
 
           {tc.assignments && tc.assignments.length > 0 && (
             <div className="flex -space-x-2">
-              {tc.assignments.slice(0, 3).map((a: any, i: number) => (
+              {tc.assignments.slice(0, 3).map((a: Assignment, i: number) => (
                 <div key={i} className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center border-2 border-background" title={a.userName || a.userId}>
                   {(a.userName || a.userId)?.[0]?.toUpperCase() || "?"}
                 </div>

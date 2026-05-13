@@ -1,6 +1,8 @@
 // Browser extension communication helper
 // Communicates with the QA Agent browser extension via chrome.runtime messaging
 
+import type { FlowData } from "@/types/api";
+
 const EXTENSION_ID = typeof window !== 'undefined'
   ? (localStorage.getItem('qa-agent-extension-id') || '')
   : '';
@@ -100,8 +102,8 @@ export function connectToExtension(
 }
 
 export function executeTestViaExtension(
-  port: any,
-  testFlow: any,
+  port: { postMessage: (msg: Record<string, unknown>) => void },
+  testFlow: FlowData,
   testCaseId: string,
   baseUrl: string,
   testName?: string,

@@ -1,49 +1,11 @@
 import { create } from 'zustand';
 
-// ---- Flow Editor Store ----
-
-export interface BlockData {
-  label: string;
-  blockType: string;
-  description?: string;
-  baseUrl?: string;
-  url?: string;
-  selector?: string;
-  clickType?: string;
-  value?: string;
-  clearFirst?: boolean;
-  selectValue?: string;
-  scrollDirection?: string;
-  scrollDistance?: number;
-  waitType?: string;
-  timeout?: number;
-  assertionType?: string;
-  expectedValue?: string;
-  conditionType?: string;
-  conditionSelector?: string;
-  conditionValue?: string;
-  screenshotLabel?: string;
-  passingCriteria?: string;
-}
-
-export interface FlowNode {
-  id: string;
-  type: string;
-  position: { x: number; y: number };
-  data: BlockData;
-}
-
-export interface FlowEdge {
-  id: string;
-  source: string;
-  target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-  label?: string;
-}
+// Re-export flow types from the central type definitions
+export type { BlockData, FlowNode, FlowEdge } from '@/types/api';
 
 // ---- Execution Store ----
 
+/** Lightweight step result for local execution tracking (subset of API StepResult). */
 export interface StepResult {
   id: string;
   stepOrder: number;
