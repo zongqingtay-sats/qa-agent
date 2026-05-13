@@ -11,6 +11,7 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -41,6 +42,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { usersApi } from "@/lib/api";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -58,6 +60,16 @@ const adminItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const [avatarBg, setAvatarBg] = useState<string | null>(null);
+  const [avatarText, setAvatarText] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    usersApi.getProfile().then((res) => {
+      setAvatarBg(res.data.avatarBg || null);
+      setAvatarText(res.data.avatarText || null);
+    }).catch(() => {});
+  }, [session?.user]);
 
   return (
     <Sidebar collapsible="icon">
@@ -122,8 +134,13 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-            <Link href="/profile" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-80 transition-opacity" title="Profile">
-              {session.user.name?.[0]?.toUpperCase() || <User className="h-4 w-4" />}
+            <Link
+              href="/profile"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium hover:opacity-80 transition-opacity ${!avatarBg ? "bg-primary text-primary-foreground" : ""}`}
+              style={avatarBg ? { backgroundColor: avatarBg, color: "#fff" } : undefined}
+              title="Profile"
+            >
+              {avatarText || session.user.name?.[0]?.toUpperCase() || <User className="h-4 w-4" />}
             </Link>
             <Link href="/profile" className="flex-1 min-w-0 transition-[opacity,width] duration-200 ease-linear group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 hover:opacity-80">
               <p className="text-sm font-medium truncate">{session.user.name}</p>

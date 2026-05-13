@@ -257,7 +257,7 @@ router.get(
     const accessList = await (prisma as any).projectAccess.findMany({
       where: { projectId: req.params.projectId as string },
       include: {
-        user: { select: { id: true, name: true, email: true, image: true } },
+        user: { select: { id: true, name: true, email: true, image: true, avatarBg: true, avatarText: true } },
         role: { select: { id: true, name: true, isAdmin: true } },
       },
       orderBy: { grantedAt: 'desc' },
@@ -268,6 +268,8 @@ router.get(
         name: a.user.name,
         email: a.user.email,
         image: a.user.image,
+        avatarBg: a.user.avatarBg,
+        avatarText: a.user.avatarText,
         role: a.role ? { id: a.role.id, name: a.role.name, isAdmin: a.role.isAdmin } : null,
         grantedBy: a.grantedBy,
         grantedAt: a.grantedAt.toISOString(),

@@ -29,6 +29,8 @@ interface ProjectAccessEntry {
   name: string | null;
   email: string | null;
   image: string | null;
+  avatarBg?: string | null;
+  avatarText?: string | null;
   role: { id: string; name: string; isAdmin: boolean } | null;
   grantedBy: string | null;
   grantedAt: string;
@@ -47,7 +49,7 @@ interface ProjectUsersDialogProps {
   setProjectAccess: React.Dispatch<React.SetStateAction<ProjectAccessEntry[]>>;
   userSearchQuery: string;
   setUserSearchQuery: (q: string) => void;
-  userSearchResults: { id: string; name: string | null; email: string | null }[];
+  userSearchResults: { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }[];
 }
 
 export function ProjectUsersDialog({
@@ -100,8 +102,11 @@ export function ProjectUsersDialog({
             )}
             {projectAccess.map((u) => (
               <div key={u.userId} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/40">
-                <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0">
-                  {(u.name || u.email || "?")[0]?.toUpperCase()}
+                <div
+                  className={`h-7 w-7 rounded-full text-xs flex items-center justify-center shrink-0 ${!u.avatarBg ? "bg-primary text-primary-foreground" : ""}`}
+                  style={u.avatarBg ? { backgroundColor: u.avatarBg, color: "#fff" } : undefined}
+                >
+                  {u.avatarText || (u.name || u.email || "?")[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{u.name || u.email || u.userId}</div>
@@ -161,8 +166,11 @@ export function ProjectUsersDialog({
                         } catch { toast.error("Failed to grant access"); }
                       }}
                     >
-                      <div className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center mr-2">
-                        {(u.name || u.email || "?")[0]?.toUpperCase()}
+                      <div
+                        className={`h-6 w-6 rounded-full text-xs flex items-center justify-center mr-2 ${!u.avatarBg ? "bg-muted text-muted-foreground" : ""}`}
+                        style={u.avatarBg ? { backgroundColor: u.avatarBg, color: "#fff" } : undefined}
+                      >
+                        {u.avatarText || (u.name || u.email || "?")[0]?.toUpperCase()}
                       </div>
                       <span className="text-sm">{u.name || u.email}</span>
                       {u.name && u.email && <span className="text-xs text-muted-foreground ml-1">{u.email}</span>}

@@ -63,7 +63,7 @@ export function useProjectData(projectId: string) {
   const [bulkPhaseIds, setBulkPhaseIds] = useState<Set<string>>(new Set());
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<
-    { id: string; name: string | null; email: string | null }[]
+    { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }[]
   >([]);
   const [editingGroup, setEditingGroup] = useState<{
     type: "feature" | "phase";
