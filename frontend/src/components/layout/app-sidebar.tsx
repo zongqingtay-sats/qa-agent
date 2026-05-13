@@ -115,13 +115,13 @@ export function AppSidebar() {
       {session?.user && (
         <SidebarFooter className="border-t px-2 py-3">
           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+            <Link href="/profile" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-80 transition-opacity" title="Profile">
               {session.user.name?.[0]?.toUpperCase() || <User className="h-4 w-4" />}
-            </div>
-            <div className="flex-1 min-w-0 transition-[opacity,width] duration-200 ease-linear group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+            </Link>
+            <Link href="/profile" className="flex-1 min-w-0 transition-[opacity,width] duration-200 ease-linear group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 hover:opacity-80">
               <p className="text-sm font-medium truncate">{session.user.name}</p>
               <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
-            </div>
+            </Link>
             <Button
               variant="ghost"
               size="icon"

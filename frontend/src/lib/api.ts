@@ -14,7 +14,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 import type {
   TestCase, ProjectTestCase, TestRunListItem, TestRunDetail, StepResult,
   Project, ProjectDetail, Feature, Phase, Comment, Assignment, GroupVisibility,
-  AdminUser, Role, GeneratedTestCase,
+  AdminUser, Role, GeneratedTestCase, UserProfile,
   CreateTestCaseBody, UpdateTestCaseBody, UpdateTestRunBody,
 } from '@/types/api';
 
@@ -216,6 +216,10 @@ export const usersApi = {
     const qs = params.toString();
     return request<{ data: { id: string; name: string | null; email: string | null; image: string | null }[] }>(`/users${qs ? `?${qs}` : ''}`);
   },
+  getProfile: () =>
+    request<{ data: UserProfile }>('/users/me/profile'),
+  updateProfile: (data: { name?: string; avatarBg?: string | null; avatarText?: string | null }) =>
+    request<{ data: { id: string; name: string | null; email: string | null; avatarBg: string | null; avatarText: string | null } }>('/users/me/profile', { method: 'PUT', body: JSON.stringify(data) }),
 };
 
 // Admin — Roles & User Management

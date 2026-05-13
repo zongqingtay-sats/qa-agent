@@ -199,6 +199,8 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  avatarBg      String?   @db.NVarChar(20) // avatar background color e.g. "#4f46e5"
+  avatarText    String?   @db.NVarChar(5)  // avatar display text e.g. "JD"
   status        String    @default("active") @db.NVarChar(20) // active | deleted
 
   accounts      Account[]

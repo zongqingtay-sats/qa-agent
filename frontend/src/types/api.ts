@@ -301,3 +301,20 @@ export interface UpdateTestRunBody {
   failedSteps?: number;
   environment?: string;
 }
+
+// ── User Profile ──
+
+export interface UserProfile {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  avatarBg: string | null;
+  avatarText: string | null;
+  globalRole: { id: string; name: string; isAdmin: boolean } | null;
+  projectRoles: {
+    projectId: string;
+    projectName: string;
+    role: { id: string; name: string } | null;
+  }[];
+}
