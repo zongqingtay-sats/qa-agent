@@ -88,7 +88,7 @@ export default function ProjectsPage() {
         actions={
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger render={<Button />}>
-              <Plus className="h-4 w-4 mr-1" /> New Project
+              <Plus className="h-4 w-4 mr-1" /> Create
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -98,7 +98,7 @@ export default function ProjectsPage() {
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
                   <Label htmlFor="project-name">Name</Label>
-                  <Input id="project-name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Login Module" />
+                  <Input id="project-name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Custom App" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="project-desc">Description</Label>

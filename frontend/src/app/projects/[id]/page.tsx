@@ -33,7 +33,7 @@ import {
   X,
   FolderKanban,
 } from "lucide-react";
-import { projectsApi, testCasesApi, assignmentsApi, usersApi } from "@/lib/api";
+import { projectsApi, testCasesApi, assignmentsApi, usersApi, adminApi } from "@/lib/api";
 import type { ProjectDetail, ProjectTestCase, Feature, Phase, GroupVisibility, Assignment } from "@/types/api";
 import { toast } from "sonner";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
@@ -77,6 +77,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [bulkPhaseIds, setBulkPhaseIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<{ type: "feature" | "phase"; id: string; name: string } | null>(null);
   const [deleteProjectConfirm, setDeleteProjectConfirm] = useState(false);
+  const [usersDialogOpen, setUsersDialogOpen] = useState(false);
+  const [projectAccess, setProjectAccess] = useState<{ userId: string; userName: string; projectId: string }[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<{ id: string; name: string | null; email: string | null }[]>([]);
   const [editingGroup, setEditingGroup] = useState<{ type: "feature" | "phase"; id: string; name: string } | null>(null);
   const [projectName, setProjectName] = useState("");
 
@@ -108,7 +112,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     } catch { }
   }, [projectId]);
 
-  useEffect(() => { loadProject(); loadVisibility(); }, [loadProject, loadVisibility]);
+  const loadProjectAccess = useCallback(async () => {
+    try {
+      const res = await adminApi.getProjectAccess(projectId);
+      setProjectAccess(res.data);
+    } catch { }
+  }, [projectId]);
+
+  useEffect(() => { loadProject(); loadVisibility(); loadProjectAccess(); }, [loadProject, loadVisibility, loadProjectAccess]);
 
   // Debounced user search for assign dialog
   useEffect(() => {
@@ -118,6 +129,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }, 200);
     return () => clearTimeout(timeout);
   }, [assignSearchQuery, assignDialogOpen]);
+
+  // Debounced user search for project access dialog
+  useEffect(() => {
+    if (!usersDialogOpen) return;
+    const timeout = setTimeout(async () => {
+      try { setUserSearchResults((await usersApi.search(userSearchQuery || undefined)).data); } catch { }
+    }, 200);
+    return () => clearTimeout(timeout);
+  }, [userSearchQuery, usersDialogOpen]);
 
   useEffect(() => {
     const timeout = setTimeout(() => loadProject(), 300);
@@ -353,6 +373,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         description={project.description || "Project detail"}
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setUserSearchQuery(""); setUsersDialogOpen(true); }}>
+              <Users className="h-4 w-4 mr-1" /> {projectAccess.length}
+            </Button>
             <Dialog open={featureDialogOpen} onOpenChange={setFeatureDialogOpen}>
               <DialogTrigger render={<Button variant="outline" />}>
                 <Layers className="h-4 w-4 mr-1" /> Add Feature
@@ -628,6 +651,80 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             >
               Delete
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Project users access dialog */}
+      <Dialog open={usersDialogOpen} onOpenChange={(open) => { setUsersDialogOpen(open); if (!open) setUserSearchQuery(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Project Users</DialogTitle>
+            <DialogDescription>Manage who has access to this project.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Current users */}
+            <div className="space-y-1">
+              {projectAccess.length === 0 && (
+                <p className="text-sm text-muted-foreground">No users with explicit access.</p>
+              )}
+              {projectAccess.map((u) => (
+                <div key={u.userId} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/40">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                      {(u.userName || u.userId)[0]?.toUpperCase() || "?"}
+                    </div>
+                    <span className="text-sm">{u.userName || u.userId}</span>
+                  </div>
+                  <Button
+                    variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={async () => {
+                      try {
+                        await adminApi.revokeProjectAccess(projectId, u.userId);
+                        setProjectAccess((prev) => prev.filter((a) => a.userId !== u.userId));
+                        toast.success("Access revoked");
+                      } catch { toast.error("Failed to revoke access"); }
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {/* Add user search */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">Add user</Label>
+              <Command className="border rounded-md">
+                <CommandInput placeholder="Search by name or email..." value={userSearchQuery} onValueChange={setUserSearchQuery} />
+                <CommandList className="max-h-40">
+                  <CommandEmpty>No users found</CommandEmpty>
+                  {userSearchResults
+                    .filter((u) => !projectAccess.some((a) => a.userId === u.id))
+                    .map((u) => (
+                      <CommandItem
+                        key={u.id}
+                        onSelect={async () => {
+                          try {
+                            const res = await adminApi.grantProjectAccess(projectId, u.id);
+                            setProjectAccess((prev) => [...prev, res.data]);
+                            toast.success(`Added ${u.name || u.email}`);
+                            setUserSearchQuery("");
+                          } catch { toast.error("Failed to grant access"); }
+                        }}
+                      >
+                        <div className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center mr-2">
+                          {(u.name || u.email || "?" )[0]?.toUpperCase()}
+                        </div>
+                        <span className="text-sm">{u.name || u.email}</span>
+                        {u.name && u.email && <span className="text-xs text-muted-foreground ml-1">{u.email}</span>}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </Command>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsersDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
