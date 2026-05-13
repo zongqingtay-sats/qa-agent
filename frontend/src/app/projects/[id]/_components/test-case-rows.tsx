@@ -52,10 +52,11 @@ export function TestCaseRows({ items, selected, toggleSelect }: TestCaseRowsProp
               {tc.assignments.slice(0, 3).map((a: Assignment, i: number) => (
                 <div
                   key={i}
-                  className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center border-2 border-background"
+                  className={`h-6 w-6 rounded-full text-xs flex items-center justify-center border-2 border-background ${!a.avatarBg ? "bg-primary text-primary-foreground" : ""}`}
+                  style={a.avatarBg ? { backgroundColor: a.avatarBg, color: "#fff" } : undefined}
                   title={a.userName || a.userId}
                 >
-                  {(a.userName || a.userId)?.[0]?.toUpperCase() || "?"}
+                  {a.avatarText || (a.userName || a.userId)?.[0]?.toUpperCase() || "?"}
                 </div>
               ))}
               {tc.assignments.length > 3 && (

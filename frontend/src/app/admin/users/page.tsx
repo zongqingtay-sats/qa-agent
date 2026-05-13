@@ -27,6 +27,8 @@ interface UserRow {
   name: string | null;
   email: string | null;
   image: string | null;
+  avatarBg?: string | null;
+  avatarText?: string | null;
   role: { id: string; name: string; isAdmin: boolean } | null;
 }
 
@@ -161,8 +163,11 @@ export default function UsersPage() {
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
-                        {user.name?.[0]?.toUpperCase() || "?"}
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium ${!user.avatarBg ? "bg-primary/10 text-primary" : ""}`}
+                        style={user.avatarBg ? { backgroundColor: user.avatarBg, color: "#fff" } : undefined}
+                      >
+                        {user.avatarText || user.name?.[0]?.toUpperCase() || "?"}
                       </div>
                       {user.name || "—"}
                     </div>

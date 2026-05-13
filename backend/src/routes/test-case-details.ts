@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { dataStore as store } from '../db';
+import { getPrismaClient } from '../db/prisma';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
@@ -51,7 +52,20 @@ router.get('/:id/assignees', async (req: Request, res: Response) => {
   const testCase = await store.getTestCase(req.params.id as string);
   if (!testCase) throw new AppError('Test case not found', 404);
   const assignments = await store.getAssignmentsForTestCase(testCase.id);
-  res.json({ data: assignments });
+
+  // Enrich with avatar data
+  const userIds = assignments.map((a) => a.userId);
+  const prisma = getPrismaClient();
+  const users = userIds.length > 0
+    ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, avatarBg: true, avatarText: true } })
+    : [];
+  const userMap = new Map(users.map((u: any) => [u.id, u]));
+  const data = assignments.map((a) => {
+    const u = userMap.get(a.userId);
+    return { ...a, avatarBg: u?.avatarBg || null, avatarText: u?.avatarText || null };
+  });
+
+  res.json({ data });
 });
 
 // POST /api/test-cases/:id/assignees

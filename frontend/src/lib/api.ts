@@ -214,7 +214,7 @@ export const usersApi = {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     const qs = params.toString();
-    return request<{ data: { id: string; name: string | null; email: string | null; image: string | null }[] }>(`/users${qs ? `?${qs}` : ''}`);
+    return request<{ data: { id: string; name: string | null; email: string | null; image: string | null; avatarBg?: string | null; avatarText?: string | null }[] }>(`/users${qs ? `?${qs}` : ''}`);
   },
   getProfile: () =>
     request<{ data: UserProfile }>('/users/me/profile'),

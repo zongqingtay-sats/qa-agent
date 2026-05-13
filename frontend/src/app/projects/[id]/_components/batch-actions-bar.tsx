@@ -20,7 +20,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@
 import { Users, Layers, Trash2, X } from "lucide-react";
 
 /** Minimal user shape for the assign dialog. */
-interface UserStub { id: string; name: string | null; email: string | null }
+interface UserStub { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }
 
 /** Feature / Phase option shape. */
 interface GroupItem { id: string; name: string }
@@ -100,8 +100,11 @@ export function BatchActionsBar(props: BatchActionsBarProps) {
                 ) : (
                   assignSearchResults.filter((u) => !assignSelectedUsers.some((s) => s.id === u.id)).map((u) => (
                     <CommandItem key={u.id} onSelect={() => setAssignSelectedUsers((prev) => [...prev, u])}>
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0">
-                        {(u.name || u.email)?.[0]?.toUpperCase() || "?"}
+                      <div
+                        className={`h-6 w-6 rounded-full text-xs flex items-center justify-center shrink-0 ${!u.avatarBg ? "bg-primary text-primary-foreground" : ""}`}
+                        style={u.avatarBg ? { backgroundColor: u.avatarBg, color: "#fff" } : undefined}
+                      >
+                        {u.avatarText || (u.name || u.email)?.[0]?.toUpperCase() || "?"}
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-sm truncate">{u.name || "Unnamed"}</span>

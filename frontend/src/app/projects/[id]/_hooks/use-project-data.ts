@@ -54,10 +54,10 @@ export function useProjectData(projectId: string) {
   const [newItemName, setNewItemName] = useState("");
   const [assignSearchQuery, setAssignSearchQuery] = useState("");
   const [assignSearchResults, setAssignSearchResults] = useState<
-    { id: string; name: string | null; email: string | null }[]
+    { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }[]
   >([]);
   const [assignSelectedUsers, setAssignSelectedUsers] = useState<
-    { id: string; name: string | null; email: string | null }[]
+    { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }[]
   >([]);
   const [bulkFeatureIds, setBulkFeatureIds] = useState<Set<string>>(new Set());
   const [bulkPhaseIds, setBulkPhaseIds] = useState<Set<string>>(new Set());

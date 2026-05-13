@@ -25,7 +25,7 @@ router.get('/', requirePermission('user:manage'), async (req: Request, res: Resp
           ],
         }
       : undefined,
-    select: { id: true, name: true, email: true, image: true },
+    select: { id: true, name: true, email: true, image: true, avatarBg: true, avatarText: true },
     take: 20,
   });
 

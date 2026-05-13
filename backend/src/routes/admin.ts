@@ -148,7 +148,7 @@ router.get('/users', requirePermission('user:manage'), async (_req: Request, res
   const users = await (prisma as any).user.findMany({
     where: { status: { not: 'deleted' } },
     select: {
-      id: true, name: true, email: true, image: true,
+      id: true, name: true, email: true, image: true, avatarBg: true, avatarText: true,
       userRole: { select: { roleId: true, role: { select: { id: true, name: true, isAdmin: true } } } },
     },
     orderBy: { name: 'asc' },
@@ -159,6 +159,8 @@ router.get('/users', requirePermission('user:manage'), async (_req: Request, res
     name: u.name,
     email: u.email,
     image: u.image,
+    avatarBg: u.avatarBg,
+    avatarText: u.avatarText,
     role: u.userRole?.role
       ? { id: u.userRole.role.id, name: u.userRole.role.name, isAdmin: u.userRole.role.isAdmin }
       : null,

@@ -105,7 +105,22 @@ router.get('/:id/test-cases', requireProjectAccess('testcase:read'), async (req:
     })
   );
 
-  res.json({ data: enriched, total: enriched.length });
+  // Enrich assignments with avatar data
+  const allUserIds = [...new Set(enriched.flatMap((tc) => tc.assignments.map((a) => a.userId)))];
+  const prisma = getPrismaClient();
+  const avatarUsers = allUserIds.length > 0
+    ? await prisma.user.findMany({ where: { id: { in: allUserIds } }, select: { id: true, avatarBg: true, avatarText: true } })
+    : [];
+  const avatarMap = new Map(avatarUsers.map((u: any) => [u.id, u]));
+  const data = enriched.map((tc) => ({
+    ...tc,
+    assignments: tc.assignments.map((a) => {
+      const u = avatarMap.get(a.userId);
+      return { ...a, avatarBg: u?.avatarBg || null, avatarText: u?.avatarText || null };
+    }),
+  }));
+
+  res.json({ data, total: data.length });
 });
 
 // --- Features ---

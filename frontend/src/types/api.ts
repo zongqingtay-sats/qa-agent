@@ -144,6 +144,8 @@ export interface Assignment {
   userName?: string;
   assignedAt: string;
   assignedBy?: string;
+  avatarBg?: string | null;
+  avatarText?: string | null;
 }
 
 // ── Group Visibility ──
@@ -215,6 +217,8 @@ export interface AdminUser {
   name: string | null;
   email: string | null;
   image: string | null;
+  avatarBg?: string | null;
+  avatarText?: string | null;
   status?: string;
   role: { id: string; name: string; isAdmin: boolean } | null;
 }

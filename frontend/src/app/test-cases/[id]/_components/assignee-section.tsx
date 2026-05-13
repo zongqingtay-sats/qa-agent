@@ -24,12 +24,16 @@ interface Assignment {
   userId: string;
   userName?: string;
   assignedAt: string;
+  avatarBg?: string | null;
+  avatarText?: string | null;
 }
 
 interface UserOption {
   id: string;
   name: string | null;
   email: string | null;
+  avatarBg?: string | null;
+  avatarText?: string | null;
 }
 
 export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
@@ -114,8 +118,11 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
                       .filter((u) => !assignedIds.has(u.id))
                       .map((u) => (
                         <CommandItem key={u.id} onSelect={() => handleAssign(u)}>
-                          <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0">
-                            {(u.name || u.email)?.[0]?.toUpperCase() || "?"}
+                          <div
+                            className={`h-6 w-6 rounded-full text-xs flex items-center justify-center shrink-0 ${!u.avatarBg ? "bg-primary text-primary-foreground" : ""}`}
+                            style={u.avatarBg ? { backgroundColor: u.avatarBg, color: "#fff" } : undefined}
+                          >
+                            {u.avatarText || (u.name || u.email)?.[0]?.toUpperCase() || "?"}
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="text-sm truncate">{u.name || "Unnamed"}</span>
@@ -139,8 +146,11 @@ export function AssigneeSection({ testCaseId }: { testCaseId: string }) {
           <div className="space-y-1">
             {assignees.map((a) => (
               <div key={a.id} className="flex items-center gap-2 py-1">
-                <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0">
-                  {(a.userName || a.userId)?.[0]?.toUpperCase() || "?"}
+                <div
+                  className={`h-7 w-7 rounded-full text-xs flex items-center justify-center shrink-0 ${!a.avatarBg ? "bg-primary text-primary-foreground" : ""}`}
+                  style={a.avatarBg ? { backgroundColor: a.avatarBg, color: "#fff" } : undefined}
+                >
+                  {a.avatarText || (a.userName || a.userId)?.[0]?.toUpperCase() || "?"}
                 </div>
                 <span className="text-sm flex-1 truncate">{a.userName || a.userId}</span>
                 <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => handleRemove(a.userId)}>
