@@ -353,7 +353,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         ))}
                       </div>
                     )}
-                    <Command shouldFilter={false} className="rounded-md ring-1 ring-muted-foreground/10">
+                    <Command shouldFilter={false} className="rounded-md ring-1 ring-foreground/10">
                       <CommandInput placeholder="Search by name..." value={assignSearchQuery} onValueChange={setAssignSearchQuery} />
                       <CommandList>
                         {assignSearchResults.filter((u) => !assignSelectedUsers.some((s) => s.id === u.id)).length === 0 ? (
@@ -389,7 +389,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     {features.length > 0 && (
                       <div className="space-y-1.5">
                         <Label>Features</Label>
-                        <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
+                        <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-foreground/10">
                           {features.map((f) => (
                             <label key={f.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                               <Checkbox checked={bulkFeatureIds.has(f.id)} onCheckedChange={() => { setBulkFeatureIds((prev) => { const n = new Set(prev); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); return n; }); }} />
@@ -402,7 +402,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     {phases.length > 0 && (
                       <div className="space-y-1.5">
                         <Label>Phases</Label>
-                        <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
+                        <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-foreground/10">
                           {phases.map((p) => (
                             <label key={p.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                               <Checkbox checked={bulkPhaseIds.has(p.id)} onCheckedChange={() => { setBulkPhaseIds((prev) => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; }); }} />

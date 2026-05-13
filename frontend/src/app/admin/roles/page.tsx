@@ -144,125 +144,121 @@ export default function RolesPage() {
         title={<span className="flex items-center gap-2"><Shield className="h-5 w-5" /> Role Management</span>}
         description="Create and configure roles with granular bitmask permissions"
         actions={
-          <Button onClick={openCreate} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> New Role
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1" /> Create
           </Button>
         }
       />
       <div className="flex-1 overflow-auto p-4 space-y-4">
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead className="w-25">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                </TableRow>
-              ))
-            ) : roles.length === 0 ? (
+        <div className="rounded-md ring-1 ring-foreground/10">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  No roles found. Click &quot;New Role&quot; to create one.
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Permissions</TableHead>
+                <TableHead className="w-25">Actions</TableHead>
               </TableRow>
-            ) : (
-              roles.map((role) => (
-                <TableRow key={role.id}>
-                  <TableCell className="font-medium">
-                    {role.name}
-                    {role.isAdmin && <Badge className="ml-2" variant="default">Admin</Badge>}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{role.description || "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={role.isSystem ? "secondary" : "outline"}>
-                      {role.isSystem ? "System" : "Custom"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {RESOURCE_GROUPS.map((rg) => {
-                        const val = role[rg.key as keyof typeof role] as number;
-                        if (!val) return null;
-                        return (
-                          <Badge key={rg.key} variant="outline" className="text-xs font-mono">
-                            {rg.label.slice(0, 4)}:{val}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(role)} title="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {!role.isSystem && (
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(role)} title="Delete">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : roles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    No roles found. Click &quot;New Role&quot; to create one.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-
+              ) : (
+                roles.map((role) => (
+                  <TableRow key={role.id}>
+                    <TableCell className="font-medium">
+                      {role.name}
+                      {role.isAdmin && <Badge className="ml-2" variant="default">Admin</Badge>}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{role.description || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={role.isSystem ? "secondary" : "outline"}>
+                        {role.isSystem ? "System" : "Custom"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {RESOURCE_GROUPS.map((rg) => {
+                          const val = role[rg.key as keyof typeof role] as number;
+                          if (!val) return null;
+                          return (
+                            <Badge key={rg.key} variant="outline" className="text-xs font-mono">
+                              {rg.label.slice(0, 4)}:{val}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(role)} title="Edit">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {!role.isSystem && (
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(role)} title="Delete">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl min-w-1/2 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editRole.id ? "Edit Role" : "Create Role"}</DialogTitle>
             <DialogDescription>Configure role name and permission bitmasks per resource.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input
-                  value={editRole.name}
-                  onChange={(e) => setEditRole({ ...editRole, name: e.target.value })}
-                  placeholder="e.g. QA Lead"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Input
-                  value={editRole.description}
-                  onChange={(e) => setEditRole({ ...editRole, description: e.target.value })}
-                  placeholder="Optional description"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={editRole.isAdmin}
-                onCheckedChange={(checked) => setEditRole({ ...editRole, isAdmin: !!checked })}
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={editRole.name}
+                onChange={(e) => setEditRole({ ...editRole, name: e.target.value })}
+                placeholder="e.g. QA Lead"
               />
-              <Label className="text-sm">Admin (bypasses all permission checks)</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={editRole.description}
+                onChange={(e) => setEditRole({ ...editRole, description: e.target.value })}
+                placeholder="Optional description"
+              />
             </div>
 
-            {!editRole.isAdmin && (
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold">Permissions</Label>
-                {RESOURCE_GROUPS.map((rg) => (
+            <div className="space-y-3">
+              <Label className="text-sm">Permissions</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={editRole.isAdmin}
+                  onCheckedChange={(checked) => setEditRole({ ...editRole, isAdmin: !!checked })}
+                />
+                <Label className="text-sm">Admin (bypasses all permission checks)</Label>
+              </div>
+              {!editRole.isAdmin &&
+                RESOURCE_GROUPS.map((rg) => (
                   <Card key={rg.key} className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">{rg.label}</span>
@@ -286,8 +282,7 @@ export default function RolesPage() {
                     </div>
                   </Card>
                 ))}
-              </div>
-            )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

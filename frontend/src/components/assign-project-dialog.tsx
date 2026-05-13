@@ -179,7 +179,7 @@ export function AssignProjectDialog({
           {selectedProjectId && selectedProjectId !== "__none__" && features.length > 0 && (
             <div className="space-y-1.5">
               <Label>Features</Label>
-              <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
+              <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-foreground/10">
                 {features.map((f) => (
                   <label key={f.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                     <Checkbox
@@ -197,7 +197,7 @@ export function AssignProjectDialog({
           {selectedProjectId && selectedProjectId !== "__none__" && phases.length > 0 && (
             <div className="space-y-1.5">
               <Label>Phases</Label>
-              <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-muted-foreground/10">
+              <div className="rounded-md p-2 space-y-1 max-h-40 overflow-y-auto ring-1 ring-foreground/10">
                 {phases.map((p) => (
                   <label key={p.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                     <Checkbox

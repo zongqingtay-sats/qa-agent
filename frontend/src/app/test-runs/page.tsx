@@ -8,24 +8,19 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Download, RotateCcw, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { Download, RotateCcw, Search } from "lucide-react";
 import { testRunsApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
-import { RunExpandedDetail } from "./_components/run-expanded-detail";
+import { TestRunTable } from "./_components/test-run-table";
 
 export default function TestRunsPage() {
-  const router = useRouter();
   const [testRuns, setTestRuns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -120,7 +115,7 @@ export default function TestRunsPage() {
   return (
     <>
       <PageHeader title="Test Runs" description="View execution history and results" />
-      <div className="flex-1 p-4 space-y-2">
+      <div className="flex-1 p-4 space-y-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search by test case name or status..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
@@ -141,82 +136,19 @@ export default function TestRunsPage() {
           </div>
         )}
 
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10"><Checkbox checked={testRuns.length > 0 && selected.size === testRuns.length} onCheckedChange={toggleSelectAll} /></TableHead>
-                <TableHead className="w-8"></TableHead>
-                <TableHead>Test Case</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Steps</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Run By</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
-              ) : filteredRuns.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                  {search.trim() ? "No test runs match your search." : "No test runs yet. Run a test case to see results here."}
-                </TableCell></TableRow>
-              ) : (
-                filteredRuns.map((run) => (
-                  <Fragment key={run.id}>
-                    <TableRow className="cursor-pointer" onClick={() => router.push(`/test-runs/${run.id}`)}>
-                      <TableCell><Checkbox checked={selected.has(run.id)} onCheckedChange={() => toggleSelect(run.id)} /></TableCell>
-                      <TableCell className="align-middle">
-                        <button type="button" onClick={(e) => { toggleExpand(run.id); e.stopPropagation(); }} className="cursor-pointer flex items-center justify-center">
-                          {expanded.has(run.id) ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        </button>
-                      </TableCell>
-                      <TableCell className="font-medium">{run.testCaseName}</TableCell>
-                      <TableCell><StatusBadge status={run.status} /></TableCell>
-                      <TableCell className="text-sm">
-                        <span className="text-green-600">{run.passedSteps}</span> / <span>{run.totalSteps}</span>
-                        {run.failedSteps > 0 && <span className="text-red-600 ml-1">({run.failedSteps} failed)</span>}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "—"}</TableCell>
-                      <TableCell>
-                        {run.runByName ? (
-                          <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center" title={run.runByName}>
-                            {run.runByName[0]?.toUpperCase() || "?"}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{new Date(run.startedAt).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Re-run" onClick={() => handleRetry(run)}><RotateCcw className="h-3 w-3" /></Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" title="Export"><Download className="h-3 w-3" /></Button>} />
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleExport(run.id, "json")}>Export as JSON</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleExport(run.id, "docx")}>Export as DOCX</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleExport(run.id, "pdf")}>Export as PDF</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {expanded.has(run.id) && (
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={9} className="p-0">
-                          <div className="px-6 py-4"><RunExpandedDetail detail={runDetails[run.id]} /></div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <TestRunTable
+          testRuns={filteredRuns}
+          loading={loading}
+          hasSearch={!!search.trim()}
+          selected={selected}
+          expanded={expanded}
+          runDetails={runDetails}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAll}
+          onToggleExpand={toggleExpand}
+          onRetry={handleRetry}
+          onExport={handleExport}
+        />
       </div>
     </>
   );

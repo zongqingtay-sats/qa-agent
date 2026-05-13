@@ -197,9 +197,9 @@ export default function GeneratePage() {
   return (
     <>
       <PageHeader title="Generate Test Cases with AI" description="Use AI to create test cases from requirements, descriptions, or source code" />
-      <div className="flex-1 p-4 space-y-6 max-w-4xl">
+      <div className="p-4 max-w-4xl">
         <Tabs defaultValue="text">
-          <TabsList>
+          <TabsList className="mb-2">
             <TabsTrigger value="text"><Sparkles className="h-4 w-4 mr-1" /> Natural Language</TabsTrigger>
             <TabsTrigger value="requirements"><FileText className="h-4 w-4 mr-1" /> Documents</TabsTrigger>
             <TabsTrigger value="source"><Code className="h-4 w-4 mr-1" /> Source Code</TabsTrigger>

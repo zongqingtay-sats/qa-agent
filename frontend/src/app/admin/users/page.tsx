@@ -123,83 +123,82 @@ export default function UsersPage() {
           </div>
           <Badge variant="secondary">{filtered.length} users</Badge>
         </div>
-
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                </TableRow>
-              ))
-            ) : filtered.length === 0 ? (
+        <div className="rounded-md ring-1 ring-foreground/10">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                  No users found
-                </TableCell>
+                <TableHead>User</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
-            ) : (
-              filtered.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
-                        {user.name?.[0]?.toUpperCase() || "?"}
-                      </div>
-                      {user.name || "—"}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
-                  <TableCell>
-                    {user.role ? (
-                      <Badge variant={user.role.isAdmin ? "default" : "secondary"}>
-                        {user.role.isAdmin && <Shield className="h-3 w-3 mr-1" />}
-                        {user.role.name}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">No role</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon" onClick={() => {
-                          setEditUser(user);
-                          setSelectedRoleId(user.role?.id || "__none__");
-                        }}
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteTarget(user)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    No users found
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-
+              ) : (
+                filtered.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
+                          {user.name?.[0]?.toUpperCase() || "?"}
+                        </div>
+                        {user.name || "—"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
+                    <TableCell>
+                      {user.role ? (
+                        <Badge variant={user.role.isAdmin ? "default" : "secondary"}>
+                          {user.role.isAdmin && <Shield className="h-3 w-3 mr-1" />}
+                          {user.role.name}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">No role</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon" onClick={() => {
+                            setEditUser(user);
+                            setSelectedRoleId(user.role?.id || "__none__");
+                          }}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteTarget(user)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Edit Role Dialog */}
@@ -217,7 +216,11 @@ export default function UsersPage() {
               <Label>Role</Label>
               <Select value={selectedRoleId} onValueChange={(v) => setSelectedRoleId(v || "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
+                  <SelectValue placeholder="Select a role">
+                    {selectedRoleId === "__none__"
+                      ? "No role (defaults to Reader)"
+                      : (roles.find((r) => r.id === selectedRoleId)?.name ?? "Select a role")}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">No role (defaults to Reader)</SelectItem>

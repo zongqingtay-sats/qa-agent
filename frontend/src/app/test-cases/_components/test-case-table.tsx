@@ -48,7 +48,7 @@ export function TestCaseTable({
   const router = useRouter();
 
   return (
-    <div className="border rounded-lg">
+    <div className="rounded-md ring-1 ring-foreground/10">
       <Table>
         <TableHeader>
           <TableRow>
