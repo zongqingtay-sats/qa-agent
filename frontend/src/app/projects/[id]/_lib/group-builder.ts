@@ -94,7 +94,7 @@ function buildSingleLevel(
   if (unassigned.length > 0) {
     sections.push({
       key: `${type}:unassigned`,
-      label: "Unassigned",
+      label: "(Others)",
       groupType: type,
       groupId: "unassigned",
       items: unassigned,
@@ -139,12 +139,12 @@ function buildTwoLevel(
       }))
       .filter((sg) => sg.items.length > 0);
 
-    // Inner items with no inner group → "Unassigned" sub-group
+    // Inner items with no inner group → "(Others)" sub-group
     const noInner = outerItems.filter((tc) => getInnerIds(tc).length === 0);
     if (noInner.length > 0) {
       subGroups.push({
         key: `${innerType}:unassigned`,
-        label: "Unassigned",
+        label: "(Others)",
         groupType: innerType as "feature" | "phase",
         groupId: "unassigned",
         items: noInner,
@@ -166,7 +166,7 @@ function buildTwoLevel(
   if (unassigned.length > 0) {
     sections.push({
       key: `${outerType}:unassigned`,
-      label: "Unassigned",
+      label: "(Others)",
       groupType: outerType,
       groupId: "unassigned",
       items: unassigned,

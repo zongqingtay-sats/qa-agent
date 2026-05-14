@@ -53,13 +53,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   // Add test case dialog state
   const [addTCDialogOpen, setAddTCDialogOpen] = useState(false);
-  const [addTCContext, setAddTCContext] = useState<{ groupType: "feature" | "phase"; groupId: string; groupLabel: string; }>({ groupType: "feature", groupId: "", groupLabel: "" });
+  const [addTCContext, setAddTCContext] = useState<{ groupType: "feature" | "phase"; groupId: string; groupLabel: string; parentGroupType?: "feature" | "phase"; parentGroupId?: string; }>({ groupType: "feature", groupId: "", groupLabel: "" });
 
   // Campaign creation dialog state
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
 
-  function handleAddTestCase(groupType: "feature" | "phase", groupId: string, groupLabel: string) {
-    setAddTCContext({ groupType, groupId, groupLabel });
+  function handleAddTestCase(groupType: "feature" | "phase", groupId: string, groupLabel: string, parentGroupType?: "feature" | "phase", parentGroupId?: string) {
+    setAddTCContext({ groupType, groupId, groupLabel, parentGroupType, parentGroupId });
     setAddTCDialogOpen(true);
   }
 
@@ -132,7 +132,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       <div className="flex-1 p-4 space-y-4">
         {/* ── Grouping toggle ── */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-muted-foreground">Group by:</span>
+          <div title="Group by">
+            <Group className="w-4 h-4 text-muted-foreground" />
+          </div>
           {(["feature", "phase", "feature-phase", "phase-feature"] as GroupingMode[]).map((mode) => (
             <Button key={mode} variant={data.grouping === mode ? "default" : "outline"} size="sm" onClick={() => data.setGrouping(mode)}>
               {mode === "feature" ? "Feature" : mode === "phase" ? "Phase" : mode === "feature-phase" ? "Feature → Phase" : "Phase → Feature"}
@@ -226,6 +228,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         groupType={addTCContext.groupType}
         groupId={addTCContext.groupId}
         groupLabel={addTCContext.groupLabel}
+        parentGroupType={addTCContext.parentGroupType}
+        parentGroupId={addTCContext.parentGroupId}
         onAdded={data.loadProject}
       />
 

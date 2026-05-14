@@ -34,7 +34,7 @@ export interface GroupSectionProps {
   toggleSelect: (id: string) => void;
   handleRenameGroup: (type: GroupType, id: string, name: string) => void;
   setDeleteTarget: (v: { type: GroupType; id: string; name: string; } | null) => void;
-  onAddTestCase?: (groupType: GroupType, groupId: string, groupLabel: string) => void;
+  onAddTestCase?: (groupType: GroupType, groupId: string, groupLabel: string, parentGroupType?: GroupType, parentGroupId?: string) => void;
 }
 
 /**
@@ -158,7 +158,7 @@ export function GroupSection({
                         <TestCaseRows items={sub.items} selected={selected} toggleSelect={toggleSelect} />
                         {onAddTestCase && sub.groupId !== "unassigned" && (
                           <Button variant="ghost" size="sm" className="mt-2 w-full text-muted-foreground hover:text-foreground justify-start"
-                            onClick={() => onAddTestCase(sub.groupType, sub.groupId, sub.label)}
+                            onClick={() => onAddTestCase(sub.groupType, sub.groupId, sub.label, group.groupType, group.groupId)}
                           >
                             <Plus className="h-4 w-4 mr-1" /> Add test case
                           </Button>

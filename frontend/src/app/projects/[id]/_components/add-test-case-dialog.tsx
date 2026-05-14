@@ -34,12 +34,15 @@ interface AddTestCaseDialogProps {
   groupType: "feature" | "phase";
   groupId: string;
   groupLabel: string;
+  /** Parent group context when adding from a sub-group. */
+  parentGroupType?: "feature" | "phase";
+  parentGroupId?: string;
   /** Called after test cases are added to refresh the project data. */
   onAdded: () => void;
 }
 
 export function AddTestCaseDialog({
-  open, onOpenChange, projectId, groupType, groupId, groupLabel, onAdded,
+  open, onOpenChange, projectId, groupType, groupId, groupLabel, parentGroupType, parentGroupId, onAdded,
 }: AddTestCaseDialogProps) {
   const router = useRouter();
   const [mode, setMode] = useState<"menu" | "existing">("menu");
@@ -50,19 +53,28 @@ export function AddTestCaseDialog({
   function handleCreateNew() {
     onOpenChange(false);
     // Navigate to create new test case with project context as URL params
-    const params = new URLSearchParams({
-      projectId,
-      ...(groupType === "feature" ? { featureId: groupId } : { phaseId: groupId }),
-    });
+    // Include both feature and phase when available (sub-group context)
+    const params = new URLSearchParams({ projectId });
+    if (groupType === "feature") {
+      params.set("featureId", groupId);
+      if (parentGroupType === "phase" && parentGroupId) params.set("phaseId", parentGroupId);
+    } else {
+      params.set("phaseId", groupId);
+      if (parentGroupType === "feature" && parentGroupId) params.set("featureId", parentGroupId);
+    }
     router.push(`/test-cases/new?${params.toString()}`);
   }
 
   function handleGenerate() {
     onOpenChange(false);
-    const params = new URLSearchParams({
-      projectId,
-      ...(groupType === "feature" ? { featureId: groupId } : { phaseId: groupId }),
-    });
+    const params = new URLSearchParams({ projectId });
+    if (groupType === "feature") {
+      params.set("featureId", groupId);
+      if (parentGroupType === "phase" && parentGroupId) params.set("phaseId", parentGroupId);
+    } else {
+      params.set("phaseId", groupId);
+      if (parentGroupType === "feature" && parentGroupId) params.set("featureId", parentGroupId);
+    }
     router.push(`/generate?${params.toString()}`);
   }
 
