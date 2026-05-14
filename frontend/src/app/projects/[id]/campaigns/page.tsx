@@ -9,7 +9,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,21 +19,17 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Play, Pencil, Trash2, Globe } from "lucide-react";
-import { campaignsApi, projectsApi } from "@/lib/api";
+import { campaignsApi } from "@/lib/api";
 import { runCampaign } from "@/lib/run-campaign";
 import type { Campaign } from "@/types/api";
 import { toast } from "sonner";
-import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 
 export default function CampaignsPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
 
-  const [projectName, setProjectName] = useState<string | undefined>(undefined);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-
-  useBreadcrumbLabel(projectId, projectName);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -57,8 +52,7 @@ export default function CampaignsPage() {
 
   useEffect(() => {
     loadCampaigns();
-    projectsApi.get(projectId).then(res => setProjectName(res.data.name)).catch(() => {});
-  }, [loadCampaigns, projectId]);
+  }, [loadCampaigns]);
 
   function openEdit(campaign: Campaign) {
     setEditingCampaign(campaign);
@@ -129,16 +123,13 @@ export default function CampaignsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Campaigns"
-        actions={
-          <Button size="sm" onClick={() => router.push(`/projects/${projectId}?createCampaign=true`)}>
-            <Plus className="mr-2 h-4 w-4" /> New Campaign
-          </Button>
-        }
-      />
+      <div className="flex items-center justify-end p-4 pb-0">
+        <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Plus className="mr-2 h-4 w-4" /> New Campaign
+        </Button>
+      </div>
 
-      <div className="p-6 space-y-4">
+      <div className="p-4 space-y-4">
         {campaigns.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">

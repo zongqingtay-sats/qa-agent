@@ -37,6 +37,8 @@ const STATIC_LABELS: Record<string, string> = {
   "test-runs": "Test Runs",
   "campaign-runs": "Campaign Runs",
   campaigns: "Campaigns",
+  cases: "Cases",
+  runs: "Runs",
   generate: "Generate",
   settings: "Settings",
   admin: "Admin",

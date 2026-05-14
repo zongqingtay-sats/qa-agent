@@ -9,7 +9,6 @@
 
 import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,9 +29,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
-  const [projectName, setProjectName] = useState<string | undefined>(undefined);
 
-  useBreadcrumbLabel(projectId, projectName);
   useBreadcrumbLabel(campaignId, campaign?.name || undefined);
   const [saving, setSaving] = useState(false);
 
@@ -70,14 +67,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     } catch { /* ignore */ }
   }, [projectId]);
 
-  const loadProjectName = useCallback(async () => {
-    try {
-      const res = await projectsApi.get(projectId);
-      setProjectName(res.data.name);
-    } catch { /* ignore */ }
-  }, [projectId]);
-
-  useEffect(() => { loadCampaign(); loadTestCases(); loadProjectName(); }, [loadCampaign, loadTestCases, loadProjectName]);
+  useEffect(() => { loadCampaign(); loadTestCases(); }, [loadCampaign, loadTestCases]);
 
   async function handleSave() {
     if (!name.trim()) { toast.error("Name is required"); return; }
@@ -137,18 +127,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <PageHeader
-        title={campaign.name}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>
-              <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        }
-      />
+      <div className="flex items-center justify-between p-4 pb-0">
+        <h2 className="text-lg font-semibold">{campaign.name}</h2>
+        <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>
+          <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 space-y-4">
         {/* ── Campaign Details ── */}
         <Card>
           <CardHeader>
