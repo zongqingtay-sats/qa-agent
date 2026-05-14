@@ -85,9 +85,9 @@ export function BatchActionsBar(props: BatchActionsBarProps) {
                 {assignSelectedUsers.map((u) => (
                   <Badge key={u.id} variant="secondary" className="gap-1 pr-1">
                     {u.name || u.email}
-                    <button type="button" className="ml-0.5 hover:text-destructive" onClick={() => setAssignSelectedUsers((prev) => prev.filter((p) => p.id !== u.id))}>
+                    <Button variant="ghost" size="icon" className="ml-0.5 h-4 w-4 hover:text-destructive" onClick={() => setAssignSelectedUsers((prev) => prev.filter((p) => p.id !== u.id))}>
                       <X className="h-3 w-3" />
-                    </button>
+                    </Button>
                   </Badge>
                 ))}
               </div>

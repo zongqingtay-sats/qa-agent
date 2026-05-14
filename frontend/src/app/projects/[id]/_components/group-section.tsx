@@ -52,10 +52,10 @@ export function GroupSection({
   return (
     <Card className="p-0 gap-0">
       {/* Group header */}
-      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors cursor-pointer">
-        <button type="button" className="flex items-center justify-center shrink-0 cursor-pointer" onClick={() => toggleCollapse(group.key)}>
+      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted transition-colors cursor-pointer">
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleCollapse(group.key)}>
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        </Button>
         <GroupLabel
           groupId={group.groupId} groupType={group.groupType} label={group.label}
           editingGroup={editingGroup} setEditingGroup={setEditingGroup}
@@ -90,9 +90,9 @@ export function GroupSection({
                 return (
                   <div key={sub.key} className="rounded-md ring-1 ring-foreground/10">
                     <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50">
-                      <button type="button" className="flex items-center justify-center shrink-0" onClick={() => toggleCollapse(sub.key)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleCollapse(sub.key)}>
                         {subCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </button>
+                      </Button>
                       <GroupLabel
                         groupId={sub.groupId} groupType={sub.groupType} label={sub.label}
                         editingGroup={editingGroup} setEditingGroup={setEditingGroup}

@@ -12,6 +12,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { StepResult } from "@/types/api";
 
@@ -41,10 +42,10 @@ export function LastRunPanel({ run, selectedNodeId }: LastRunPanelProps) {
   return (
     <div className="border-b">
       {/* Collapsed header — always visible */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 px-4 py-2.5 w-full text-left hover:bg-muted/50 transition-colors cursor-pointer"
+        className="flex items-center gap-2 px-4 py-2.5 w-full justify-start rounded-none hover:bg-muted/50"
       >
         {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
 
@@ -67,7 +68,7 @@ export function LastRunPanel({ run, selectedNodeId }: LastRunPanelProps) {
             <span>Steps: {run.stepResults.filter((s) => !s.retry).length}</span>
           </div>
         )}
-      </button>
+      </Button>
 
       {/* Expanded content */}
       {expanded && (

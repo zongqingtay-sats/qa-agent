@@ -126,9 +126,10 @@ export default function SetupPage() {
           const status = getStepStatus(step.number);
           return (
             <div key={step.number} className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setCurrentStep(step.number)}
-                className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                   status === "complete"
                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                     : status === "active"
@@ -143,7 +144,7 @@ export default function SetupPage() {
                 )}
                 <span className="hidden sm:inline">{step.title}</span>
                 <span className="sm:hidden">{step.number}</span>
-              </button>
+              </Button>
               {i < STEPS.length - 1 && (
                 <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
               )}

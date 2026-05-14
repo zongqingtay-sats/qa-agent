@@ -87,9 +87,9 @@ export function TestRunTable({
                 <TableRow className="cursor-pointer" onClick={() => router.push(`/test-runs/${run.id}`)}>
                   <TableCell><Checkbox checked={selected.has(run.id)} onCheckedChange={() => onToggleSelect(run.id)} /></TableCell>
                   <TableCell className="align-middle">
-                    <button type="button" onClick={(e) => { onToggleExpand(run.id); e.stopPropagation(); }} className="cursor-pointer flex items-center justify-center">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { onToggleExpand(run.id); e.stopPropagation(); }}>
                       {expanded.has(run.id) ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                    </button>
+                    </Button>
                   </TableCell>
                   <TableCell className="font-medium">{run.testCaseName}</TableCell>
                   <TableCell><StatusBadge status={run.status} /></TableCell>

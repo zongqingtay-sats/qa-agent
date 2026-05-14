@@ -140,10 +140,10 @@ export default function ProfilePage() {
               <Label>Background Color</Label>
               <div className="flex flex-wrap gap-2">
                 {PRESET_COLORS.map((color) => (
-                  <button
+                  <Button
                     key={color}
-                    type="button"
-                    className={`h-8 w-8 rounded-full border-2 transition-all ${avatarBg === color ? "border-foreground scale-110" : "border-transparent"}`}
+                    variant="ghost"
+                    className={`h-8 w-8 rounded-full border-2 p-0 ${avatarBg === color ? "border-foreground scale-110" : "border-transparent"}`}
                     style={{ backgroundColor: color }}
                     onClick={() => setAvatarBg(color)}
                     title={color}

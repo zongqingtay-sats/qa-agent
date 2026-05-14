@@ -9,6 +9,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface MetadataPanelProps {
@@ -37,14 +38,14 @@ export function MetadataPanel({
 }: MetadataPanelProps) {
   return (
     <div className="border-b">
-      <button
-        type="button"
-        className="flex items-center gap-2 px-4 py-2.5 w-full text-left hover:bg-muted/50 transition-colors cursor-pointer"
+      <Button
+        variant="ghost"
+        className="flex items-center gap-2 px-4 py-2.5 w-full justify-start rounded-none hover:bg-muted/50"
         onClick={onToggle}
       >
         {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
         <span className="text-sm font-medium">Test Case Details</span>
-      </button>
+      </Button>
       {open && (
         <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">

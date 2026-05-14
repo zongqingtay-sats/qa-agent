@@ -36,6 +36,7 @@ export function TestCaseRows({ items, selected, toggleSelect }: TestCaseRowsProp
           className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50"
         >
           <Checkbox
+            className="cursor-pointer bg-background"
             checked={selected.has(tc.id)}
             onCheckedChange={() => toggleSelect(tc.id)}
           />

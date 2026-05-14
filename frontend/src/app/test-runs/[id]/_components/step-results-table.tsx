@@ -80,11 +80,11 @@ export function StepResultsTable({ steps }: StepResultsTableProps) {
                   >
                     <TableCell className="align-middle">
                       {!isUnexecuted ? (
-                        <button type="button" onClick={() => toggle(stepId)} className="cursor-pointer flex items-center justify-center">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggle(stepId)}>
                           {isExpanded
                             ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                             : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                        </button>
+                        </Button>
                       ) : (
                         <CircleDashed className="h-3.5 w-3.5 text-muted-foreground/50" />
                       )}
