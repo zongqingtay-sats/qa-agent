@@ -132,9 +132,13 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
         }
 
         const result = await executeStepInTab(tab.id, data);
+
+        // Only capture a screenshot for explicit screenshot blocks
         let screenshot = null;
-        try { screenshot = await captureScreenshot(tab.id); } catch (e) {
-          console.warn('[QA Agent] Screenshot failed:', e);
+        if (data.blockType === 'screenshot') {
+          try { screenshot = await captureScreenshot(tab.id); } catch (e) {
+            console.warn('[QA Agent] Screenshot failed:', e);
+          }
         }
 
         const stepResult = buildStepResult(stepId, node, data, 'passed', stepStart, {

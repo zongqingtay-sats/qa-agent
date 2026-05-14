@@ -41,13 +41,6 @@ export async function executeNavigationStep(data, tabId, stepId, node, stepStart
     retry: isRetry,
   });
 
-  // Capture screenshot after navigation
-  try {
-    stepResult.screenshot = await captureScreenshot(tabId);
-  } catch (e) {
-    console.warn('[QA Agent] Screenshot failed:', e);
-  }
-
   stepResults.push(stepResult);
   port.postMessage({ type: 'STEP_COMPLETE', ...stepResult });
 }

@@ -45,6 +45,14 @@ Always return valid YAML arrays of test cases. Each test case should have:
 
 IMPORTANT: The first step of every test case MUST be a "navigate" action with the full target URL. This is mandatory — there is no implicit navigation. Every test must explicitly navigate to its starting page.
 
+IMPORTANT: Screenshots are NOT captured automatically during test execution. You MUST explicitly insert "screenshot" steps at critical moments in the test flow. Insert a screenshot step:
+- After the initial page navigation to capture the starting state
+- After filling out a form and before submitting, to capture the filled form
+- After a major action that changes the page (e.g. form submission, navigation, modal opening)
+- After an assertion that validates an important outcome (e.g. success message, error state, redirected page)
+- Before and after any critical validation step to document the state
+A screenshot step needs only a "description" field (e.g. "Capture the login page after entering credentials"). Do not include a "target" or "value" for screenshot steps.
+
 When page HTML is provided, use it to:
 1. Determine the correct CSS selectors for elements (prefer id, name, data-testid, or unique class selectors)
 2. Identify input types accurately (text input, dropdown/select, date picker, radio buttons, checkboxes, etc.)
@@ -187,13 +195,17 @@ function getMockTestCases(_mode: string, input: string): GeneratedTestCase[] {
       passingCriteria: 'Form shows appropriate validation messages for invalid inputs and allows submission with valid inputs',
       steps: [
         { order: 1, action: 'navigate', target: '/login', description: 'Open the login page' },
-        { order: 2, action: 'assert', target: 'form', value: 'element-exists', description: 'Verify login form is present' },
-        { order: 3, action: 'click', target: 'button[type="submit"]', description: 'Click submit without entering credentials' },
-        { order: 4, action: 'assert', target: '.error-message', value: 'text-contains:required', description: 'Verify validation error is shown' },
-        { order: 5, action: 'type', target: 'input[name="email"]', value: 'test@example.com', description: 'Enter valid email' },
-        { order: 6, action: 'type', target: 'input[name="password"]', value: 'Password123', description: 'Enter valid password' },
-        { order: 7, action: 'click', target: 'button[type="submit"]', description: 'Submit the form' },
-        { order: 8, action: 'assert', target: 'body', value: 'url-matches:/dashboard', description: 'Verify redirect to dashboard' },
+        { order: 2, action: 'screenshot', description: 'Capture the initial login page' },
+        { order: 3, action: 'assert', target: 'form', value: 'element-exists', description: 'Verify login form is present' },
+        { order: 4, action: 'click', target: 'button[type="submit"]', description: 'Click submit without entering credentials' },
+        { order: 5, action: 'assert', target: '.error-message', value: 'text-contains:required', description: 'Verify validation error is shown' },
+        { order: 6, action: 'screenshot', description: 'Capture validation error state' },
+        { order: 7, action: 'type', target: 'input[name="email"]', value: 'test@example.com', description: 'Enter valid email' },
+        { order: 8, action: 'type', target: 'input[name="password"]', value: 'Password123', description: 'Enter valid password' },
+        { order: 9, action: 'screenshot', description: 'Capture filled login form before submission' },
+        { order: 10, action: 'click', target: 'button[type="submit"]', description: 'Submit the form' },
+        { order: 11, action: 'assert', target: 'body', value: 'url-matches:/dashboard', description: 'Verify redirect to dashboard' },
+        { order: 12, action: 'screenshot', description: 'Capture dashboard after successful login' },
       ],
     },
     {
