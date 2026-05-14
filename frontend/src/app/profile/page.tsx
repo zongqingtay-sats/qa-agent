@@ -69,7 +69,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <>
-        <PageHeader title="Profile" />
+        <PageHeader title="Profile" icon={<User className="h-5 w-5" />} />
         <div className="p-4 max-w-2xl space-y-4">
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-48 w-full" />
@@ -81,8 +81,8 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><User className="h-5 w-5" /> Profile</span>}
-        description="Manage your display name and avatar"
+        title="Profile"
+        icon={<User className="h-5 w-5" />}
         actions={
           <Button onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save"}

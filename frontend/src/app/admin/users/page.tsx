@@ -125,8 +125,8 @@ export default function UsersPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title={<span className="flex items-center gap-2"><Users className="h-5 w-5" /> User Management</span>}
-        description="Manage user role assignments"
+        title="User Management"
+        icon={<Users className="h-5 w-5" />}
         actions={<Button className="ml-auto" onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> Create</Button>}
       />
       <div className="flex-1 overflow-auto p-4 space-y-4">

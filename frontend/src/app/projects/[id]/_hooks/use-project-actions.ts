@@ -198,6 +198,29 @@ export function useProjectActions(deps: ProjectActionDeps) {
     loadProject();
   }
 
+  /** Export all selected test cases in the chosen format. */
+  async function handleExportSelected(format: "json" | "docx" | "pdf") {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    toast.info(`Exporting ${ids.length} test case(s) as ${format.toUpperCase()}...`);
+    try {
+      const { exportApi } = await import("@/lib/api");
+      for (const id of ids) {
+        const blob = await exportApi.testCase(id, format);
+        const filename = `test-case-${id.slice(0, 8)}.${format}`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success(`Exported ${ids.length} test case(s) as ${format.toUpperCase()}`);
+    } catch {
+      toast.error("Failed to export test cases");
+    }
+  }
+
   /** Bulk-assign feature/phase IDs to all selected test cases. */
   async function handleBulkAssignFP() {
     if (selected.size === 0) return;
@@ -260,7 +283,7 @@ export function useProjectActions(deps: ProjectActionDeps) {
     toggleSelect, toggleSelectAll,
     handleCreateFeature, handleCreatePhase,
     handleDeleteFeature, handleDeletePhase,
-    handleBulkAssign, handleDeleteSelected, handleRunSelected, handleBulkAssignFP,
+    handleBulkAssign, handleDeleteSelected, handleRunSelected, handleExportSelected, handleBulkAssignFP,
     handleDeleteProject, handleRenameProject, handleRenameGroup,
   };
 }

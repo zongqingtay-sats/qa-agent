@@ -1,34 +1,39 @@
 /**
- * Shared page header bar with title, optional description, and action buttons.
+ * Shared page header bar with automatic breadcrumbs, title, and action buttons.
  *
  * @module page-header
  */
 
 "use client";
 
+import { Breadcrumbs } from "./breadcrumb";
+
 /** Props for {@link PageHeader}. */
-interface PageHeaderProps {
-  /** Page title — can be a string or JSX (e.g. with an icon). */
+export interface PageHeaderProps {
+  /** Page title — can be a string or JSX. */
   title: React.ReactNode;
-  /** Short subtitle displayed below the title. */
-  description?: string;
+  /** Optional icon rendered before the title. */
+  icon?: React.ReactNode;
   /** Action buttons rendered on the right side. */
   actions?: React.ReactNode;
 }
 
 /**
- * Renders a horizontal header bar with a title, description, and actions slot.
+ * Renders a horizontal header bar with automatic breadcrumbs, a title, and actions slot.
  *
  * @param props - See {@link PageHeaderProps}.
  */
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export function PageHeader({ title, icon, actions }: PageHeaderProps) {
   return (
-    <header className="flex items-center gap-4 border-b px-4 py-3">
-      <div className="flex-1">
-        <h1 className="text-lg font-semibold">{title}</h1>
-        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+    <header className="border-b px-4 py-3">
+      <Breadcrumbs />
+      <div className="flex items-center gap-4">
+        <h1 className="flex-1 text-lg font-semibold flex items-center gap-2">
+          {icon}
+          {title}
+        </h1>
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>
   );
 }

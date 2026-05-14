@@ -57,7 +57,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title={<span className="flex items-center gap-2"><Settings className="h-5 w-5" /> Settings</span>} description="Configure the QA Agent application" />
+      <PageHeader title="Settings" icon={<Settings className="h-5 w-5" />} />
       <div className="flex-1 p-4 space-y-4 max-w-2xl">
         <Card>
           <CardHeader>

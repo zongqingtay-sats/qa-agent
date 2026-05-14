@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={<span className="flex items-center gap-2"><LayoutDashboard className="h-5 w-5" /> Dashboard</span>} description="Overview of your QA testing workspace" />
+      <PageHeader title="Dashboard" icon={<LayoutDashboard className="h-5 w-5" />} />
       <div className="flex-1 p-4 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

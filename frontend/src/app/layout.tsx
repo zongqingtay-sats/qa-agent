@@ -12,6 +12,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { SessionProvider } from "@/components/providers/session-provider";
+import { BreadcrumbProvider } from "@/components/layout/breadcrumb";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,12 +49,14 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <SessionProvider>
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset className="flex flex-col flex-1">
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
+          <BreadcrumbProvider>
+            <SidebarProvider>
+              <AppSidebar />
+              <SidebarInset className="flex flex-col flex-1">
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          </BreadcrumbProvider>
           <Toaster />
         </SessionProvider>
       </body>

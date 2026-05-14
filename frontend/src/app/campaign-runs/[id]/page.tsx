@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Loader2, Clock, MinusCircle } from "lucide-react";
 import { campaignsApi, testCasesApi } from "@/lib/api";
 import type { CampaignRun } from "@/types/api";
+import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 
 interface TestCaseStatus {
   id: string;
@@ -30,6 +31,8 @@ export default function CampaignRunPage() {
   const [campaignRun, setCampaignRun] = useState<CampaignRun | null>(null);
   const [testCases, setTestCases] = useState<TestCaseStatus[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useBreadcrumbLabel(runId, campaignRun?.campaignName || undefined);
 
   const loadData = useCallback(async () => {
     try {
@@ -121,7 +124,6 @@ export default function CampaignRunPage() {
     <>
       <PageHeader
         title={campaignRun.campaignName || "Campaign Run"}
-        description={`Started ${new Date(campaignRun.startedAt).toLocaleString()}`}
         actions={statusBadge[campaignRun.status]}
       />
 

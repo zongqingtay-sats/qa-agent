@@ -16,8 +16,11 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
-import { Users, Layers, Trash2, X, Play, FolderPlus } from "lucide-react";
+import { Users, Layers, Trash2, X, Play, FolderPlus, Download } from "lucide-react";
 
 /** Minimal user shape for the assign dialog. */
 interface UserStub { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }
@@ -49,6 +52,8 @@ export interface BatchActionsBarProps {
   onBulkAssignFP: () => void;
   // Run
   onRunSelected: () => void;
+  // Export
+  onExportSelected: (format: "json" | "docx" | "pdf") => void;
   // Campaign
   onCreateCampaign: () => void;
   // Delete
@@ -67,7 +72,7 @@ export function BatchActionsBar(props: BatchActionsBarProps) {
     assignSearchQuery, setAssignSearchQuery, assignSearchResults, onBulkAssign,
     assignFPDialogOpen, setAssignFPDialogOpen, features, phases,
     bulkFeatureIds, setBulkFeatureIds, bulkPhaseIds, setBulkPhaseIds, onBulkAssignFP,
-    onRunSelected, onCreateCampaign, onDeleteSelected,
+    onRunSelected, onExportSelected, onCreateCampaign, onDeleteSelected,
   } = props;
 
   if (selectedCount === 0) return null;
@@ -167,6 +172,14 @@ export function BatchActionsBar(props: BatchActionsBarProps) {
       </Dialog>
 
       <Button variant="outline" size="sm" onClick={onRunSelected}><Play className="h-4 w-4 mr-1" /> Run</Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" /> Export</Button>} />
+        <DropdownMenuContent>
+          <DropdownMenuItem onClick={() => onExportSelected("json")}>Export as JSON</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onExportSelected("docx")}>Export as DOCX</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onExportSelected("pdf")}>Export as PDF</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button variant="outline" size="sm" onClick={onCreateCampaign}><FolderPlus className="h-4 w-4 mr-1" /> Campaign</Button>
       <Dialog>
         <DialogTrigger render={<Button variant="destructive" size="sm" />}>

@@ -134,8 +134,8 @@ export default function TestCasesPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><TestTube2 className="h-5 w-5" /> Test Cases</span>}
-        description="Manage and run your test cases"
+        title="Test Cases"
+        icon={<TestTube2 className="h-5 w-5" />}
         actions={
           <>
             <Button onClick={handleCreateNew}><Plus className="h-4 w-4" /> Create</Button>

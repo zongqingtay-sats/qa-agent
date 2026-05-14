@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Search, Users, Trash2, Layers, Milestone, FolderKanban, MoreVertical,
+  Group,
 } from "lucide-react";
 
 import { useProjectData } from "./_hooks/use-project-data";
@@ -39,17 +40,20 @@ import { GroupSection } from "./_components/group-section";
 import { BatchActionsBar } from "./_components/batch-actions-bar";
 import { AddTestCaseDialog } from "./_components/add-test-case-dialog";
 import { CreateCampaignDialog } from "./_components/create-campaign-dialog";
+import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 
-export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string; }>; }) {
   const { id: projectId } = use(params);
   const router = useRouter();
   const data = useProjectData(projectId);
   const actions = useProjectActions({ projectId, ...data });
   const groups = buildGroups(data.grouping, data.testCases, data.features, data.phases);
 
+  useBreadcrumbLabel(projectId, data.projectName || undefined);
+
   // Add test case dialog state
   const [addTCDialogOpen, setAddTCDialogOpen] = useState(false);
-  const [addTCContext, setAddTCContext] = useState<{ groupType: "feature" | "phase"; groupId: string; groupLabel: string }>({ groupType: "feature", groupId: "", groupLabel: "" });
+  const [addTCContext, setAddTCContext] = useState<{ groupType: "feature" | "phase"; groupId: string; groupLabel: string; }>({ groupType: "feature", groupId: "", groupLabel: "" });
 
   // Campaign creation dialog state
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
@@ -83,7 +87,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             />
           </span>
         }
-        description={data.project.description || "Project detail"}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { data.setUserSearchQuery(""); data.setUsersDialogOpen(true); }}>
@@ -155,6 +158,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             bulkPhaseIds={data.bulkPhaseIds} setBulkPhaseIds={data.setBulkPhaseIds}
             onBulkAssignFP={actions.handleBulkAssignFP} onDeleteSelected={actions.handleDeleteSelected}
             onRunSelected={actions.handleRunSelected}
+            onExportSelected={actions.handleExportSelected}
             onCreateCampaign={() => setCampaignDialogOpen(true)}
           />
         </div>

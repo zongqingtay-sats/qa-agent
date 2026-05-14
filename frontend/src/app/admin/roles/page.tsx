@@ -71,8 +71,8 @@ export default function RolesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title={<span className="flex items-center gap-2"><Shield className="h-5 w-5" /> Role Management</span>}
-        description="Create and configure roles with granular bitmask permissions"
+        title="Role Management"
+        icon={<Shield className="h-5 w-5" />}
         actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> Create</Button>}
       />
       <div className="flex-1 overflow-auto p-4 space-y-4">

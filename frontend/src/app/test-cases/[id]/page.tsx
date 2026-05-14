@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { PageHeader } from "@/components/layout/page-header";
+import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -34,6 +35,8 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   const { id: testCaseId } = use(params);
   const router = useRouter();
   const d = useTestCaseDetail(testCaseId);
+
+  useBreadcrumbLabel(testCaseId, d.testCaseName || undefined);
 
   if (d.loading || !d.testCase) {
     return (<><PageHeader title="Loading..." /><div className="flex-1 p-4" /></>);

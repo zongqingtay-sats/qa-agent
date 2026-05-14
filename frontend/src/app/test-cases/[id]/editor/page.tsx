@@ -28,6 +28,7 @@ import { BlockPropertiesPanel } from "./_components/block-properties-panel";
 import { EditorToolbar } from "./_components/editor-toolbar";
 import { LastRunPanel } from "./_components/last-run-panel";
 import { useFlowEditor } from "./_hooks/use-flow-editor";
+import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 
 /**
  * Inner editor component (must be wrapped in ReactFlowProvider).
@@ -41,6 +42,8 @@ function FlowEditorInner() {
 
   const editor = useFlowEditor(testCaseId);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  useBreadcrumbLabel(testCaseId, editor.testCaseName || undefined);
 
   if (!editor.loaded) {
     return (

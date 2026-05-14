@@ -206,7 +206,7 @@ export default function GeneratePage() {
 
   return (
     <>
-      <PageHeader title={<span className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Generate Test Cases with AI</span>} description="Use AI to create test cases from requirements, descriptions, or source code" />
+      <PageHeader title="Generate Test Cases" icon={<Sparkles className="h-5 w-5" />} />
       <div className="p-4 max-w-4xl">
         <Tabs defaultValue="text">
           <TabsList className="mb-2">

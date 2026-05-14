@@ -18,10 +18,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, ArrowLeft, Search, Plus, X } from "lucide-react";
+import { Save, Search, Plus, X } from "lucide-react";
 import { campaignsApi, projectsApi } from "@/lib/api";
 import type { Campaign, ProjectTestCase } from "@/types/api";
 import { toast } from "sonner";
+import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 
 export default function CampaignDetailPage({ params }: { params: Promise<{ id: string; campaignId: string }> }) {
   const { id: projectId, campaignId } = use(params);
@@ -29,6 +30,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projectName, setProjectName] = useState<string | undefined>(undefined);
+
+  useBreadcrumbLabel(projectId, projectName);
+  useBreadcrumbLabel(campaignId, campaign?.name || undefined);
   const [saving, setSaving] = useState(false);
 
   // Editable fields
@@ -65,7 +70,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     } catch { /* ignore */ }
   }, [projectId]);
 
-  useEffect(() => { loadCampaign(); loadTestCases(); }, [loadCampaign, loadTestCases]);
+  const loadProjectName = useCallback(async () => {
+    try {
+      const res = await projectsApi.get(projectId);
+      setProjectName(res.data.name);
+    } catch { /* ignore */ }
+  }, [projectId]);
+
+  useEffect(() => { loadCampaign(); loadTestCases(); loadProjectName(); }, [loadCampaign, loadTestCases, loadProjectName]);
 
   async function handleSave() {
     if (!name.trim()) { toast.error("Name is required"); return; }
@@ -126,13 +138,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PageHeader
-        title="Edit Campaign"
-        description={campaign.name}
+        title={campaign.name}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push(`/projects/${projectId}/campaigns`)}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back
-            </Button>
             <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>
               <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
             </Button>

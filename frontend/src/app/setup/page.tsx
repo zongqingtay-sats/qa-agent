@@ -110,10 +110,7 @@ export default function SetupPage() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-        <PageHeader
-          title="Extension Setup"
-          description="Follow these steps to install and connect the browser extension"
-        />
+        <PageHeader title="Extension Setup" />
         <Link href="/settings" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
           <SkipForward className="h-4 w-4" />
           Skip Setup

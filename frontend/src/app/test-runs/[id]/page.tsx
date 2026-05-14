@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
+import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,6 +32,8 @@ export default function TestRunDetailPage() {
   const runId = params.id as string;
   const [run, setRun] = useState<TestRunDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useBreadcrumbLabel(runId, run?.testCaseName || undefined);
 
   useEffect(() => { loadRun(); }, [runId]);
 

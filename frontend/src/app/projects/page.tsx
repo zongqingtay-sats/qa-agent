@@ -90,8 +90,8 @@ export default function ProjectsPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><FolderKanban className="h-5 w-5" /> Projects</span>}
-        description="Manage test case projects"
+        title="Projects"
+        icon={<FolderKanban className="h-5 w-5" />}
         actions={
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger render={<Button />}>
