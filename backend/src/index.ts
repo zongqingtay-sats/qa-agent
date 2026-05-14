@@ -15,6 +15,7 @@ import projectsRouter from './routes/projects';
 import testCaseDetailsRouter from './routes/test-case-details';
 import usersRouter from './routes/users';
 import adminRouter from './routes/admin';
+import campaignsRouter from './routes/campaigns';
 import sseRouter from './sse/router';
 
 const app = express();
@@ -82,6 +83,7 @@ app.use('/api/blob', blobRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api', campaignsRouter);
 app.use('/api/events', sseRouter);
 
 // Error handler (must be last)

@@ -15,6 +15,7 @@
 "use client";
 
 import { use, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,9 +38,11 @@ import { ProjectUsersDialog } from "./_components/project-users-dialog";
 import { GroupSection } from "./_components/group-section";
 import { BatchActionsBar } from "./_components/batch-actions-bar";
 import { AddTestCaseDialog } from "./_components/add-test-case-dialog";
+import { CreateCampaignDialog } from "./_components/create-campaign-dialog";
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
+  const router = useRouter();
   const data = useProjectData(projectId);
   const actions = useProjectActions({ projectId, ...data });
   const groups = buildGroups(data.grouping, data.testCases, data.features, data.phases);
@@ -47,6 +50,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   // Add test case dialog state
   const [addTCDialogOpen, setAddTCDialogOpen] = useState(false);
   const [addTCContext, setAddTCContext] = useState<{ groupType: "feature" | "phase"; groupId: string; groupLabel: string }>({ groupType: "feature", groupId: "", groupLabel: "" });
+
+  // Campaign creation dialog state
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
 
   function handleAddTestCase(groupType: "feature" | "phase", groupId: string, groupLabel: string) {
     setAddTCContext({ groupType, groupId, groupLabel });
@@ -108,6 +114,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </Button>
               } />
               <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={() => router.push(`/projects/${projectId}/campaigns`)}>
+                  <FolderKanban className="h-4 w-4 mr-2" /> Campaigns
+                </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => data.setDeleteProjectConfirm(true)}>
                   <Trash2 className="h-4 w-4 mr-2" /> Delete Project
                 </DropdownMenuItem>
@@ -146,6 +155,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             bulkPhaseIds={data.bulkPhaseIds} setBulkPhaseIds={data.setBulkPhaseIds}
             onBulkAssignFP={actions.handleBulkAssignFP} onDeleteSelected={actions.handleDeleteSelected}
             onRunSelected={actions.handleRunSelected}
+            onCreateCampaign={() => setCampaignDialogOpen(true)}
           />
         </div>
 
@@ -213,6 +223,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         groupId={addTCContext.groupId}
         groupLabel={addTCContext.groupLabel}
         onAdded={data.loadProject}
+      />
+
+      {/* ── Create campaign dialog ── */}
+      <CreateCampaignDialog
+        open={campaignDialogOpen}
+        onOpenChange={setCampaignDialogOpen}
+        projectId={projectId}
+        testCaseIds={Array.from(data.selected)}
+        onCreated={() => data.setSelected(new Set())}
       />
     </>
   );

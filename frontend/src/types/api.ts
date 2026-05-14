@@ -322,3 +322,35 @@ export interface UserProfile {
     role: { id: string; name: string } | null;
   }[];
 }
+
+// ── Campaign ──
+
+export type CampaignRunStatus = 'running' | 'passed' | 'failed' | 'stopped';
+
+export interface Campaign {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  testCaseIds: string[];
+  createdBy?: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignRun {
+  id: string;
+  campaignId: string;
+  status: CampaignRunStatus;
+  baseUrl?: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  totalCases: number;
+  passedCases: number;
+  failedCases: number;
+  testRunIds: Record<string, string>;
+  campaignName?: string;
+}

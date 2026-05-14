@@ -14,7 +14,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 import type {
   TestCase, ProjectTestCase, TestRunListItem, TestRunDetail, StepResult,
   Project, ProjectDetail, Feature, Phase, Comment, Assignment, GroupVisibility,
-  AdminUser, Role, GeneratedTestCase, UserProfile,
+  AdminUser, Role, GeneratedTestCase, UserProfile, Campaign, CampaignRun,
   CreateTestCaseBody, UpdateTestCaseBody, UpdateTestRunBody,
 } from '@/types/api';
 
@@ -261,4 +261,26 @@ export const adminApi = {
     request<{ message: string }>(`/admin/projects/${encodeURIComponent(projectId)}/access/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   setProjectRole: (projectId: string, userId: string, roleId: string | null) =>
     request<{ data: { userId: string; projectId: string; roleId: string | null } }>(`/admin/projects/${encodeURIComponent(projectId)}/access/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: JSON.stringify({ roleId }) }),
+};
+
+// Campaigns
+export const campaignsApi = {
+  list: (projectId: string) =>
+    request<{ data: Campaign[]; total: number }>(`/projects/${encodeURIComponent(projectId)}/campaigns`),
+  get: (id: string) =>
+    request<{ data: Campaign }>(`/campaigns/${encodeURIComponent(id)}`),
+  create: (projectId: string, data: { name: string; description?: string; baseUrl?: string; testCaseIds: string[] }) =>
+    request<{ data: Campaign }>(`/projects/${encodeURIComponent(projectId)}/campaigns`, { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<Pick<Campaign, 'name' | 'description' | 'baseUrl' | 'testCaseIds'>>) =>
+    request<{ data: Campaign }>(`/campaigns/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/campaigns/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  run: (id: string, baseUrl?: string) =>
+    request<{ data: CampaignRun }>(`/campaigns/${encodeURIComponent(id)}/run`, { method: 'POST', body: JSON.stringify({ baseUrl }) }),
+  listRuns: (campaignId: string) =>
+    request<{ data: CampaignRun[]; total: number }>(`/campaigns/${encodeURIComponent(campaignId)}/runs`),
+  getRun: (runId: string) =>
+    request<{ data: CampaignRun }>(`/campaign-runs/${encodeURIComponent(runId)}`),
+  updateRun: (runId: string, data: Partial<CampaignRun>) =>
+    request<{ data: CampaignRun }>(`/campaign-runs/${encodeURIComponent(runId)}`, { method: 'PUT', body: JSON.stringify(data) }),
 };

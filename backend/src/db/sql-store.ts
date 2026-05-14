@@ -509,4 +509,19 @@ export class SqlStore {
       groupType: r.groupType as any, groupId: r.groupId, isHidden: r.isHidden,
     };
   }
+
+  // --- Campaigns (not yet persisted to SQL — in-memory fallback) ---
+  private _campaigns = new Map<string, any>();
+  private _campaignRuns = new Map<string, any>();
+
+  async createCampaign(data: any) { const { v4: uuid } = await import('uuid'); const now = new Date().toISOString(); const r = { ...data, id: uuid(), createdAt: now, updatedAt: now }; this._campaigns.set(r.id, r); return r; }
+  async getCampaign(id: string) { return this._campaigns.get(id); }
+  async getCampaignsForProject(projectId: string) { return Array.from(this._campaigns.values()).filter((c: any) => c.projectId === projectId).sort((a: any, b: any) => b.updatedAt.localeCompare(a.updatedAt)); }
+  async updateCampaign(id: string, data: any) { const e = this._campaigns.get(id); if (!e) return undefined; const u = { ...e, ...data, id: e.id, createdAt: e.createdAt, updatedAt: new Date().toISOString() }; this._campaigns.set(id, u); return u; }
+  async deleteCampaign(id: string) { return this._campaigns.delete(id); }
+
+  async createCampaignRun(data: any) { const { v4: uuid } = await import('uuid'); const r = { ...data, id: uuid(), startedAt: new Date().toISOString() }; this._campaignRuns.set(r.id, r); return r; }
+  async getCampaignRun(id: string) { return this._campaignRuns.get(id); }
+  async getCampaignRunsForCampaign(campaignId: string) { return Array.from(this._campaignRuns.values()).filter((cr: any) => cr.campaignId === campaignId).sort((a: any, b: any) => b.startedAt.localeCompare(a.startedAt)); }
+  async updateCampaignRun(id: string, data: any) { const e = this._campaignRuns.get(id); if (!e) return undefined; const u = { ...e, ...data, id: e.id, startedAt: e.startedAt }; this._campaignRuns.set(id, u); return u; }
 }

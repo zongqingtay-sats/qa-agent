@@ -74,7 +74,7 @@ export function GroupSection({
   return (
     <Card className="p-0 gap-0">
       {/* Group header */}
-      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors cursor-pointer">
+      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors">
         <Checkbox
           className="cursor-pointer bg-background"
           checked={allSelected}

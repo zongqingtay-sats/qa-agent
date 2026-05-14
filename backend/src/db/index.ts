@@ -4,7 +4,7 @@
  * All methods return Promises for consistency.
  */
 import { appConfig } from '../config';
-import type { TestCaseRecord, TestRunRecord, StepResultRecord, ProjectRecord, FeatureRecord, PhaseRecord, CommentRecord, AssignmentRecord, GroupVisibilityRecord } from './store';
+import type { TestCaseRecord, TestRunRecord, StepResultRecord, ProjectRecord, FeatureRecord, PhaseRecord, CommentRecord, AssignmentRecord, GroupVisibilityRecord, CampaignRecord, CampaignRunRecord } from './store';
 import { store as inMemoryStore } from './store';
 import { SqlStore } from './sql-store';
 
@@ -56,6 +56,19 @@ export interface DataStore {
   // Group Visibility
   getGroupVisibility(userId: string, projectId: string): Promise<GroupVisibilityRecord[]>;
   setGroupVisibility(data: Omit<GroupVisibilityRecord, 'id'>): Promise<GroupVisibilityRecord>;
+
+  // Campaigns
+  createCampaign(data: Omit<CampaignRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<CampaignRecord>;
+  getCampaign(id: string): Promise<CampaignRecord | undefined>;
+  getCampaignsForProject(projectId: string): Promise<CampaignRecord[]>;
+  updateCampaign(id: string, data: Partial<CampaignRecord>): Promise<CampaignRecord | undefined>;
+  deleteCampaign(id: string): Promise<boolean>;
+
+  // Campaign Runs
+  createCampaignRun(data: Omit<CampaignRunRecord, 'id' | 'startedAt'>): Promise<CampaignRunRecord>;
+  getCampaignRun(id: string): Promise<CampaignRunRecord | undefined>;
+  getCampaignRunsForCampaign(campaignId: string): Promise<CampaignRunRecord[]>;
+  updateCampaignRun(id: string, data: Partial<CampaignRunRecord>): Promise<CampaignRunRecord | undefined>;
 }
 
 /** Wraps the synchronous in-memory store to return Promises */
@@ -105,6 +118,19 @@ class AsyncInMemoryStore implements DataStore {
   // Group Visibility
   async getGroupVisibility(userId: string, projectId: string) { return inMemoryStore.getGroupVisibility(userId, projectId); }
   async setGroupVisibility(data: Omit<GroupVisibilityRecord, 'id'>) { return inMemoryStore.setGroupVisibility(data); }
+
+  // Campaigns
+  async createCampaign(data: Omit<CampaignRecord, 'id' | 'createdAt' | 'updatedAt'>) { return inMemoryStore.createCampaign(data); }
+  async getCampaign(id: string) { return inMemoryStore.getCampaign(id); }
+  async getCampaignsForProject(projectId: string) { return inMemoryStore.getCampaignsForProject(projectId); }
+  async updateCampaign(id: string, data: Partial<CampaignRecord>) { return inMemoryStore.updateCampaign(id, data); }
+  async deleteCampaign(id: string) { return inMemoryStore.deleteCampaign(id); }
+
+  // Campaign Runs
+  async createCampaignRun(data: Omit<CampaignRunRecord, 'id' | 'startedAt'>) { return inMemoryStore.createCampaignRun(data); }
+  async getCampaignRun(id: string) { return inMemoryStore.getCampaignRun(id); }
+  async getCampaignRunsForCampaign(campaignId: string) { return inMemoryStore.getCampaignRunsForCampaign(campaignId); }
+  async updateCampaignRun(id: string, data: Partial<CampaignRunRecord>) { return inMemoryStore.updateCampaignRun(id, data); }
 }
 
 function isSqlEnabled(): boolean {

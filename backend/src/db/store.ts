@@ -106,6 +106,34 @@ export interface GroupVisibilityRecord {
   isHidden: boolean;
 }
 
+export interface CampaignRecord {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  testCaseIds: string[];
+  createdBy?: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignRunRecord {
+  id: string;
+  campaignId: string;
+  status: 'running' | 'passed' | 'failed' | 'stopped';
+  baseUrl?: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  totalCases: number;
+  passedCases: number;
+  failedCases: number;
+  /** Maps testCaseId → testRunId for each case in this campaign run. */
+  testRunIds: Record<string, string>;
+}
+
 class InMemoryStore {
   testCases: Map<string, TestCaseRecord> = new Map();
   testRuns: Map<string, TestRunRecord> = new Map();
@@ -116,6 +144,8 @@ class InMemoryStore {
   comments: Map<string, CommentRecord> = new Map();
   assignments: Map<string, AssignmentRecord> = new Map();
   groupVisibility: Map<string, GroupVisibilityRecord> = new Map();
+  campaigns: Map<string, CampaignRecord> = new Map();
+  campaignRuns: Map<string, CampaignRunRecord> = new Map();
   // Junction tables (M2M)
   testCaseFeatures: Map<string, { id: string; testCaseId: string; featureId: string }> = new Map();
   testCasePhases: Map<string, { id: string; testCaseId: string; phaseId: string }> = new Map();
@@ -469,6 +499,63 @@ class InMemoryStore {
     const record: GroupVisibilityRecord = { ...data, id: uuidv4() };
     this.groupVisibility.set(record.id, record);
     return record;
+  }
+
+  // --- Campaigns ---
+
+  createCampaign(data: Omit<CampaignRecord, 'id' | 'createdAt' | 'updatedAt'>): CampaignRecord {
+    const now = new Date().toISOString();
+    const record: CampaignRecord = { ...data, id: uuidv4(), createdAt: now, updatedAt: now };
+    this.campaigns.set(record.id, record);
+    return record;
+  }
+
+  getCampaign(id: string): CampaignRecord | undefined {
+    return this.campaigns.get(id);
+  }
+
+  getCampaignsForProject(projectId: string): CampaignRecord[] {
+    return Array.from(this.campaigns.values())
+      .filter(c => c.projectId === projectId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  updateCampaign(id: string, data: Partial<CampaignRecord>): CampaignRecord | undefined {
+    const existing = this.campaigns.get(id);
+    if (!existing) return undefined;
+    const updated: CampaignRecord = { ...existing, ...data, id: existing.id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() };
+    this.campaigns.set(id, updated);
+    return updated;
+  }
+
+  deleteCampaign(id: string): boolean {
+    return this.campaigns.delete(id);
+  }
+
+  // --- Campaign Runs ---
+
+  createCampaignRun(data: Omit<CampaignRunRecord, 'id' | 'startedAt'>): CampaignRunRecord {
+    const record: CampaignRunRecord = { ...data, id: uuidv4(), startedAt: new Date().toISOString() };
+    this.campaignRuns.set(record.id, record);
+    return record;
+  }
+
+  getCampaignRun(id: string): CampaignRunRecord | undefined {
+    return this.campaignRuns.get(id);
+  }
+
+  getCampaignRunsForCampaign(campaignId: string): CampaignRunRecord[] {
+    return Array.from(this.campaignRuns.values())
+      .filter(cr => cr.campaignId === campaignId)
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  }
+
+  updateCampaignRun(id: string, data: Partial<CampaignRunRecord>): CampaignRunRecord | undefined {
+    const existing = this.campaignRuns.get(id);
+    if (!existing) return undefined;
+    const updated: CampaignRunRecord = { ...existing, ...data, id: existing.id, startedAt: existing.startedAt };
+    this.campaignRuns.set(id, updated);
+    return updated;
   }
 }
 
