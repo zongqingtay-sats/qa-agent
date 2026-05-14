@@ -11,6 +11,7 @@
 
 import { useRouter } from "next/navigation";
 import { projectsApi, testCasesApi, assignmentsApi } from "@/lib/api";
+import { runTestCase } from "@/lib/run-test";
 import { toast } from "sonner";
 import type { ProjectDetail, Feature, Phase } from "@/types/api";
 
@@ -181,6 +182,22 @@ export function useProjectActions(deps: ProjectActionDeps) {
     } catch (e: any) { toast.error(e.message); }
   }
 
+  /** Run all selected test cases sequentially. */
+  async function handleRunSelected() {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    toast.info(`Running ${ids.length} test case(s)...`);
+    for (const id of ids) {
+      try {
+        await runTestCase(id);
+      } catch (e: any) {
+        toast.error(`Failed to run test case: ${e.message}`);
+      }
+    }
+    setSelected(new Set());
+    loadProject();
+  }
+
   /** Bulk-assign feature/phase IDs to all selected test cases. */
   async function handleBulkAssignFP() {
     if (selected.size === 0) return;
@@ -243,7 +260,7 @@ export function useProjectActions(deps: ProjectActionDeps) {
     toggleSelect, toggleSelectAll,
     handleCreateFeature, handleCreatePhase,
     handleDeleteFeature, handleDeletePhase,
-    handleBulkAssign, handleDeleteSelected, handleBulkAssignFP,
+    handleBulkAssign, handleDeleteSelected, handleRunSelected, handleBulkAssignFP,
     handleDeleteProject, handleRenameProject, handleRenameGroup,
   };
 }

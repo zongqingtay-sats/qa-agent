@@ -145,6 +145,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             bulkFeatureIds={data.bulkFeatureIds} setBulkFeatureIds={data.setBulkFeatureIds}
             bulkPhaseIds={data.bulkPhaseIds} setBulkPhaseIds={data.setBulkPhaseIds}
             onBulkAssignFP={actions.handleBulkAssignFP} onDeleteSelected={actions.handleDeleteSelected}
+            onRunSelected={actions.handleRunSelected}
           />
         </div>
 
@@ -154,7 +155,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <GroupSection
               key={group.key} group={group}
               hiddenGroups={data.hiddenGroups} collapsedGroups={data.collapsedGroups}
-              selected={data.selected} editingGroup={data.editingGroup} setEditingGroup={data.setEditingGroup}
+              selected={data.selected} setSelected={data.setSelected} editingGroup={data.editingGroup} setEditingGroup={data.setEditingGroup}
               toggleCollapse={actions.toggleCollapse} toggleGroupVisibility={actions.toggleGroupVisibility}
               toggleSelect={actions.toggleSelect} handleRenameGroup={actions.handleRenameGroup}
               setDeleteTarget={data.setDeleteTarget}

@@ -47,7 +47,7 @@ export default function NewTestCasePage() {
           featureIds: featureId ? [featureId] : undefined,
           phaseIds: phaseId ? [phaseId] : undefined,
         });
-        router.replace(`/test-cases/${res.data.id}/editor`);
+        router.replace(`/test-cases/${res.data.id}`);
       } catch (err: any) {
         toast.error(err.message || "Failed to create test case");
         router.back();

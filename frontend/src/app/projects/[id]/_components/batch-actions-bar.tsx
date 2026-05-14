@@ -14,10 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from "@/components/ui/dialog";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
-import { Users, Layers, Trash2, X } from "lucide-react";
+import { Users, Layers, Trash2, X, Play } from "lucide-react";
 
 /** Minimal user shape for the assign dialog. */
 interface UserStub { id: string; name: string | null; email: string | null; avatarBg?: string | null; avatarText?: string | null }
@@ -47,6 +47,8 @@ export interface BatchActionsBarProps {
   bulkPhaseIds: Set<string>;
   setBulkPhaseIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   onBulkAssignFP: () => void;
+  // Run
+  onRunSelected: () => void;
   // Delete
   onDeleteSelected: () => void;
 }
@@ -63,7 +65,7 @@ export function BatchActionsBar(props: BatchActionsBarProps) {
     assignSearchQuery, setAssignSearchQuery, assignSearchResults, onBulkAssign,
     assignFPDialogOpen, setAssignFPDialogOpen, features, phases,
     bulkFeatureIds, setBulkFeatureIds, bulkPhaseIds, setBulkPhaseIds, onBulkAssignFP,
-    onDeleteSelected,
+    onRunSelected, onDeleteSelected,
   } = props;
 
   if (selectedCount === 0) return null;
@@ -162,7 +164,24 @@ export function BatchActionsBar(props: BatchActionsBarProps) {
         </DialogContent>
       </Dialog>
 
-      <Button variant="destructive" size="sm" onClick={onDeleteSelected}><Trash2 className="h-4 w-4 mr-1" /> Delete</Button>
+      <Button variant="outline" size="sm" onClick={onRunSelected}><Play className="h-4 w-4 mr-1" /> Run</Button>
+      <Dialog>
+        <DialogTrigger render={<Button variant="destructive" size="sm" />}>
+          <Trash2 className="h-4 w-4 mr-1" /> Delete
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Test Cases</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedCount} test case(s)? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <DialogClose render={<Button variant="destructive" onClick={onDeleteSelected} />}>Delete</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

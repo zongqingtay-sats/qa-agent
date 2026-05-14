@@ -12,6 +12,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronRight, Eye, EyeOff, Trash2, Plus } from "lucide-react";
 import { TestCaseRows } from "./test-case-rows";
 import type { GroupedSection } from "../_lib/group-builder";
@@ -25,13 +26,14 @@ export interface GroupSectionProps {
   hiddenGroups: Set<string>;
   collapsedGroups: Set<string>;
   selected: Set<string>;
-  editingGroup: { type: GroupType; id: string; name: string } | null;
-  setEditingGroup: (v: { type: GroupType; id: string; name: string } | null) => void;
+  setSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
+  editingGroup: { type: GroupType; id: string; name: string; } | null;
+  setEditingGroup: (v: { type: GroupType; id: string; name: string; } | null) => void;
   toggleCollapse: (key: string) => void;
   toggleGroupVisibility: (type: GroupType, id: string) => void;
   toggleSelect: (id: string) => void;
   handleRenameGroup: (type: GroupType, id: string, name: string) => void;
-  setDeleteTarget: (v: { type: GroupType; id: string; name: string } | null) => void;
+  setDeleteTarget: (v: { type: GroupType; id: string; name: string; } | null) => void;
   onAddTestCase?: (groupType: GroupType, groupId: string, groupLabel: string) => void;
 }
 
@@ -41,7 +43,7 @@ export interface GroupSectionProps {
  * @param props - See {@link GroupSectionProps}.
  */
 export function GroupSection({
-  group, hiddenGroups, collapsedGroups, selected, editingGroup, setEditingGroup,
+  group, hiddenGroups, collapsedGroups, selected, setSelected, editingGroup, setEditingGroup,
   toggleCollapse, toggleGroupVisibility, toggleSelect, handleRenameGroup, setDeleteTarget,
   onAddTestCase,
 }: GroupSectionProps) {
@@ -49,10 +51,36 @@ export function GroupSection({
   const isCollapsed = collapsedGroups.has(group.key);
   const visibleItems = isHidden ? [] : group.items;
 
+  // Collect all test case IDs in this group (including sub-groups)
+  const allItemIds = group.subGroups && group.subGroups.length > 0
+    ? [...new Set(group.subGroups.flatMap((sub) => sub.items.map((tc) => tc.id)))]
+    : group.items.map((tc) => tc.id);
+  const allSelected = allItemIds.length > 0 && allItemIds.every((id) => selected.has(id));
+  const someSelected = !allSelected && allItemIds.some((id) => selected.has(id));
+
+  /** Toggle selection for all test cases in this group. */
+  function toggleGroupSelect() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        for (const id of allItemIds) next.delete(id);
+      } else {
+        for (const id of allItemIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
   return (
     <Card className="p-0 gap-0">
       {/* Group header */}
-      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted transition-colors cursor-pointer">
+      <div className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 transition-colors cursor-pointer">
+        <Checkbox
+          className="cursor-pointer bg-background"
+          checked={allSelected}
+          indeterminate={someSelected}
+          onCheckedChange={toggleGroupSelect}
+        />
         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleCollapse(group.key)}>
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
@@ -87,9 +115,29 @@ export function GroupSection({
               {group.subGroups.map((sub) => {
                 const subHidden = hiddenGroups.has(sub.key);
                 const subCollapsed = collapsedGroups.has(sub.key);
+                const subItemIds = sub.items.map((tc) => tc.id);
+                const subAllSelected = subItemIds.length > 0 && subItemIds.every((id) => selected.has(id));
+                const subSomeSelected = !subAllSelected && subItemIds.some((id) => selected.has(id));
+                function toggleSubGroupSelect() {
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (subAllSelected) {
+                      for (const id of subItemIds) next.delete(id);
+                    } else {
+                      for (const id of subItemIds) next.add(id);
+                    }
+                    return next;
+                  });
+                }
                 return (
                   <div key={sub.key} className="rounded-md ring-1 ring-foreground/10">
                     <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50">
+                      <Checkbox
+                        className="cursor-pointer bg-background"
+                        checked={subAllSelected}
+                        indeterminate={subSomeSelected}
+                        onCheckedChange={toggleSubGroupSelect}
+                      />
                       <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => toggleCollapse(sub.key)}>
                         {subCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
@@ -146,8 +194,8 @@ function GroupLabel({
   groupId, groupType, label, editingGroup, setEditingGroup, handleRenameGroup, className,
 }: {
   groupId: string; groupType: GroupType; label: string; className?: string;
-  editingGroup: { type: GroupType; id: string; name: string } | null;
-  setEditingGroup: (v: { type: GroupType; id: string; name: string } | null) => void;
+  editingGroup: { type: GroupType; id: string; name: string; } | null;
+  setEditingGroup: (v: { type: GroupType; id: string; name: string; } | null) => void;
   handleRenameGroup: (type: GroupType, id: string, name: string) => void;
 }) {
   if (editingGroup?.id === groupId && editingGroup?.type === groupType) {
