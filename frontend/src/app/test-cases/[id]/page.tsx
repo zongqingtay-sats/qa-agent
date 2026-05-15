@@ -20,8 +20,9 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Clock, FolderKanban, TestTube2, Trash2, Play, MoreVertical } from "lucide-react";
-import { testCasesApi } from "@/lib/api";
+import { Pencil, Clock, Download, FolderKanban, TestTube2, Trash2, Play, MoreVertical } from "lucide-react";
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { testCasesApi, exportApi } from "@/lib/api";
 import { runTestCase } from "@/lib/run-test";
 import { CommentsSection } from "./_components/comments-section";
 import { AssigneeSection } from "./_components/assignee-section";
@@ -44,6 +45,20 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
   }
 
   const recentRuns = d.runs.slice(0, 5);
+
+  async function handleExport(format: "json" | "docx" | "pdf") {
+    try {
+      const blob = await exportApi.testCase(testCaseId, format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `test-case-${testCaseId}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export");
+    }
+  }
 
   return (
     <>
@@ -71,7 +86,17 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>} />
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent className="w-40" align="end">
+                <DropdownMenuItem onClick={() => handleExport("json")}>
+                  <Download className="h-4 w-4 mr-2" /> Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("docx")}>
+                  <Download className="h-4 w-4 mr-2" /> Export as DOCX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <Download className="h-4 w-4 mr-2" /> Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={() => d.setDeleteDialogOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-2" /> Delete
                 </DropdownMenuItem>
