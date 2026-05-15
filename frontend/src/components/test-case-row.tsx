@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import type { TestCase, ProjectTestCase, Assignment } from "@/types/api";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 
 export interface TestCaseRowAction {
   /** Unique key for React list rendering. */
@@ -128,8 +129,8 @@ export function TestCaseRow({
 
       {/* Updated at */}
       {showUpdatedAt && (
-        <span className="text-xs text-muted-foreground shrink-0">
-          {new Date(testCase.updatedAt).toLocaleDateString()}
+        <span className="text-xs text-muted-foreground shrink-0" title={formatDateTime(testCase.updatedAt)}>
+          {formatRelative(testCase.updatedAt)}
         </span>
       )}
 

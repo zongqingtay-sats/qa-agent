@@ -21,6 +21,7 @@ import {
 import { Plus, Play, Pencil, Trash2, Globe } from "lucide-react";
 import { campaignsApi } from "@/lib/api";
 import { runCampaign } from "@/lib/run-campaign";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 import type { Campaign } from "@/types/api";
 import { toast } from "sonner";
 
@@ -186,7 +187,7 @@ export default function CampaignsPage() {
                     </span>
                   )}
                   {campaign.createdByName && <span>Created by {campaign.createdByName}</span>}
-                  <span>{new Date(campaign.createdAt).toLocaleDateString()}</span>
+                  <span title={formatDateTime(campaign.createdAt)}>{formatRelative(campaign.createdAt)}</span>
                 </div>
               </CardContent>
             </Card>

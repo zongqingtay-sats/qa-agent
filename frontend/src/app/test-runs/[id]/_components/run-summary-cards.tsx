@@ -8,6 +8,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/format-date";
 
 interface RunSummaryCardsProps {
   /** Current run status (e.g. "passed", "failed", "running"). */
@@ -71,7 +72,7 @@ export function RunSummaryCards({
           <CardTitle className="text-sm font-medium text-muted-foreground">Date</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm font-medium">{new Date(startedAt).toLocaleString()}</p>
+          <p className="text-sm font-medium">{formatDateTime(startedAt)}</p>
         </CardContent>
       </Card>
     </div>

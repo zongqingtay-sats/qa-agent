@@ -29,6 +29,7 @@ import { FlowPreview } from "./_components/flow-preview";
 import { DetailsCard } from "./_components/details-card";
 import { AssignProjectDialog } from "@/components/assign-project-dialog";
 import { useTestCaseDetail } from "./_hooks/use-test-case-detail";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 import { toast } from "sonner";
 
 export default function TestCaseOverviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -140,7 +141,7 @@ export default function TestCaseOverviewPage({ params }: { params: Promise<{ id:
                     <Link key={run.id} href={`/test-runs/${run.id}`} className="flex items-center justify-between p-2 rounded hover:bg-muted/50">
                       <div className="flex items-center gap-2">
                         <StatusBadge status={run.status} size="sm" />
-                        <span className="text-sm text-muted-foreground">{new Date(run.startedAt || run.createdAt || "").toLocaleString()}</span>
+                        <span className="text-sm text-muted-foreground" title={formatDateTime(run.startedAt || run.createdAt || "")}>{formatRelative(run.startedAt || run.createdAt || "")}</span>
                       </div>
                       {run.runByName && (
                         <div className="flex items-center gap-2">

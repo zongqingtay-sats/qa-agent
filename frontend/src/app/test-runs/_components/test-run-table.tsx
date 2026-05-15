@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import { RunExpandedDetail } from "./run-expanded-detail";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 import type { TestRunListItem, TestRunDetail } from "@/types/api";
 
 interface TestRunTableProps {
@@ -107,7 +108,7 @@ export function TestRunTable({
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{new Date(run.startedAt).toLocaleString()}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground" title={formatDateTime(run.startedAt)}>{formatRelative(run.startedAt)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Re-run" onClick={(e) => { e.stopPropagation(); onRetry(run); }}><RotateCcw className="h-3 w-3" /></Button>

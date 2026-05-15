@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/format-date";
 import type { TestRunDetail, StepResult } from "@/types/api";
 
 interface RunExpandedDetailProps {
@@ -40,7 +41,7 @@ export function RunExpandedDetail({ detail }: RunExpandedDetailProps) {
         {detail.completedAt && (
           <div>
             <span className="text-muted-foreground">Completed: </span>
-            {new Date(detail.completedAt).toLocaleString()}
+            {formatDateTime(detail.completedAt)}
           </div>
         )}
       </div>

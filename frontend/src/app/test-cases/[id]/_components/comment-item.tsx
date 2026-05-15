@@ -13,6 +13,7 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Reply, Pencil, Trash2 } from "lucide-react";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 
 /** Shape of a comment object returned by the API. */
 export interface Comment {
@@ -67,7 +68,7 @@ export function CommentItem({
             {(comment.authorName || comment.authorId)?.[0]?.toUpperCase() || "?"}
           </div>
           <span className="text-sm font-medium">{comment.authorName || comment.authorId}</span>
-          <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString()}</span>
+          <span className="text-xs text-muted-foreground" title={formatDateTime(comment.createdAt)}>{formatRelative(comment.createdAt)}</span>
         </div>
         {isEditing ? (
           <div className="space-y-2">
@@ -116,7 +117,7 @@ export function CommentItem({
                   {(reply.authorName || reply.authorId)?.[0]?.toUpperCase() || "?"}
                 </div>
                 <span className="text-sm font-medium">{reply.authorName || reply.authorId}</span>
-                <span className="text-xs text-muted-foreground">{new Date(reply.createdAt).toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground" title={formatDateTime(reply.createdAt)}>{formatRelative(reply.createdAt)}</span>
               </div>
               {editingId === reply.id ? (
                 <div className="space-y-2">

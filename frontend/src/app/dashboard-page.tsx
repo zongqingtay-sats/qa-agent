@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TestTube2, Play, Upload, Sparkles, ArrowRight, CheckCircle2, XCircle, Clock, LayoutDashboard } from "lucide-react";
 import { testCasesApi, testRunsApi } from "@/lib/api";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 import type { TestCase, TestRunListItem } from "@/types/api";
 
 export default function DashboardPage() {
@@ -138,7 +139,7 @@ export default function DashboardPage() {
                     <Link key={tc.id} href={`/test-cases/${tc.id}`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
                       <div>
                         <p className="text-sm font-medium">{tc.name}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(tc.updatedAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground" title={formatDateTime(tc.updatedAt)}>{formatRelative(tc.updatedAt)}</p>
                       </div>
                       <StatusBadge status={tc.status} />
                     </Link>
@@ -164,7 +165,7 @@ export default function DashboardPage() {
                     <Link key={run.id} href={`/test-runs/${run.id}`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
                       <div>
                         <p className="text-sm font-medium">{run.testCaseName}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(run.startedAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground" title={formatDateTime(run.startedAt)}>{formatRelative(run.startedAt)}</p>
                       </div>
                       <StatusBadge status={run.status} />
                     </Link>

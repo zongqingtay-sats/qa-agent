@@ -14,6 +14,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { formatDateTime } from "@/lib/format-date";
 import type { StepResult } from "@/types/api";
 
 interface LastRunPanelProps {
@@ -64,7 +65,7 @@ export function LastRunPanel({ run, selectedNodeId }: LastRunPanelProps) {
         {/* Run metadata */}
         {expanded && (
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Date: {new Date(run.startedAt).toLocaleString()}</span>
+            <span>Date: {formatDateTime(run.startedAt)}</span>
             <span>Steps: {run.stepResults.filter((s) => !s.retry).length}</span>
           </div>
         )}

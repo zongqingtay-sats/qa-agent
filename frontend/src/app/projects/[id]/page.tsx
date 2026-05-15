@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TestTube2, Play, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { projectsApi, testRunsApi } from "@/lib/api";
+import { formatRelative, formatDateTime } from "@/lib/format-date";
 import type { ProjectTestCase, TestRunListItem } from "@/types/api";
 
 export default function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -122,7 +123,7 @@ export default function ProjectOverviewPage({ params }: { params: Promise<{ id: 
                   <Link key={run.id} href={`/test-runs/${run.id}`} className="flex items-center justify-between py-2 hover:bg-muted/50 rounded px-2 -mx-2 transition-colors">
                     <div>
                       <p className="text-sm font-medium">{run.testCaseName}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(run.startedAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground" title={formatDateTime(run.startedAt)}>{formatRelative(run.startedAt)}</p>
                     </div>
                     <StatusBadge status={run.status} />
                   </Link>
