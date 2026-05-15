@@ -16,14 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListPlus, Plus, Sparkles, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { testCasesApi } from "@/lib/api";
+import { TestCaseRow } from "@/components/test-case-row";
 import type { TestCase } from "@/types/api";
 
 interface AddTestCaseDialogProps {
@@ -144,19 +143,27 @@ function AddExistingPanel({
   const loadCases = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch all cases not already in this project
+      // Fetch all cases — show those not assigned to any project,
+      // or those in this project but not yet in the target group.
       const res = await testCasesApi.list({ search: search || undefined });
-      // Filter to only show cases NOT assigned to this project
-      const unassigned = res.data.filter((tc) => !tc.projectId || tc.projectId !== projectId);
+      const available = res.data.filter((tc) => {
+        // Not assigned to any project — available to add
+        if (!tc.projectId) return true;
+        // Assigned to a different project — skip
+        if (tc.projectId !== projectId) return false;
+        // In this project: show if not already in the target group
+        if (groupType === "feature") return !tc.featureIds?.includes(groupId);
+        return !tc.phaseIds?.includes(groupId);
+      });
       // Sort by updatedAt descending
-      unassigned.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      setCases(unassigned);
+      available.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      setCases(available);
     } catch {
       toast.error("Failed to load test cases");
     } finally {
       setLoading(false);
     }
-  }, [search, projectId]);
+  }, [search, projectId, groupType, groupId]);
 
   useEffect(() => { loadCases(); }, [loadCases]);
 
@@ -200,21 +207,22 @@ function AddExistingPanel({
           </div>
         ) : cases.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            No unassigned test cases found.
+            No available test cases found.
           </div>
         ) : (
           <div className="divide-y">
             {cases.map((tc) => (
-              <label key={tc.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer">
-                <Checkbox checked={selected.has(tc.id)} onCheckedChange={() => toggleSelect(tc.id)} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{tc.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Updated {new Date(tc.updatedAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-xs shrink-0">{tc.status}</Badge>
-              </label>
+              <TestCaseRow
+                key={tc.id}
+                testCase={tc}
+                selected={selected.has(tc.id)}
+                onToggleSelect={toggleSelect}
+                linkToDetail={false}
+                showStatus
+                showUpdatedAt
+                showAvatars={false}
+                showLastRunStatus={false}
+              />
             ))}
           </div>
         )}
