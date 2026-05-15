@@ -72,8 +72,20 @@ export default function CampaignsPage() {
           baseUrl: formBaseUrl.trim() || undefined,
         });
         toast.success("Campaign updated");
+        setEditingCampaign(null);
+      } else {
+        await campaignsApi.create(projectId, {
+          name: formName.trim(),
+          description: formDescription.trim() || undefined,
+          baseUrl: formBaseUrl.trim() || undefined,
+          testCaseIds: [],
+        });
+        toast.success("Campaign created");
+        setShowCreate(false);
       }
-      setEditingCampaign(null);
+      setFormName("");
+      setFormDescription("");
+      setFormBaseUrl("");
       loadCampaigns();
     } catch {
       toast.error("Failed to save campaign");
@@ -134,8 +146,8 @@ export default function CampaignsPage() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-muted-foreground mb-4">No campaigns yet. Select test cases on the project page to create one.</p>
-              <Button variant="outline" onClick={() => router.push(`/projects/${projectId}`)}>
-                Go to Project
+              <Button variant="outline" onClick={() => router.push(`/projects/${projectId}/cases`)}>
+                Go to Cases
               </Button>
             </CardContent>
           </Card>
@@ -177,6 +189,36 @@ export default function CampaignsPage() {
           ))
         )}
       </div>
+
+      {/* Create Dialog */}
+      <Dialog open={showCreate} onOpenChange={(open) => { if (!open) setShowCreate(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Campaign</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Name</Label>
+              <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} rows={3} />
+            </div>
+            <div>
+              <Label>Base URL (optional)</Label>
+              <Input value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} placeholder="https://app-uat.example.com" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Replaces the origin of the first navigation step when running tests.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button onClick={handleSave}>Create</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingCampaign} onOpenChange={(open) => !open && setEditingCampaign(null)}>

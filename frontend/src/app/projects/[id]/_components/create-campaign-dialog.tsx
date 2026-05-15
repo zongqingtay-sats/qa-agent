@@ -65,7 +65,7 @@ export function CreateCampaignDialog({ open, onOpenChange, projectId, testCaseId
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Name</Label>
+            <Label className="mb-2">Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. UAT Regression Suite" />
           </div>
           <div>

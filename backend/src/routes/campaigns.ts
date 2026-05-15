@@ -21,8 +21,8 @@ router.get('/projects/:projectId/campaigns', requireProjectAccess('testrun:read'
 router.post('/projects/:projectId/campaigns', requireProjectAccess('testcase:create', async (req) => req.params.projectId as string), async (req: Request, res: Response) => {
   const { name, description, baseUrl, testCaseIds } = req.body;
 
-  if (!name || !Array.isArray(testCaseIds) || testCaseIds.length === 0) {
-    throw new AppError('name and testCaseIds (non-empty array) are required');
+  if (!name || !Array.isArray(testCaseIds)) {
+    throw new AppError('name and testCaseIds (array) are required');
   }
 
   const campaign = await store.createCampaign({
