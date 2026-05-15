@@ -510,18 +510,154 @@ export class SqlStore {
     };
   }
 
-  // --- Campaigns (not yet persisted to SQL — in-memory fallback) ---
-  private _campaigns = new Map<string, any>();
-  private _campaignRuns = new Map<string, any>();
+  // --- Campaigns (Prisma-backed) ---
 
-  async createCampaign(data: any) { const { v4: uuid } = await import('uuid'); const now = new Date().toISOString(); const r = { ...data, id: uuid(), createdAt: now, updatedAt: now }; this._campaigns.set(r.id, r); return r; }
-  async getCampaign(id: string) { return this._campaigns.get(id); }
-  async getCampaignsForProject(projectId: string) { return Array.from(this._campaigns.values()).filter((c: any) => c.projectId === projectId).sort((a: any, b: any) => b.updatedAt.localeCompare(a.updatedAt)); }
-  async updateCampaign(id: string, data: any) { const e = this._campaigns.get(id); if (!e) return undefined; const u = { ...e, ...data, id: e.id, createdAt: e.createdAt, updatedAt: new Date().toISOString() }; this._campaigns.set(id, u); return u; }
-  async deleteCampaign(id: string) { return this._campaigns.delete(id); }
+  async createCampaign(data: any) {
+    const campaign = await this.db.campaign.create({
+      data: {
+        projectId: data.projectId,
+        name: data.name,
+        description: data.description || null,
+        baseUrl: data.baseUrl || null,
+        createdBy: data.createdBy || null,
+        createdByName: data.createdByName || null,
+        testCases: {
+          create: (data.testCaseIds || []).map((testCaseId: string, i: number) => ({
+            testCaseId,
+            sortOrder: i,
+          })),
+        },
+      },
+      include: { testCases: true },
+    });
+    return this._mapCampaign(campaign);
+  }
 
-  async createCampaignRun(data: any) { const { v4: uuid } = await import('uuid'); const r = { ...data, id: uuid(), startedAt: new Date().toISOString() }; this._campaignRuns.set(r.id, r); return r; }
-  async getCampaignRun(id: string) { return this._campaignRuns.get(id); }
-  async getCampaignRunsForCampaign(campaignId: string) { return Array.from(this._campaignRuns.values()).filter((cr: any) => cr.campaignId === campaignId).sort((a: any, b: any) => b.startedAt.localeCompare(a.startedAt)); }
-  async updateCampaignRun(id: string, data: any) { const e = this._campaignRuns.get(id); if (!e) return undefined; const u = { ...e, ...data, id: e.id, startedAt: e.startedAt }; this._campaignRuns.set(id, u); return u; }
+  async getCampaign(id: string) {
+    const campaign = await this.db.campaign.findUnique({
+      where: { id },
+      include: { testCases: { orderBy: { sortOrder: 'asc' } } },
+    });
+    return campaign ? this._mapCampaign(campaign) : undefined;
+  }
+
+  async getCampaignsForProject(projectId: string) {
+    const campaigns = await this.db.campaign.findMany({
+      where: { projectId },
+      include: { testCases: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return campaigns.map((c: any) => this._mapCampaign(c));
+  }
+
+  async updateCampaign(id: string, data: any) {
+    const existing = await this.db.campaign.findUnique({ where: { id } });
+    if (!existing) return undefined;
+
+    const updateData: any = { updatedAt: new Date() };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description || null;
+    if (data.baseUrl !== undefined) updateData.baseUrl = data.baseUrl || null;
+
+    if (data.testCaseIds !== undefined) {
+      // Replace all test case associations
+      await this.db.campaignTestCase.deleteMany({ where: { campaignId: id } });
+      updateData.testCases = {
+        create: data.testCaseIds.map((testCaseId: string, i: number) => ({
+          testCaseId,
+          sortOrder: i,
+        })),
+      };
+    }
+
+    const campaign = await this.db.campaign.update({
+      where: { id },
+      data: updateData,
+      include: { testCases: { orderBy: { sortOrder: 'asc' } } },
+    });
+    return this._mapCampaign(campaign);
+  }
+
+  async deleteCampaign(id: string) {
+    await this.db.campaign.delete({ where: { id } }).catch(() => {});
+    return true;
+  }
+
+  async createCampaignRun(data: any) {
+    const run = await this.db.campaignRun.create({
+      data: {
+        campaignId: data.campaignId,
+        status: data.status || 'running',
+        baseUrl: data.baseUrl || null,
+        totalCases: data.totalCases || 0,
+        passedCases: data.passedCases || 0,
+        failedCases: data.failedCases || 0,
+        testRunIds: JSON.stringify(data.testRunIds || {}),
+      },
+    });
+    return this._mapCampaignRun(run);
+  }
+
+  async getCampaignRun(id: string) {
+    const run = await this.db.campaignRun.findUnique({ where: { id } });
+    return run ? this._mapCampaignRun(run) : undefined;
+  }
+
+  async getCampaignRunsForCampaign(campaignId: string) {
+    const runs = await this.db.campaignRun.findMany({
+      where: { campaignId },
+      orderBy: { startedAt: 'desc' },
+    });
+    return runs.map((r: any) => this._mapCampaignRun(r));
+  }
+
+  async updateCampaignRun(id: string, data: any) {
+    const existing = await this.db.campaignRun.findUnique({ where: { id } });
+    if (!existing) return undefined;
+
+    const updateData: any = {};
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.completedAt !== undefined) updateData.completedAt = new Date(data.completedAt);
+    if (data.durationMs !== undefined) updateData.durationMs = data.durationMs;
+    if (data.totalCases !== undefined) updateData.totalCases = data.totalCases;
+    if (data.passedCases !== undefined) updateData.passedCases = data.passedCases;
+    if (data.failedCases !== undefined) updateData.failedCases = data.failedCases;
+    if (data.testRunIds !== undefined) updateData.testRunIds = JSON.stringify(data.testRunIds);
+
+    const run = await this.db.campaignRun.update({ where: { id }, data: updateData });
+    return this._mapCampaignRun(run);
+  }
+
+  // Maps Prisma Campaign to the CampaignRecord shape expected by routes
+  private _mapCampaign(campaign: any) {
+    return {
+      id: campaign.id,
+      projectId: campaign.projectId,
+      name: campaign.name,
+      description: campaign.description || undefined,
+      baseUrl: campaign.baseUrl || undefined,
+      testCaseIds: (campaign.testCases || []).map((tc: any) => tc.testCaseId),
+      createdBy: campaign.createdBy || undefined,
+      createdByName: campaign.createdByName || undefined,
+      createdAt: campaign.createdAt.toISOString(),
+      updatedAt: campaign.updatedAt.toISOString(),
+    };
+  }
+
+  // Maps Prisma CampaignRun to the CampaignRunRecord shape
+  private _mapCampaignRun(run: any) {
+    return {
+      id: run.id,
+      campaignId: run.campaignId,
+      status: run.status,
+      baseUrl: run.baseUrl || undefined,
+      startedAt: run.startedAt.toISOString(),
+      completedAt: run.completedAt ? run.completedAt.toISOString() : undefined,
+      durationMs: run.durationMs || undefined,
+      totalCases: run.totalCases,
+      passedCases: run.passedCases,
+      failedCases: run.failedCases,
+      testRunIds: typeof run.testRunIds === 'string' ? JSON.parse(run.testRunIds) : run.testRunIds || {},
+    };
+  }
 }

@@ -33,6 +33,7 @@ model TestCase {
   testRuns    TestRun[]
   assignments TestCaseAssignment[]
   comments    Comment[]
+  campaigns   CampaignTestCase[]
 
   @@map("test_cases")
 }
@@ -92,6 +93,7 @@ model Project {
   testCases       TestCase[]
   groupVisibility GroupVisibility[]
   projectAccess   ProjectAccess[]
+  campaigns       Campaign[]
 
   @@map("projects")
 }
@@ -189,6 +191,57 @@ model GroupVisibility {
 
   @@unique([userId, projectId, groupType, groupId])
   @@map("group_visibility")
+}
+
+// ── Campaign Models ──────────────────────────────────────────
+
+model Campaign {
+  id            String   @id @default(uuid()) @db.NVarChar(36)
+  projectId     String   @db.NVarChar(36)
+  name          String   @db.NVarChar(255)
+  description   String?  @db.NVarChar(Max)
+  baseUrl       String?  @db.NVarChar(Max)
+  createdBy     String?  @db.NVarChar(255)
+  createdByName String?  @db.NVarChar(255)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project       Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCases     CampaignTestCase[]
+  runs          CampaignRun[]
+
+  @@map("campaigns")
+}
+
+model CampaignTestCase {
+  id         String @id @default(uuid()) @db.NVarChar(36)
+  campaignId String @db.NVarChar(36)
+  testCaseId String @db.NVarChar(36)
+  sortOrder  Int    @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  testCase TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, testCaseId])
+  @@map("campaign_test_cases")
+}
+
+model CampaignRun {
+  id          String    @id @default(uuid()) @db.NVarChar(36)
+  campaignId  String    @db.NVarChar(36)
+  status      String    @db.NVarChar(20) // running, passed, failed, stopped
+  baseUrl     String?   @db.NVarChar(Max)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  durationMs  Int?
+  totalCases  Int       @default(0)
+  passedCases Int       @default(0)
+  failedCases Int       @default(0)
+  testRunIds  String    @default("{}") @db.NVarChar(Max) // JSON: { testCaseId: testRunId }
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_runs")
 }
 
 // ── NextAuth Models ──────────────────────────────────────────
