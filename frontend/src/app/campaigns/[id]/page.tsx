@@ -3,33 +3,42 @@
  *
  * Allows editing campaign name, description, base URL,
  * and adding/removing test cases from the campaign.
+ *
+ * Route: /campaigns/[id]
  */
 
 "use client";
 
 import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Search, Plus, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Search, Plus, X, MoreVertical, Trash2, Play, ListChecks } from "lucide-react";
 import { campaignsApi, projectsApi } from "@/lib/api";
+import { runCampaign } from "@/lib/run-campaign";
 import { TestCaseRow } from "@/components/test-case-row";
 import type { Campaign, ProjectTestCase } from "@/types/api";
 import { toast } from "sonner";
 import { useBreadcrumbLabel } from "@/components/layout/breadcrumb";
 
-export default function CampaignDetailPage({ params }: { params: Promise<{ id: string; campaignId: string }> }) {
-  const { id: projectId, campaignId } = use(params);
+export default function CampaignDetailPage({ params }: { params: Promise<{ id: string; }>; }) {
+  const { id: campaignId } = use(params);
   const router = useRouter();
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projectName, setProjectName] = useState<string>("");
 
   useBreadcrumbLabel(campaignId, campaign?.name || undefined);
-  const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Editable fields
   const [name, setName] = useState("");
@@ -51,6 +60,18 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       setDescription(c.description || "");
       setBaseUrl(c.baseUrl || "");
       setTestCaseIds(new Set(c.testCaseIds));
+
+      // Load project info
+      try {
+        const projRes = await projectsApi.get(c.projectId);
+        setProjectName(projRes.data.name);
+      } catch { /* ignore */ }
+
+      // Load test cases for picker
+      try {
+        const tcRes = await projectsApi.getTestCases(c.projectId);
+        setAllTestCases(tcRes.data);
+      } catch { /* ignore */ }
     } catch {
       toast.error("Failed to load campaign");
     } finally {
@@ -58,33 +79,40 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     }
   }, [campaignId]);
 
-  const loadTestCases = useCallback(async () => {
+  useEffect(() => { loadCampaign(); }, [loadCampaign]);
+
+  /** Auto-save a partial update. */
+  const autoSave = useCallback(async (fields: Partial<{ name: string; description: string; baseUrl: string; testCaseIds: string[]; }>) => {
+    if (!campaign) return;
+    const payload = {
+      name: (fields.name ?? name).trim() || campaign.name,
+      description: (fields.description ?? description).trim() || undefined,
+      baseUrl: (fields.baseUrl ?? baseUrl).trim() || undefined,
+      testCaseIds: fields.testCaseIds ?? Array.from(testCaseIds),
+    };
     try {
-      const res = await projectsApi.getTestCases(projectId);
-      setAllTestCases(res.data);
-    } catch { /* ignore */ }
-  }, [projectId]);
-
-  useEffect(() => { loadCampaign(); loadTestCases(); }, [loadCampaign, loadTestCases]);
-
-  async function handleSave() {
-    if (!name.trim()) { toast.error("Name is required"); return; }
-    if (testCaseIds.size === 0) { toast.error("At least one test case is required"); return; }
-
-    setSaving(true);
-    try {
-      await campaignsApi.update(campaignId, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        baseUrl: baseUrl.trim() || undefined,
-        testCaseIds: Array.from(testCaseIds),
-      });
-      toast.success("Campaign saved");
-      router.push(`/projects/${projectId}/campaigns`);
+      await campaignsApi.update(campaignId, payload);
     } catch {
-      toast.error("Failed to save campaign");
-    } finally {
-      setSaving(false);
+      toast.error("Failed to save");
+    }
+  }, [campaign, campaignId, name, description, baseUrl, testCaseIds]);
+
+  function handleNameCommit() {
+    if (!name.trim()) { setName(campaign!.name); return; }
+    if (name.trim() !== campaign!.name) {
+      autoSave({ name: name.trim() });
+    }
+  }
+
+  function handleDescriptionCommit() {
+    if ((description.trim() || "") !== (campaign!.description || "")) {
+      autoSave({ description: description.trim() });
+    }
+  }
+
+  function handleBaseUrlCommit() {
+    if ((baseUrl.trim() || "") !== (campaign!.baseUrl || "")) {
+      autoSave({ baseUrl: baseUrl.trim() });
     }
   }
 
@@ -92,12 +120,19 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     setTestCaseIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
+      const arr = Array.from(next);
+      autoSave({ testCaseIds: arr });
       return next;
     });
   }
 
   function addTestCase(id: string) {
-    setTestCaseIds((prev) => new Set(prev).add(id));
+    setTestCaseIds((prev) => {
+      const next = new Set(prev).add(id);
+      const arr = Array.from(next);
+      autoSave({ testCaseIds: arr });
+      return next;
+    });
   }
 
   // Test cases currently in the campaign
@@ -125,12 +160,41 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <div className="flex items-center justify-between p-4 pb-0">
-        <h2 className="text-lg font-semibold">{campaign.name}</h2>
-        <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>
-          <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <ListChecks className="h-5 w-5 shrink-0" />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={handleNameCommit}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setName(campaign!.name); (e.target as HTMLInputElement).blur(); } }}
+              className="bg-transparent border-none outline-none text-lg font-semibold w-full"
+              placeholder="Campaign name..."
+            />
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={running} onClick={async () => {
+              setRunning(true);
+              try { await runCampaign(campaignId, baseUrl || undefined); toast.success("Campaign started"); }
+              catch { toast.error("Failed to run campaign"); }
+              finally { setRunning(false); }
+            }}>
+              <Play className="h-4 w-4 mr-1" /> {running ? "Running…" : "Run"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>} />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        }
+      />
 
       <div className="flex-1 p-4 space-y-4">
         {/* ── Campaign Details ── */}
@@ -145,6 +209,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onBlur={handleNameCommit}
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setName(campaign!.name); (e.target as HTMLInputElement).blur(); } }}
                   placeholder="e.g. UAT Regression Suite"
                   className="text-sm bg-transparent border-none outline-none w-full"
                 />
@@ -154,24 +220,32 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onBlur={handleDescriptionCommit}
                   placeholder="Add a description"
                   rows={3}
                   className="text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
                 />
               </div>
-            </div>
-            <div className="space-y-3 flex-1">
               <div>
                 <p className="text-muted-foreground text-xs font-semibold mb-1">Base URL</p>
                 <input
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://app-uat.example.com"
+                  onBlur={handleBaseUrlCommit}
+                  placeholder="Overrides the origin of the first navigation step when running tests."
                   className="text-sm bg-transparent border-none outline-none w-full"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Overrides the origin of the first navigation step when running tests.
-                </p>
+              </div>
+            </div>
+            <div className="space-y-3 flex-1">
+              <div>
+                <p className="text-muted-foreground text-xs font-semibold mb-1">Project</p>
+                <Link
+                  href={`/projects/${campaign.projectId}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {projectName || campaign.projectId}
+                </Link>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs font-semibold mb-1">ID</p>
@@ -258,6 +332,25 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           </Card>
         )}
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Campaign</DialogTitle>
+            <DialogDescription>Are you sure you want to delete &quot;{campaign.name}&quot;? This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={async () => {
+              try {
+                await campaignsApi.delete(campaignId);
+                toast.success("Campaign deleted");
+                router.push(`/projects/${campaign.projectId}/campaigns`);
+              } catch { toast.error("Failed to delete"); }
+            }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

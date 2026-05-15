@@ -157,7 +157,7 @@ export default function CampaignsPage() {
             <Card
               key={campaign.id}
               className="hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => router.push(`/projects/${projectId}/campaigns/${campaign.id}`)}
+              onClick={() => router.push(`/campaigns/${campaign.id}`)}
             >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="space-y-1">
@@ -170,7 +170,7 @@ export default function CampaignsPage() {
                   <Button variant="ghost" size="icon" onClick={() => handleRun(campaign)} title="Run campaign">
                     <Play className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => router.push(`/projects/${projectId}/campaigns/${campaign.id}`)} title="Edit campaign">
+                  <Button variant="ghost" size="icon" onClick={() => router.push(`/campaigns/${campaign.id}`)} title="Edit campaign">
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(campaign)} title="Delete campaign">
