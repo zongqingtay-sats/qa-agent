@@ -12,8 +12,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Save, Search, Plus, X } from "lucide-react";
@@ -138,23 +136,47 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         {/* ── Campaign Details ── */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Campaign Details</CardTitle>
+            <CardTitle className="text-base">Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="campaign-name">Name</Label>
-              <Input id="campaign-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. UAT Regression Suite" />
+          <CardContent className="flex gap-4">
+            <div className="space-y-3 flex-1">
+              <div>
+                <p className="text-muted-foreground text-xs font-semibold mb-1">Name</p>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. UAT Regression Suite"
+                  className="text-sm bg-transparent border-none outline-none w-full"
+                />
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs font-semibold mb-1">Description</p>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add a description"
+                  rows={3}
+                  className="text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground w-full"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="campaign-desc">Description (optional)</Label>
-              <Textarea id="campaign-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-            </div>
-            <div>
-              <Label htmlFor="campaign-url">Base URL (optional)</Label>
-              <Input id="campaign-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://app-uat.example.com" />
-              <p className="text-xs text-muted-foreground mt-1">
-                Overrides the origin of the first navigation step when running tests.
-              </p>
+            <div className="space-y-3 flex-1">
+              <div>
+                <p className="text-muted-foreground text-xs font-semibold mb-1">Base URL</p>
+                <input
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder="https://app-uat.example.com"
+                  className="text-sm bg-transparent border-none outline-none w-full"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Overrides the origin of the first navigation step when running tests.
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs font-semibold mb-1">ID</p>
+                <span className="font-mono text-xs text-muted-foreground">{campaignId}</span>
+              </div>
             </div>
           </CardContent>
         </Card>

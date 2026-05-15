@@ -5,6 +5,17 @@ import { requirePermission, requireProjectAccess } from '../rbac/middleware';
 
 const router = Router();
 
+// Helper: filter out deleted test case IDs from a campaign
+async function filterValidTestCaseIds(testCaseIds: string[]): Promise<string[]> {
+  const results = await Promise.all(testCaseIds.map((id) => store.getTestCase(id)));
+  return testCaseIds.filter((_, i) => results[i] !== undefined);
+}
+
+// Enrich a campaign record with only valid (non-deleted) test case IDs
+async function enrichCampaign<T extends { testCaseIds: string[] }>(campaign: T): Promise<T> {
+  return { ...campaign, testCaseIds: await filterValidTestCaseIds(campaign.testCaseIds) };
+}
+
 // Resolver: get projectId from campaign
 async function resolveProjectFromCampaign(req: Request): Promise<string | undefined> {
   const campaign = await store.getCampaign(req.params.id as string);
@@ -14,7 +25,8 @@ async function resolveProjectFromCampaign(req: Request): Promise<string | undefi
 // GET /api/projects/:projectId/campaigns
 router.get('/projects/:projectId/campaigns', requireProjectAccess('testrun:read', async (req) => req.params.projectId as string), async (req: Request, res: Response) => {
   const campaigns = await store.getCampaignsForProject(req.params.projectId as string);
-  res.json({ data: campaigns, total: campaigns.length });
+  const enriched = await Promise.all(campaigns.map(enrichCampaign));
+  res.json({ data: enriched, total: enriched.length });
 });
 
 // POST /api/projects/:projectId/campaigns
@@ -42,7 +54,7 @@ router.post('/projects/:projectId/campaigns', requireProjectAccess('testcase:cre
 router.get('/campaigns/:id', requireProjectAccess('testrun:read', resolveProjectFromCampaign), async (req: Request, res: Response) => {
   const campaign = await store.getCampaign(req.params.id as string);
   if (!campaign) throw new AppError('Campaign not found', 404);
-  res.json({ data: campaign });
+  res.json({ data: await enrichCampaign(campaign) });
 });
 
 // PUT /api/campaigns/:id
@@ -66,12 +78,13 @@ router.post('/campaigns/:id/run', requireProjectAccess('testrun:create', resolve
   if (!campaign) throw new AppError('Campaign not found', 404);
 
   const { baseUrl } = req.body; // optional override
+  const validTestCaseIds = await filterValidTestCaseIds(campaign.testCaseIds);
 
   const campaignRun = await store.createCampaignRun({
     campaignId: campaign.id,
     status: 'running',
     baseUrl: baseUrl || campaign.baseUrl || undefined,
-    totalCases: campaign.testCaseIds.length,
+    totalCases: validTestCaseIds.length,
     passedCases: 0,
     failedCases: 0,
     testRunIds: {},

@@ -145,7 +145,7 @@ export default function ProjectsPage() {
             {projects.map((project) => (
               <div key={project.id} className="relative group">
                 <Link href={`/projects/${project.id}`}>
-                  <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                  <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
                     <CardHeader>
                       <div className="flex items-center gap-2">
                         <FolderKanban className="h-5 w-5 text-primary" />

@@ -153,7 +153,11 @@ export default function CampaignsPage() {
           </Card>
         ) : (
           campaigns.map((campaign) => (
-            <Card key={campaign.id} className="hover:bg-muted/50 transition-colors">
+            <Card
+              key={campaign.id}
+              className="hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={() => router.push(`/projects/${projectId}/campaigns/${campaign.id}`)}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="space-y-1">
                   <CardTitle className="text-base">{campaign.name}</CardTitle>
@@ -161,7 +165,7 @@ export default function CampaignsPage() {
                     <p className="text-sm text-muted-foreground">{campaign.description}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" onClick={() => handleRun(campaign)} title="Run campaign">
                     <Play className="h-4 w-4" />
                   </Button>
