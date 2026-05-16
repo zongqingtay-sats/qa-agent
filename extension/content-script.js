@@ -10,6 +10,10 @@
  * functions are already available in the shared scope.
  */
 
+// Guard against duplicate listener registration from repeated script injection
+if (!window.__qaAgentContentScriptRegistered) {
+  window.__qaAgentContentScriptRegistered = true;
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // ── Element picker (used by the editor) ──
   if (message.type === 'PICK_ELEMENT') {
@@ -66,7 +70,11 @@ async function executeAction(data) {
     case 'scroll':     return handleScroll(data);
     case 'wait':       return handleWait(data);
     case 'assert':     return handleAssert(data);
+    case 'wait-until': return handleWaitUntil(data);
+    case 'set-variable': return handleSetVariable(data);
     case 'screenshot': return { success: true, actualResult: 'Screenshot captured' };
     default:           return { success: true, actualResult: `Unknown action: ${data.blockType}` };
   }
 }
+
+} // end guard

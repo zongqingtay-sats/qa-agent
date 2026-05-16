@@ -26,16 +26,33 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { getBlockConfig } from "./block-config";
 import { SelectorField } from "./selector-field";
+import { VariableInput } from "./variable-input";
 import { formatUrl } from "@/app/generate/_lib/url-utils";
 import type { BlockData } from "@/types/api";
 
+const ASSERTION_TYPE_LABELS: Record<string, string> = {
+  "element-exists": "Element Exists",
+  "element-not-exists": "Element Not Exists",
+  "element-visible": "Element Visible",
+  "text-contains": "Text Contains",
+  "value-equals": "Value Equals",
+  "url-matches": "URL Matches",
+};
+
+const CONDITION_TYPE_LABELS: Record<string, string> = {
+  "element-exists": "Element Exists",
+  "text-contains": "Text Contains",
+  "value-equals": "Value Equals",
+};
+
 interface BlockPropertiesPanelProps {
   node: Node | null;
+  nodes: Node[];
   onUpdate: (id: string, data: BlockData & Record<string, unknown>) => void;
   onDelete: (id: string) => void;
 }
 
-export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockPropertiesPanelProps) {
+export function BlockPropertiesPanel({ node, nodes, onUpdate, onDelete }: BlockPropertiesPanelProps) {
   const [picking, setPicking] = useState(false);
 
   if (!node) {
@@ -52,6 +69,22 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
   /** Shorthand to update a single data field. */
   function update(field: string, value: string | number | boolean | null | undefined) {
     onUpdate(node!.id, { ...data, [field]: value });
+  }
+
+  /** Compute variable names defined by set-variable blocks that precede this node in the flow. */
+  function getAvailableVariables(): string[] {
+    const sorted = [...nodes]
+      .filter((n) => {
+        const d = n.data as unknown as BlockData;
+        return d.blockType === "set-variable" && d.variableName;
+      })
+      .sort((a, b) => a.position.y - b.position.y);
+    const vars: string[] = [];
+    for (const n of sorted) {
+      if (n.id === node!.id) break;
+      vars.push((n.data as unknown as BlockData).variableName!);
+    }
+    return vars;
   }
 
   return (
@@ -119,7 +152,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
         {blockType === "type" && (
           <div className="space-y-1.5">
             <Label className="text-xs">Text Value</Label>
-            <Input value={data.value || ""} onChange={(e) => update("value", e.target.value)} placeholder="Text to type" />
+            <VariableInput value={data.value || ""} onChange={(v: string) => update("value", v)} variables={getAvailableVariables()} placeholder="Text to type" />
           </div>
         )}
 
@@ -181,13 +214,13 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
         )}
 
         {/* Assert: selector + assertion type + expected value */}
-        {blockType === "assert" && (
+        {(blockType === "assert" || blockType === "wait-until") && (
           <>
             <SelectorField value={data.selector || ""} onChange={(v) => update("selector", v)} picking={picking} setPicking={setPicking} placeholder="Element to assert on" />
             <div className="space-y-1.5">
               <Label className="text-xs">Assertion Type</Label>
               <Select value={data.assertionType || "element-exists"} onValueChange={(v) => update("assertionType", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>{ASSERTION_TYPE_LABELS[data.assertionType || "element-exists"]}</SelectTrigger>
                 <SelectContent>
                   <SelectItem value="element-exists">Element Exists</SelectItem>
                   <SelectItem value="element-not-exists">Element Not Exists</SelectItem>
@@ -200,22 +233,38 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Expected Value</Label>
-              <Input value={data.expectedValue || ""} onChange={(e) => update("expectedValue", e.target.value)} placeholder="Expected value" />
+              <VariableInput value={data.expectedValue || ""} onChange={(v: string) => update("expectedValue", v)} variables={getAvailableVariables()} placeholder="Expected value" />
             </div>
+            {blockType === "wait-until" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Timeout (ms)</Label>
+                <Input type="number" value={data.timeout || 30000} onChange={(e) => update("timeout", Number(e.target.value))} placeholder="30000" />
+                <p className="text-[10px] text-muted-foreground">Polls every 500ms until condition is met or timeout.</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Set Variable: variable name + selector to capture text from */}
+        {blockType === "set-variable" && (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Variable Name</Label>
+              <Input value={data.variableName || ""} onChange={(e) => update("variableName", e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))} placeholder="myVariable" className="font-mono text-xs" />
+              <p className="text-[10px] text-muted-foreground">Use @{data.variableName || "name"} in subsequent blocks.</p>
+            </div>
+            <SelectorField value={data.selector || ""} onChange={(v) => update("selector", v)} picking={picking} setPicking={setPicking} placeholder="Element to capture text from" />
           </>
         )}
 
         {/* If-Else: condition selector + condition type */}
         {blockType === "if-else" && (
           <>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Condition Selector</Label>
-              <Input value={data.conditionSelector || ""} onChange={(e) => update("conditionSelector", e.target.value)} className="font-mono text-xs" />
-            </div>
+            <SelectorField value={data.conditionSelector || ""} onChange={(v) => update("conditionSelector", v)} picking={picking} setPicking={setPicking} placeholder="Element to check condition on" />
             <div className="space-y-1.5">
               <Label className="text-xs">Condition Type</Label>
               <Select value={data.conditionType || "element-exists"} onValueChange={(v) => update("conditionType", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>{CONDITION_TYPE_LABELS[data.conditionType || "element-exists"]}</SelectTrigger>
                 <SelectContent>
                   <SelectItem value="element-exists">Element Exists</SelectItem>
                   <SelectItem value="text-contains">Text Contains</SelectItem>
@@ -226,7 +275,7 @@ export function BlockPropertiesPanel({ node, onUpdate, onDelete }: BlockProperti
             {data.conditionType === "text-contains" || data.conditionType === "value-equals" ? (
               <div className="space-y-1.5">
                 <Label className="text-xs">Expected Value</Label>
-                <Input value={data.conditionValue || ""} onChange={(e) => update("conditionValue", e.target.value)} placeholder="Expected value" />
+                <VariableInput value={data.conditionValue || ""} onChange={(v: string) => update("conditionValue", v)} variables={getAvailableVariables()} placeholder="Expected value" />
               </div>
             ) : null}
           </>

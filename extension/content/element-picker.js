@@ -13,8 +13,15 @@ function buildSelector(el) {
   const testId = el.getAttribute('data-testid');
   if (testId) return `[data-testid="${testId}"]`;
 
-  // Prefer id
-  if (el.id) return `#${el.id}`;
+  // Prefer id — but still include tag + classes for readability
+  if (el.id) {
+    const tag = el.tagName.toLowerCase();
+    const classes = Array.from(el.classList)
+      .filter((c) => !c.startsWith('hover') && !c.startsWith('focus') && !c.startsWith('qa-agent-') && c.length < 50)
+      .map((c) => `.${CSS.escape(c)}`)
+      .join('');
+    return `${tag}${classes}#${CSS.escape(el.id)}`;
+  }
 
   // Try unique class combination
   if (el.classList.length > 0) {

@@ -14,6 +14,8 @@ export type BlockType =
   | 'hover'
   | 'scroll'
   | 'wait'
+  | 'wait-until'
+  | 'set-variable'
   | 'assert'
   | 'if-else'
   | 'screenshot';
@@ -49,6 +51,8 @@ export interface BlockData {
   // Assert block
   assertionType?: AssertionType;
   expectedValue?: string;
+  // Set Variable block
+  variableName?: string;
   // If-Else block
   conditionType?: AssertionType;
   conditionSelector?: string;

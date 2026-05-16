@@ -12,6 +12,7 @@ import {
   Type,
   Globe,
   Clock,
+  Variable,
   GitBranch,
   Camera,
   ChevronDown,
@@ -19,6 +20,7 @@ import {
   CircleStop,
   Hand,
   ArrowDownUp,
+  Hourglass,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,6 +53,8 @@ export const BLOCK_TYPES: BlockConfig[] = [
   { type: "hover", label: "Hover", icon: Hand, category: "Action", color: "bg-pink-100 border-pink-400 text-pink-800" },
   { type: "scroll", label: "Scroll", icon: ArrowDownUp, category: "Action", color: "bg-cyan-100 border-cyan-400 text-cyan-800" },
   { type: "wait", label: "Wait", icon: Clock, category: "Action", color: "bg-yellow-100 border-yellow-400 text-yellow-800" },
+  { type: "wait-until", label: "Wait Until", icon: Hourglass, category: "Action", color: "bg-teal-100 border-teal-400 text-teal-800" },
+  { type: "set-variable", label: "Set Variable", icon: Variable, category: "Control", color: "bg-violet-100 border-violet-400 text-violet-800" },
   { type: "assert", label: "Assert", icon: CheckCircle, category: "Validation", color: "bg-emerald-100 border-emerald-400 text-emerald-800" },
   { type: "if-else", label: "If-Else", icon: GitBranch, category: "Control", color: "bg-amber-100 border-amber-400 text-amber-800" },
   { type: "screenshot", label: "Screenshot", icon: Camera, category: "Capture", color: "bg-slate-100 border-slate-400 text-slate-800" },

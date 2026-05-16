@@ -188,3 +188,37 @@ async function handleWait(data) {
 
   return { success: true, actualResult: `Waited (${waitType})` };
 }
+
+/**
+ * Capture the text content of an element and store it as a variable.
+ *
+ * The variable value is returned in `actualResult` and stored in the
+ * global `__qaAgentVariables` map for use by subsequent steps.
+ *
+ * @param {object} data
+ * @param {string} data.selector      - CSS selector for the element.
+ * @param {string} data.variableName  - Name to store the value under.
+ * @returns {{ success: boolean, actualResult: string, variableName: string, variableValue: string }}
+ * @throws {Error} If the element is not found or variable name is missing.
+ */
+function handleSetVariable(data) {
+  const { selector, variableName } = data;
+  if (!variableName) throw new Error('Set Variable: Variable name is required');
+  if (!selector) throw new Error('Set Variable: CSS selector is required');
+
+  const el = findElement(selector);
+  if (!el) throw new Error(`Set Variable: Element not found: ${selector}`);
+
+  const capturedValue = el.value !== undefined && el.value !== '' ? el.value : (el.textContent || '').trim();
+
+  // Store globally for use in subsequent steps
+  if (!window.__qaAgentVariables) window.__qaAgentVariables = {};
+  window.__qaAgentVariables[variableName] = capturedValue;
+
+  return {
+    success: true,
+    actualResult: `Captured @${variableName} = "${capturedValue}"`,
+    variableName,
+    variableValue: capturedValue,
+  };
+}

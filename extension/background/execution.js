@@ -126,12 +126,15 @@ export async function startTestExecution(port, testFlow, testCaseId, baseUrl, te
       const stepStart = Date.now();
 
       try {
-        if (data.blockType === 'navigate' && data.url) {
-          await executeNavigationStep(data, tab.id, stepId, node, stepStart, stepResults, port, isRetry);
+        // Resolve @variable references in step data before execution
+        const resolvedData = await resolveVariables(tab.id, data);
+
+        if (resolvedData.blockType === 'navigate' && resolvedData.url) {
+          await executeNavigationStep(resolvedData, tab.id, stepId, node, stepStart, stepResults, port, isRetry);
           continue;
         }
 
-        const result = await executeStepInTab(tab.id, data);
+        const result = await executeStepInTab(tab.id, resolvedData);
 
         // Only capture a screenshot for explicit screenshot blocks
         let screenshot = null;
@@ -195,4 +198,55 @@ function initState(testFlow, testCaseId, testRunId, baseUrl, port) {
   set('currentStepIndex', 0);
   set('testStartTime', Date.now());
   set('isPaused', false);
+}
+
+/**
+ * Resolve @variableName references in step data fields.
+ *
+ * Queries the content script for stored variable values and replaces
+ * all occurrences of @varName in string fields of the data object.
+ *
+ * @param {number} tabId - Chrome tab ID.
+ * @param {object} data  - Step data object.
+ * @returns {Promise<object>} Data with variables resolved.
+ */
+async function resolveVariables(tabId, data) {
+  // Check if any string field contains @{variableRef}
+  const varPattern = /@\{[a-zA-Z0-9_]+\}/g;
+  const fieldsToCheck = ['value', 'expectedValue', 'conditionValue', 'url', 'selector'];
+  let hasVars = false;
+
+  for (const field of fieldsToCheck) {
+    if (typeof data[field] === 'string' && varPattern.test(data[field])) {
+      hasVars = true;
+      break;
+    }
+    varPattern.lastIndex = 0;
+  }
+
+  if (!hasVars) return data;
+
+  // Fetch variables from the content script
+  let variables = {};
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => window.__qaAgentVariables || {},
+    });
+    if (results?.[0]?.result) variables = results[0].result;
+  } catch (e) {
+    console.warn('[QA Agent] Could not fetch variables:', e);
+    return data;
+  }
+
+  // Replace @{varName} in all string fields with stored values
+  const resolved = { ...data };
+  for (const field of fieldsToCheck) {
+    if (typeof resolved[field] === 'string') {
+      resolved[field] = resolved[field].replace(/@\{([a-zA-Z0-9_]+)\}/g, (match, name) => {
+        return name in variables ? variables[name] : match;
+      });
+    }
+  }
+  return resolved;
 }

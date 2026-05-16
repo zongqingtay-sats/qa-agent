@@ -116,6 +116,7 @@ function FlowEditorInner() {
         </div>
         <BlockPropertiesPanel
           node={editor.selectedNode}
+          nodes={editor.nodes}
           onUpdate={editor.updateNodeData}
           onDelete={editor.deleteNode}
         />

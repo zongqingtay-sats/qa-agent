@@ -203,6 +203,7 @@ export interface BlockData {
   timeout?: number;
   assertionType?: string;
   expectedValue?: string;
+  variableName?: string;
   conditionType?: string;
   conditionSelector?: string;
   conditionValue?: string;

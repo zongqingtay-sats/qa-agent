@@ -87,3 +87,38 @@ function handleAssert(data) {
       throw new Error(`Unknown assertion type: ${assertionType}`);
   }
 }
+
+/**
+ * Wait Until — polls every 500ms for an assertion condition to be met.
+ *
+ * Uses the same assertion types as handleAssert but retries until the
+ * condition passes or the timeout is reached.
+ *
+ * @param {object} data
+ * @param {string} [data.assertionType='element-exists'] - The condition to wait for.
+ * @param {string} [data.selector]       - CSS selector for the target element.
+ * @param {string} [data.expectedValue]  - Expected value (for text/value/URL checks).
+ * @param {number} [data.timeout=30000]  - Maximum wait time in milliseconds.
+ * @returns {Promise<{ success: boolean, actualResult: string }>}
+ * @throws {Error} If the condition is not met within the timeout.
+ */
+async function handleWaitUntil(data) {
+  const timeout = data.timeout || 30000;
+  const interval = 500;
+  const deadline = Date.now() + timeout;
+  let lastError = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const result = handleAssert(data);
+      return { success: true, actualResult: `Wait Until satisfied: ${result.actualResult}` };
+    } catch (e) {
+      lastError = e;
+    }
+    await new Promise((r) => setTimeout(r, interval));
+  }
+
+  throw new Error(
+    `Wait Until timed out after ${timeout}ms: ${lastError?.message || 'condition not met'}`,
+  );
+}
