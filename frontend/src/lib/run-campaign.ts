@@ -92,9 +92,8 @@ async function runSingleTestCase(
   const runRes = await testRunsApi.create(testCaseId);
   const testRun = runRes.data;
 
-  const startNode = (flowData.nodes || []).find((n: FlowNode) => n.data?.blockType === 'start');
   const firstNav = (flowData.nodes || []).find((n: FlowNode) => n.data?.blockType === 'navigate');
-  const baseUrl = firstNav?.data?.url || startNode?.data?.baseUrl || 'about:blank';
+  const baseUrl = firstNav?.data?.url || 'about:blank';
 
   return new Promise((resolve) => {
     const stepResults: Record<string, unknown>[] = [];

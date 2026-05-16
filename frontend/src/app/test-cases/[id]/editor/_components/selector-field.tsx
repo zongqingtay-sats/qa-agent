@@ -123,7 +123,7 @@ export function SelectorField({
 
       {/* Tab picker dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="min-w-1/2">
           <DialogHeader>
             <DialogTitle>Select Target Page</DialogTitle>
           </DialogHeader>

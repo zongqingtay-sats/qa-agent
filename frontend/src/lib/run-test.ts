@@ -72,9 +72,8 @@ export async function runTestCase(testCaseId: string): Promise<void> {
 
   // The first Navigate block in the flow handles the target URL navigation.
   // We pass a placeholder baseUrl for relative URL resolution in the extension.
-  const startNode = (flowData.nodes || []).find((n: FlowNode) => n.data?.blockType === 'start');
   const firstNav = (flowData.nodes || []).find((n: FlowNode) => n.data?.blockType === 'navigate');
-  const baseUrl = firstNav?.data?.url || startNode?.data?.baseUrl || 'about:blank';
+  const baseUrl = firstNav?.data?.url || 'about:blank';
 
   await new Promise<void>((resolve) => {
     const stepResults: Record<string, unknown>[] = [];

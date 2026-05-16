@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md">
+      <Card className="w-full">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <FlaskConical className="h-12 w-12 text-primary" />

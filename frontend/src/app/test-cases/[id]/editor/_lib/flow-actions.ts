@@ -98,8 +98,8 @@ export function handleValidate(nodes: Node[], edges: Edge[]) {
 export async function handleRefine(deps: FlowActionDeps) {
   deps.setRefining(true);
   try {
-    const startNode = deps.nodes.find((n) => n.data?.blockType === "start");
-    const baseUrl = (startNode?.data as Record<string, unknown>)?.baseUrl as string || "";
+    const firstNav = deps.nodes.find((n) => n.data?.blockType === "navigate");
+    const baseUrl = ((firstNav?.data as Record<string, unknown>)?.url as string) || "";
 
     // Build a simplified step list for the AI
     const stepNodes = deps.nodes.filter(

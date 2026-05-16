@@ -154,7 +154,7 @@ export function AssignProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="min-w-1/2">
         <DialogHeader>
           <DialogTitle>
             {isBulk ? `Assign ${testCaseIds.length} Test Cases` : "Assign to Project"}

@@ -60,7 +60,7 @@ function FlowEditorInner() {
           <input
             value={editor.testCaseName}
             onChange={(e) => editor.setTestCaseName(e.target.value)}
-            className="bg-transparent border-none outline-none text-lg font-semibold w-full max-w-md"
+            className="bg-transparent border-none outline-none text-lg font-semibold w-full"
             placeholder="Test case name..."
           />
         }

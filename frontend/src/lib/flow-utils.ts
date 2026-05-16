@@ -71,7 +71,7 @@ export function buildFlowFromSteps(steps: GeneratedStep[]): {
       data: {
         label: step.description || step.action,
         blockType,
-        selector: step.target,
+        selector: blockType === "navigate" ? undefined : step.target,
         url: blockType === "navigate" ? step.target : undefined,
         value: step.value,
         expectedValue: blockType === "assert" ? step.value : undefined,
